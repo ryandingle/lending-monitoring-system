@@ -7,7 +7,9 @@ frontend:
         - nvm install 20
         - nvm use 20
         - node --version
-        - npm ci
+        - npm ci --include=optional
+        - npm rebuild @tailwindcss/oxide --build-from-source
+        - npm rebuild lightningcss --build-from-source
         - npx prisma generate
         - npx prisma migrate deploy
     build:
