@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ENCODER
+}
+
+enum BalanceUpdateType {
+  INCREASE
+  DEDUCT
+}
+
+enum SavingsUpdateType {
+  INCREASE
+  WITHDRAW
+  APPLY_TO_BALANCE
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  name         String
+  role         Role
+  passwordHash String
+  isActive     Boolean   @default(true)
+  notificationsLastSeenAt DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  sessions     AuthSession[]
+  groups       Group[]   @relation("GroupCreatedBy")
+  balanceAdjustments BalanceAdjustment[] @relation("BalanceEncodedBy")
+  savingsAdjustments SavingsAdjustment[] @relation("SavingsEncodedBy")
+  auditLogs    AuditLog[]
+  notificationReads NotificationRead[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique
+  userId    String   @db.Uuid
+  expiresAt DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+model Group {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  createdById String   @db.Uuid
+
+  createdBy User     @relation("GroupCreatedBy", fields: [createdById], references: [id])
+  members   Member[]
+
+  @@index([createdAt])
+  @@map("groups")
+}
+
+model Member {
+  id                  String   @id @default(uuid()) @db.Uuid
+  groupId             String?  @db.Uuid
+  firstName           String
+  lastName            String
+  age                 Int?
+  address             String?
+  phoneNumber         String?
+  balance             Decimal  @db.Decimal(14, 2)
+  savings             Decimal  @db.Decimal(14, 2) @default(0)
+  savingsLastAccruedAt DateTime? @db.Date
+  createdAt           DateTime @default(now()) @db.Timestamptz
+  updatedAt           DateTime @updatedAt @db.Timestamptz
+
+  group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  savingsAccruals SavingsAccrual[]
+  balanceAdjustments BalanceAdjustment[]
+  savingsAdjustments SavingsAdjustment[]
+
+  @@index([groupId])
+  @@index([savingsLastAccruedAt])
+  @@map("members")
+}
+
+model SavingsAccrual {
+  id            String   @id @default(uuid()) @db.Uuid
+  memberId      String   @db.Uuid
+  accruedForDate DateTime @db.Date
+  amount        Decimal  @db.Decimal(14, 2)
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, accruedForDate])
+  @@index([memberId, accruedForDate])
+  @@map("savings_accruals")
+}
+
+model BalanceAdjustment {
+  id            String            @id @default(uuid()) @db.Uuid
+  memberId      String            @db.Uuid
+  encodedById   String            @db.Uuid
+  type          BalanceUpdateType
+  amount        Decimal           @db.Decimal(14, 2)
+  balanceBefore Decimal           @db.Decimal(14, 2)
+  balanceAfter  Decimal           @db.Decimal(14, 2)
+  createdAt     DateTime          @default(now()) @db.Timestamptz
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  encodedBy User   @relation("BalanceEncodedBy", fields: [encodedById], references: [id], onDelete: Restrict)
+
+  @@index([memberId, createdAt])
+  @@index([encodedById, createdAt])
+  @@map("balance_adjustments")
+}
+
+model SavingsAdjustment {
+  id            String            @id @default(uuid()) @db.Uuid
+  memberId      String            @db.Uuid
+  encodedById   String            @db.Uuid
+  type          SavingsUpdateType
+  amount        Decimal           @db.Decimal(14, 2)
+  savingsBefore Decimal           @db.Decimal(14, 2)
+  savingsAfter  Decimal           @db.Decimal(14, 2)
+  createdAt     DateTime          @default(now()) @db.Timestamptz
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  encodedBy User   @relation("SavingsEncodedBy", fields: [encodedById], references: [id], onDelete: Restrict)
+
+  @@index([memberId, createdAt])
+  @@index([encodedById, createdAt])
+  @@map("savings_adjustments")
+}
+
+model AuditLog {
+  id          String         @id @default(uuid()) @db.Uuid
+  actorType   AuditActorType @default(USER)
+  actorUserId String?        @db.Uuid
+  action      String
+  entityType  String?
+  entityId    String?
+  ip          String?
+  userAgent   String?
+  referer     String?
+  metadata    Json?
+  createdAt   DateTime       @default(now()) @db.Timestamptz
+
+  actorUser User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  notificationReads NotificationRead[]
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model NotificationRead {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  auditLogId String   @db.Uuid
+  readAt     DateTime @default(now()) @db.Timestamptz
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLog AuditLog @relation(fields: [auditLogId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, auditLogId])
+  @@index([userId, readAt])
+  @@index([auditLogId, readAt])
+  @@map("notification_reads")
+}
+

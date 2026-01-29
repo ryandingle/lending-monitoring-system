@@ -1,0 +1,148 @@
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { requireRole, requireUser } from "@/lib/auth/session";
+import { Role } from "@prisma/client";
+import { z } from "zod";
+import { redirect } from "next/navigation";
+import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { ModalAlert } from "../../../_components/modal-alert";
+
+const UpdateGroupSchema = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(500).optional(),
+});
+
+async function updateGroupAction(groupId: string, formData: FormData) {
+  "use server";
+
+  const actor = await requireUser();
+  requireRole(actor, [Role.SUPER_ADMIN]);
+
+  const parsed = UpdateGroupSchema.safeParse({
+    name: String(formData.get("name") || "").trim(),
+    description: String(formData.get("description") || "").trim() || undefined,
+  });
+
+  if (!parsed.success) redirect(`/app/groups/${groupId}/edit?saved=0`);
+
+  try {
+    const request = await tryGetAuditRequestContext();
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.group.findUnique({
+        where: { id: groupId },
+        select: { id: true, name: true, description: true },
+      });
+      if (!before) throw new Error("Group not found");
+
+      const after = await tx.group.update({
+        where: { id: groupId },
+        data: {
+          name: parsed.data.name,
+          description: parsed.data.description,
+        },
+        select: { id: true, name: true, description: true },
+      });
+
+      await createAuditLog(tx, {
+        actorUserId: actor.id,
+        action: "GROUP_UPDATE",
+        entityType: "Group",
+        entityId: groupId,
+        metadata: { before, after },
+        request,
+      });
+    });
+  } catch {
+    redirect(`/app/groups/${groupId}/edit?saved=0`);
+  }
+
+  redirect(`/app/groups/${groupId}`);
+}
+
+export default async function EditGroupPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ groupId: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
+  const user = await requireUser();
+  requireRole(user, [Role.SUPER_ADMIN]);
+
+  const { groupId } = await params;
+  const sp = await searchParams;
+
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { id: true, name: true, description: true },
+  });
+
+  if (!group) {
+    return (
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+        <div className="text-sm text-slate-300">Group not found.</div>
+        <div className="mt-4">
+          <Link href="/app/groups" className="text-sm font-medium text-slate-200 hover:underline">
+            Back to Groups
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Link href={`/app/groups/${groupId}`} className="text-sm text-slate-400 hover:underline">
+              ← Back to Group
+            </Link>
+            <h1 className="mt-2 text-xl font-semibold text-slate-100">Edit Group</h1>
+            <p className="mt-1 text-sm text-slate-400">Update group details.</p>
+          </div>
+        </div>
+
+        {sp.saved === "0" ? (
+          <ModalAlert
+            title="Could not save changes"
+            message="Please check your inputs (including unique group name) and try again."
+          />
+        ) : null}
+
+        <form action={updateGroupAction.bind(null, groupId)} className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="md:col-span-1">
+            <label className="text-sm font-medium">Group Name</label>
+            <input
+              name="name"
+              defaultValue={group.name}
+              required
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium">Description</label>
+            <input
+              name="description"
+              defaultValue={group.description ?? ""}
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+
+          <div className="md:col-span-3 mt-2 flex flex-wrap items-center gap-2">
+            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              Save changes
+            </button>
+            <Link
+              href={`/app/groups/${groupId}`}
+              className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+            >
+              Cancel
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+

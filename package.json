@@ -1,0 +1,45 @@
+{
+  "name": "lending-monitoring-system",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "prisma generate",
+    "dev": "next dev",
+    "prebuild": "prisma generate",
+    "build": "next build",
+    "prestart": "prisma generate",
+    "start": "next start",
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "job:accrue-savings": "tsx scripts/accrue-savings.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.0",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
+    "next": "16.0.10",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "20.19.25",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.4",
+    "@tailwindcss/postcss": "^4",
+    "postcss": "^8.4.38",
+    "prisma": "6.19.0",
+    "tailwindcss": "^4",
+    "tsx": "4.21.0",
+    "typescript": "^5"
+  }
+}
+

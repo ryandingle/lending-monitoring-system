@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lms
+      POSTGRES_USER: lms
+      POSTGRES_PASSWORD: lms
+      TZ: UTC
+    ports:
+      - "5435:5432"
+    volumes:
+      - lms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms -d lms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      target: dev
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      TZ: UTC
+      DATABASE_URL: ${DATABASE_URL:-postgresql://lms:lms@db:5432/lms?schema=public}
+      APP_URL: ${APP_URL:-http://localhost:3005}
+    ports:
+      - "3005:3000"
+    volumes:
+      - .:/app
+      - lms_node_modules:/app/node_modules
+      - lms_next:/app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "npm install &&
+             npm run db:generate &&
+             npm run db:migrate:prod &&
+             npm run db:seed &&
+             npm run dev -- -p 3000"
+
+volumes:
+  lms_pgdata:
+  lms_node_modules:
+  lms_next:
+
