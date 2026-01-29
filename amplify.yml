@@ -4,7 +4,8 @@ frontend:
     preBuild:
       commands:
         - rm -rf node_modules package-lock.json
-        - nvm use 22
+        - nvm install 18
+        - nvm use 18
         - node --version
         - npm ci
         - npx prisma generate
