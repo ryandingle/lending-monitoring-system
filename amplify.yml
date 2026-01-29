@@ -19,6 +19,7 @@ frontend:
         - env | grep -e AUTH_SECRET >> .env
         - env | grep -e DATABASE_URL >> .env
         - env | grep -e SAVINGS_DAILY_INCREMENT >> .env
+        - env | grep -e NODE_ENV >> .env
         - npm run build
   artifacts:
     baseDirectory: .next

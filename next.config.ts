@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  poweredByHeader: false,
-  experimental: {
-    turbo: false,
-  },
+  poweredByHeader: false
 };
 
 export default nextConfig;
