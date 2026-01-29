@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { AuditActorType, Prisma } from "@prisma/client";
+import { headers } from "next/headers";
 
 export type AuditRequestContext = {
   ip?: string;
@@ -11,8 +12,7 @@ type Db = Prisma.TransactionClient;
 
 export async function tryGetAuditRequestContext(): Promise<AuditRequestContext> {
   try {
-    const mod = await import("next/headers");
-    const h = mod.headers();
+    const h = await headers();
     const xfwd = h.get("x-forwarded-for") ?? "";
     const ip = xfwd.split(",")[0]?.trim() || h.get("x-real-ip") || undefined;
     const userAgent = h.get("user-agent") || undefined;
