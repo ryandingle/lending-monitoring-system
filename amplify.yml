@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - rm -rf node_modules package-lock.json
+        - rm -rf node_modules
         - nvm install 18
         - nvm use 18
         - node --version
