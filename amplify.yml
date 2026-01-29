@@ -3,6 +3,8 @@ frontend:
   phases:
     preBuild:
       commands:
+        - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        - source $HOME/.cargo/env
         - rm -rf node_modules
         - nvm install 20
         - nvm use 20
