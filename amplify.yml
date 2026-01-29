@@ -14,6 +14,7 @@ frontend:
         - npm rebuild lightningcss --build-from-source
         - npx prisma generate
         - npx prisma migrate deploy
+        - npm install --save-dev @types/react @types/node
     build:
       commands:
         - env | grep -e APP_URL >> .env
