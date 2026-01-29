@@ -6,6 +6,8 @@ frontend:
         - nvm use 20
         - node --version
         - npm ci
+        - npx prisma generate
+        - npx prisma migrate deploy
     build:
       commands:
         - env | grep -e APP_URL >> .env.production
