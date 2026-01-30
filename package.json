@@ -18,7 +18,6 @@
     "job:accrue-savings": "tsx scripts/accrue-savings.ts"
   },
   "dependencies": {
-    "@esbuild/linux-arm64": "^0.27.2",
     "@prisma/client": "6.19.0",
     "@tailwindcss/postcss": "^4",
     "bcryptjs": "^2.4.3",
