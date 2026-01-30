@@ -40,6 +40,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "npm install &&
+             npm install @esbuild/linux-arm64 &&
              npm run db:generate &&
              npm run db:migrate:prod &&
              npm run db:seed &&
