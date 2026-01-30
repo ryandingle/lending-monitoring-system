@@ -3,34 +3,15 @@ frontend:
   phases:
     preBuild:
       commands:
-        - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        - source $HOME/.cargo/env
-        - rm -rf node_modules package-lock.json
-        #- nvm install 20
-        #- nvm use 20
-        #- node --version
-        #- npm install
-        # - npm ci --include=optional
-        # - npm rebuild @tailwindcss/oxide --build-from-source
-        # - npm rebuild lightningcss --build-from-source
-        # - npx prisma generate
-        # - npx prisma migrate deploy
-        #- npm run db:generate
-
-        - npm install
-        - npm install @esbuild/linux-arm64 
-        - npm run db:generate
-        - npm run db:migrate:prod
-        - npm run db:seed
+        - nvm install 20
+        - nvm use 20
+        - node --version
+        - npm ci
+        - npx prisma generate
+        - npx prisma migrate deploy
     build:
       commands:
-        - env | grep -e APP_URL >> .env
-        - env | grep -e AUTH_COOKIE_NAME >> .env
-        - env | grep -e AUTH_SECRET >> .env
-        - env | grep -e DATABASE_URL >> .env
-        - env | grep -e SAVINGS_DAILY_INCREMENT >> .env
-        - env | grep -e NODE_ENV >> .env
-        - npm install --save-dev @types/react @types/node
+        - env | grep -E 'APP_URL|AUTH_COOKIE_NAME|AUTH_SECRET|DATABASE_URL|SAVINGS_DAILY_INCREMENT|NODE_ENV' >> .env
         - npm run build
   artifacts:
     baseDirectory: .next
