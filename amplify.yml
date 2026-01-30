@@ -6,16 +6,22 @@ frontend:
         - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         - source $HOME/.cargo/env
         - rm -rf node_modules
-        - nvm install 20
-        - nvm use 20
-        - node --version
-        - npm install
+        #- nvm install 20
+        #- nvm use 20
+        #- node --version
+        #- npm install
         # - npm ci --include=optional
         # - npm rebuild @tailwindcss/oxide --build-from-source
         # - npm rebuild lightningcss --build-from-source
         # - npx prisma generate
         # - npx prisma migrate deploy
+        #- npm run db:generate
+
+        - npm install
+        - npm install @esbuild/linux-arm64 
         - npm run db:generate
+        - npm run db:migrate:prod
+        - npm run db:seed
     build:
       commands:
         - env | grep -e APP_URL >> .env
