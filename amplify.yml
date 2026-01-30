@@ -6,6 +6,7 @@ frontend:
         - nvm install 20
         - nvm use 20
         - node --version
+        - npm install
         - npm ci
         - npx prisma generate
         - npx prisma migrate deploy
