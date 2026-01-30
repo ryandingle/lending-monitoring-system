@@ -6,9 +6,13 @@ frontend:
         - nvm install 20
         - nvm use 20
         - node --version
-        - npm ci
-        - npx prisma generate
-        - npx prisma migrate deploy
+        # - npm ci
+        # - npx prisma generate
+        # - npx prisma migrate deploy
+        - npm install
+        - npm run db:generate
+        - npm run db:migrate:prod
+        - npm run db:seed
     build:
       commands:
         - env | grep -E 'APP_URL|AUTH_COOKIE_NAME|AUTH_SECRET|DATABASE_URL|SAVINGS_DAILY_INCREMENT|NODE_ENV' >> .env
