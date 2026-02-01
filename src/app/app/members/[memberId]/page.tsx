@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
+import { countBusinessDays } from "@/lib/date";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
@@ -326,6 +327,8 @@ export default async function MemberDetailPage({
               {member.firstName} {member.lastName}
             </h1>
             <p className="mt-1 text-sm text-slate-400">
+              {countBusinessDays(member.createdAt, new Date())} days in system (excl. weekends)
+              {" · "}
               Group:{" "}
               {member.group ? (
                 currentUser.role === Role.SUPER_ADMIN ? (
@@ -342,14 +345,6 @@ export default async function MemberDetailPage({
                 <span className="font-medium text-slate-500">—</span>
               )}
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={`/api/members/${memberId}/export`}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
-            >
-              Export Data
-            </a>
           </div>
         </div>
 

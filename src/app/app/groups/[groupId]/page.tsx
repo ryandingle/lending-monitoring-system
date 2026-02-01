@@ -84,6 +84,7 @@ export default async function GroupDetailsPage({
   const group = await prisma.group.findUnique({
     where: { id: groupId },
     include: {
+      collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       members: {
         orderBy: { createdAt: "desc" },
       },
@@ -115,6 +116,12 @@ export default async function GroupDetailsPage({
             </Link>
             <h1 className="mt-2 text-xl font-semibold text-slate-100">{group.name}</h1>
             <p className="mt-1 text-sm text-slate-400">{group.description ?? "-"}</p>
+            {group.collectionOfficer ? (
+              <p className="mt-1 text-sm text-slate-400">
+                Collection officer: {group.collectionOfficer.firstName}{" "}
+                {group.collectionOfficer.lastName}
+              </p>
+            ) : null}
           </div>
           <div>
             <Link
@@ -122,12 +129,6 @@ export default async function GroupDetailsPage({
               className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
             >
               View in Members page
-            </Link>
-            <Link
-              href={`/api/groups/${group.id}/export`}
-              className="ml-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
-            >
-              Export Data
             </Link>
           </div>
         </div>

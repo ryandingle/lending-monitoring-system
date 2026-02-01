@@ -6,6 +6,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
+import { IconEye, IconPencil, IconTrash } from "../_components/icons";
 
 function clampInt(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -23,6 +24,7 @@ function buildHref(base: string, params: Record<string, string | undefined>) {
 const CreateGroupSchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(500).optional(),
+  collectionOfficerId: z.string().uuid().optional().nullable(),
 });
 
 async function createGroupAction(formData: FormData) {
@@ -31,9 +33,11 @@ async function createGroupAction(formData: FormData) {
   const user = await requireUser();
   requireRole(user, [Role.SUPER_ADMIN]);
 
+  const rawCo = String(formData.get("collectionOfficerId") || "").trim();
   const parsed = CreateGroupSchema.safeParse({
     name: String(formData.get("name") || "").trim(),
     description: String(formData.get("description") || "").trim() || undefined,
+    collectionOfficerId: rawCo === "" ? undefined : rawCo,
   });
   if (!parsed.success) redirect("/app/groups?created=0");
 
@@ -42,8 +46,9 @@ async function createGroupAction(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       const group = await tx.group.create({
         data: {
-          name: parsed.data.name,
-          description: parsed.data.description,
+          name: parsed.data!.name,
+          description: parsed.data!.description,
+          collectionOfficerId: parsed.data!.collectionOfficerId ?? null,
           createdById: user.id,
         },
       });
@@ -52,7 +57,11 @@ async function createGroupAction(formData: FormData) {
         action: "GROUP_CREATE",
         entityType: "Group",
         entityId: group.id,
-        metadata: { name: group.name, description: group.description ?? null },
+        metadata: {
+          name: group.name,
+          description: group.description ?? null,
+          collectionOfficerId: group.collectionOfficerId ?? null,
+        },
         request,
       });
     });
@@ -129,12 +138,21 @@ export default async function GroupsPage({
     redirect("/app/groups?deleted=1");
   }
 
+  const collectionOfficers = await prisma.employee.findMany({
+    where: { position: "COLLECTION_OFFICER" },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    select: { id: true, firstName: true, lastName: true },
+  });
+
   const [totalCount, groups] = await Promise.all([
     prisma.group.count({ where }),
     prisma.group.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { members: true } } },
+      include: {
+        _count: { select: { members: true } },
+        collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
+      },
       take: pageSize,
       skip: (page - 1) * pageSize,
     }),
@@ -194,6 +212,20 @@ export default async function GroupsPage({
                 name="description"
                 className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-sm font-medium">Collection Officer (optional)</label>
+              <select
+                name="collectionOfficerId"
+                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">None</option>
+                {collectionOfficers.map((co) => (
+                  <option key={co.id} value={co.id}>
+                    {co.firstName} {co.lastName}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="md:col-span-3">
               <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
@@ -276,6 +308,7 @@ export default async function GroupsPage({
               <tr>
                 <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Description</th>
+                <th className="py-2 pr-4">Collection Officer</th>
                 <th className="py-2 pr-4">Created</th>
                 <th className="py-2 pr-4">Members</th>
                 <th className="py-2 pr-0 text-right">Actions</th>
@@ -290,6 +323,11 @@ export default async function GroupsPage({
                     </Link>
                   </td>
                   <td className="py-2 pr-4 text-slate-300">{g.description ?? "-"}</td>
+                  <td className="py-2 pr-4 text-slate-300">
+                    {g.collectionOfficer
+                      ? `${g.collectionOfficer.firstName} ${g.collectionOfficer.lastName}`
+                      : "—"}
+                  </td>
                   <td className="py-2 pr-4 text-slate-400">
                     {g.createdAt.toISOString().slice(0, 10)}
                   </td>
@@ -298,22 +336,25 @@ export default async function GroupsPage({
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/app/groups/${g.id}`}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900/60"
+                        title="View group details"
+                        className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
                       >
-                        Show
+                        <IconEye className="h-4 w-4" />
                       </Link>
                       <Link
                         href={`/app/groups/${g.id}/edit`}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900/60"
+                        title="Edit group"
+                        className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
                       >
-                        Edit
+                        <IconPencil className="h-4 w-4" />
                       </Link>
                       <form action={deleteGroupAction.bind(null, g.id)}>
                         <ConfirmSubmitButton
+                          title="Delete group"
                           confirmMessage={`Delete group "${g.name}"? Members in this group will NOT be deleted; they will become unassigned.`}
-                          className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-950/50"
+                          className="rounded-lg border border-red-900/50 bg-red-950/30 p-2 text-red-200 hover:bg-red-950/50"
                         >
-                          Delete
+                          <IconTrash className="h-4 w-4" />
                         </ConfirmSubmitButton>
                       </form>
                     </div>
@@ -322,7 +363,7 @@ export default async function GroupsPage({
               ))}
               {groups.length === 0 ? (
                 <tr>
-                  <td className="py-4 text-slate-400" colSpan={5}>
+                  <td className="py-4 text-slate-400" colSpan={6}>
                     No groups yet.
                   </td>
                 </tr>

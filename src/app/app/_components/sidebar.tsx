@@ -1,5 +1,5 @@
 import { NavLink } from "./nav-link";
-import { IconDashboard, IconFolder, IconSettings, IconShield, IconUsers } from "./icons";
+import { IconBriefcase, IconDashboard, IconFileText, IconFolder, IconSettings, IconShield, IconUsers } from "./icons";
 import type { AuthUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 
@@ -37,6 +37,10 @@ export function Sidebar({ user, mobile }: { user: AuthUser; mobile?: boolean }) 
               <NavLink href="/app/groups" label="Groups" icon={<IconFolder />} />
             )}
             <NavLink href="/app/members" label="Members" icon={<IconUsers />} />
+            <NavLink href="/app/employees" label="Employees" icon={<IconBriefcase />} />
+            {user.role === Role.SUPER_ADMIN ? (
+              <NavLink href="/app/reports" label="Reports" icon={<IconFileText />} />
+            ) : null}
             {user.role === Role.SUPER_ADMIN ? (
               <NavLink href="/app/users" label="Users" icon={<IconShield />} />
             ) : null}

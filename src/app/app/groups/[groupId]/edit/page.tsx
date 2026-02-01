@@ -10,6 +10,7 @@ import { ModalAlert } from "../../../_components/modal-alert";
 const UpdateGroupSchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(500).optional(),
+  collectionOfficerId: z.string().uuid().optional().nullable(),
 });
 
 async function updateGroupAction(groupId: string, formData: FormData) {
@@ -18,9 +19,11 @@ async function updateGroupAction(groupId: string, formData: FormData) {
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN]);
 
+  const rawCo = String(formData.get("collectionOfficerId") || "").trim();
   const parsed = UpdateGroupSchema.safeParse({
     name: String(formData.get("name") || "").trim(),
     description: String(formData.get("description") || "").trim() || undefined,
+    collectionOfficerId: rawCo === "" ? null : rawCo,
   });
 
   if (!parsed.success) redirect(`/app/groups/${groupId}/edit?saved=0`);
@@ -30,17 +33,18 @@ async function updateGroupAction(groupId: string, formData: FormData) {
     await prisma.$transaction(async (tx) => {
       const before = await tx.group.findUnique({
         where: { id: groupId },
-        select: { id: true, name: true, description: true },
+        select: { id: true, name: true, description: true, collectionOfficerId: true },
       });
       if (!before) throw new Error("Group not found");
 
       const after = await tx.group.update({
         where: { id: groupId },
         data: {
-          name: parsed.data.name,
-          description: parsed.data.description,
+          name: parsed.data!.name,
+          description: parsed.data!.description,
+          collectionOfficerId: parsed.data!.collectionOfficerId ?? null,
         },
-        select: { id: true, name: true, description: true },
+        select: { id: true, name: true, description: true, collectionOfficerId: true },
       });
 
       await createAuditLog(tx, {
@@ -72,10 +76,17 @@ export default async function EditGroupPage({
   const { groupId } = await params;
   const sp = await searchParams;
 
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    select: { id: true, name: true, description: true },
-  });
+  const [collectionOfficers, group] = await Promise.all([
+    prisma.employee.findMany({
+      where: { position: "COLLECTION_OFFICER" },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.group.findUnique({
+      where: { id: groupId },
+      select: { id: true, name: true, description: true, collectionOfficerId: true },
+    }),
+  ]);
 
   if (!group) {
     return (
@@ -127,6 +138,21 @@ export default async function EditGroupPage({
               defaultValue={group.description ?? ""}
               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+          <div className="md:col-span-3">
+            <label className="text-sm font-medium">Collection Officer (optional)</label>
+            <select
+              name="collectionOfficerId"
+              defaultValue={group.collectionOfficerId ?? ""}
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">None</option>
+              {collectionOfficers.map((co) => (
+                <option key={co.id} value={co.id}>
+                  {co.firstName} {co.lastName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="md:col-span-3 mt-2 flex flex-wrap items-center gap-2">

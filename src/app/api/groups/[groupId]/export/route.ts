@@ -22,11 +22,26 @@ function toNumber(d: unknown) {
   }
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ groupId: string }> }) {
+function parseDateRange(req: Request): { from: string | null; to: string | null } {
+  try {
+    const url = new URL(req.url);
+    const from = url.searchParams.get("from")?.trim() ?? null;
+    const to = url.searchParams.get("to")?.trim() ?? null;
+    if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      return { from: null, to: null };
+    }
+    return { from, to };
+  } catch {
+    return { from: null, to: null };
+  }
+}
+
+export async function GET(req: Request, ctx: { params: Promise<{ groupId: string }> }) {
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN]);
 
   const { groupId } = await ctx.params;
+  const { from: dateFrom, to: dateTo } = parseDateRange(req);
 
   const group = await prisma.group.findUnique({
     where: { id: groupId },
@@ -73,7 +88,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ groupId: strin
   ];
 
   // Title row
-  const title = `Group Name: ${group.name}`;
+  const periodSuffix =
+    dateFrom && dateTo ? ` (Report period: ${dateFrom} to ${dateTo})` : "";
+  const title = `Group Name: ${group.name}${periodSuffix}`;
   ws.mergeCells(1, 1, 1, 18);
   const titleCell = ws.getCell(1, 1);
   titleCell.value = title;

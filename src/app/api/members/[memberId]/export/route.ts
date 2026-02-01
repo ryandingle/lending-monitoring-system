@@ -10,14 +10,32 @@ function safeFilePart(s: string) {
   return s.replaceAll(/[^a-zA-Z0-9-_]+/g, "-").replaceAll(/-+/g, "-").replaceAll(/(^-|-$)/g, "");
 }
 
+function parseDateRange(req: Request): { from: Date | null; to: Date | null } {
+  try {
+    const url = new URL(req.url);
+    const fromStr = url.searchParams.get("from")?.trim();
+    const toStr = url.searchParams.get("to")?.trim();
+    if (!fromStr || !toStr || !/^\d{4}-\d{2}-\d{2}$/.test(fromStr) || !/^\d{4}-\d{2}-\d{2}$/.test(toStr)) {
+      return { from: null, to: null };
+    }
+    const from = new Date(fromStr + "T00:00:00.000Z");
+    const to = new Date(toStr + "T23:59:59.999Z");
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return { from: null, to: null };
+    return { from, to };
+  } catch {
+    return { from: null, to: null };
+  }
+}
+
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ memberId: string }> },
 ) {
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const { memberId } = await ctx.params;
+  const { from: dateFrom, to: dateTo } = parseDateRange(req);
 
   const member = await prisma.member.findUnique({
     where: { id: memberId },
@@ -28,21 +46,44 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const baseMemberWhere = { memberId };
+  const balanceWhere =
+    dateFrom && dateTo
+      ? { ...baseMemberWhere, createdAt: { gte: dateFrom, lte: dateTo } }
+      : baseMemberWhere;
+  const savingsAdjWhere =
+    dateFrom && dateTo
+      ? { ...baseMemberWhere, createdAt: { gte: dateFrom, lte: dateTo } }
+      : baseMemberWhere;
+  const accrualWhere =
+    dateFrom && dateTo
+      ? {
+          ...baseMemberWhere,
+          accruedForDate: {
+            gte: new Date(dateFrom.toISOString().slice(0, 10)),
+            lte: new Date(dateTo.toISOString().slice(0, 10)),
+          },
+        }
+      : baseMemberWhere;
+
   const [accrualSum, accruals, balanceUpdates, savingsUpdates] = await Promise.all([
-    prisma.savingsAccrual.aggregate({ where: { memberId }, _sum: { amount: true } }),
+    prisma.savingsAccrual.aggregate({
+      where: accrualWhere,
+      _sum: { amount: true },
+    }),
     prisma.savingsAccrual.findMany({
-      where: { memberId },
+      where: accrualWhere,
       orderBy: { accruedForDate: "desc" },
       take: 5000,
     }),
     prisma.balanceAdjustment.findMany({
-      where: { memberId },
+      where: balanceWhere,
       include: { encodedBy: { select: { name: true, email: true, role: true } } },
       orderBy: { createdAt: "desc" },
       take: 5000,
     }),
     prisma.savingsAdjustment.findMany({
-      where: { memberId },
+      where: savingsAdjWhere,
       include: { encodedBy: { select: { name: true, email: true, role: true } } },
       orderBy: { createdAt: "desc" },
       take: 5000,

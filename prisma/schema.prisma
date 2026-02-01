@@ -28,6 +28,27 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum EmployeePosition {
+  COLLECTION_OFFICER
+  OFFICE_CLERK
+  UNIT_MANAGER
+  OPERATIONS_MANAGER
+}
+
+model Employee {
+  id        String           @id @default(uuid()) @db.Uuid
+  firstName String
+  lastName  String
+  position  EmployeePosition
+  createdAt DateTime         @default(now()) @db.Timestamptz
+  updatedAt DateTime         @updatedAt @db.Timestamptz
+
+  groupsAsCollectionOfficer Group[]
+
+  @@index([createdAt])
+  @@map("employees")
+}
+
 model User {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique
@@ -63,16 +84,19 @@ model AuthSession {
 }
 
 model Group {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  createdById String   @db.Uuid
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String    @unique
+  description          String?
+  collectionOfficerId  String?   @db.Uuid
+  createdAt            DateTime  @default(now()) @db.Timestamptz
+  createdById          String    @db.Uuid
 
-  createdBy User     @relation("GroupCreatedBy", fields: [createdById], references: [id])
-  members   Member[]
+  createdBy          User      @relation("GroupCreatedBy", fields: [createdById], references: [id])
+  collectionOfficer  Employee? @relation(fields: [collectionOfficerId], references: [id], onDelete: SetNull)
+  members            Member[]
 
   @@index([createdAt])
+  @@index([collectionOfficerId])
   @@map("groups")
 }
 

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
+import { countBusinessDays } from "@/lib/date";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
+import { IconEye, IconPencil, IconTrash } from "../_components/icons";
 
 function clampInt(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -103,6 +105,7 @@ export default async function MembersPage({
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(page, totalPages);
+  const today = new Date();
 
   const baseParams = {
     q: q || undefined,
@@ -251,10 +254,10 @@ export default async function MembersPage({
               <tr>
                 <th className="py-2 pr-4">Member</th>
                 <th className="py-2 pr-4">Group</th>
-                <th className="py-2 pr-4">Phone</th>
                 <th className="py-2 pr-4">Balance</th>
                 <th className="py-2 pr-4">Savings</th>
                 <th className="py-2 pr-4">Created</th>
+                <th className="py-2 pr-4">Days</th>
                 <th className="py-2 pr-0 text-right">Actions</th>
               </tr>
             </thead>
@@ -281,34 +284,39 @@ export default async function MembersPage({
                       <span className="text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="py-2 pr-4 text-slate-300">{m.phoneNumber ?? "-"}</td>
                   <td className="py-2 pr-4 text-slate-300">{m.balance.toFixed(2)}</td>
                   <td className="py-2 pr-4 text-slate-300">{m.savings.toFixed(2)}</td>
                   <td className="py-2 pr-4 text-slate-400">
                     {m.createdAt.toISOString().slice(0, 10)}
                   </td>
+                  <td className="py-2 pr-4 text-slate-300">
+                    {countBusinessDays(m.createdAt, today)} (excl. weekends)
+                  </td>
                   <td className="py-2 pr-0">
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/app/members/${m.id}`}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900/60"
+                        title="View member details"
+                        className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
                       >
-                        Show
+                        <IconEye className="h-4 w-4" />
                       </Link>
                       {canManage ? (
                         <>
                           <Link
                             href={`/app/members/${m.id}/edit`}
-                            className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900/60"
+                            title="Edit member"
+                            className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
                           >
-                            Edit
+                            <IconPencil className="h-4 w-4" />
                           </Link>
                           <form action={deleteMemberAction.bind(null, m.id)}>
                             <ConfirmSubmitButton
+                              title="Delete member"
                               confirmMessage={`Delete member "${m.firstName} ${m.lastName}"? This will also delete their ledger history.`}
-                              className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-950/50"
+                              className="rounded-lg border border-red-900/50 bg-red-950/30 p-2 text-red-200 hover:bg-red-950/50"
                             >
-                              Delete
+                              <IconTrash className="h-4 w-4" />
                             </ConfirmSubmitButton>
                           </form>
                         </>

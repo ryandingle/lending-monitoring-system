@@ -52,6 +52,24 @@ export default async function AuditTrailPage({
     }),
   ]);
 
+  const memberIds = [
+    ...new Set(
+      logs
+        .filter((l) => l.entityType === "Member" && l.entityId)
+        .map((l) => l.entityId as string)
+    ),
+  ];
+  const members =
+    memberIds.length > 0
+      ? await prisma.member.findMany({
+          where: { id: { in: memberIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+  const memberNameById = Object.fromEntries(
+    members.map((m) => [m.id, `${m.firstName} ${m.lastName}`])
+  );
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
   const base = `/app/audit?pageSize=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -153,7 +171,41 @@ export default async function AuditTrailPage({
                     {l.entityType ? (
                       <div>
                         <div className="font-medium text-slate-100">{l.entityType}</div>
-                        <div className="text-xs text-slate-400 break-all">{l.entityId ?? "-"}</div>
+                        {l.entityType === "Member" && l.entityId ? (
+                          (() => {
+                            const meta = l.metadata as Record<string, unknown> | null;
+                            const nameFromMeta =
+                              meta &&
+                              typeof meta.firstName === "string" &&
+                              typeof meta.lastName === "string"
+                                ? `${meta.firstName} ${meta.lastName}`
+                                : null;
+                            const name = nameFromMeta ?? memberNameById[l.entityId];
+                            const exists = l.entityId in memberNameById;
+                            return (
+                              <div className="text-xs text-slate-400">
+                                {name ? (
+                                  exists ? (
+                                    <Link
+                                      href={`/app/members/${l.entityId}`}
+                                      className="text-slate-200 hover:underline"
+                                    >
+                                      {name}
+                                    </Link>
+                                  ) : (
+                                    <span>{name}</span>
+                                  )
+                                ) : (
+                                  <span className="break-all">{l.entityId}</span>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <div className="text-xs text-slate-400 break-all">
+                            {l.entityId ?? "-"}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       "-"
