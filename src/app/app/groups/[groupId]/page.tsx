@@ -19,7 +19,7 @@ async function createMemberAction(groupId: string, formData: FormData) {
   "use server";
 
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const parsed = CreateMemberSchema.safeParse({
     firstName: String(formData.get("firstName") || "").trim(),
@@ -77,7 +77,7 @@ export default async function GroupDetailsPage({
   searchParams: Promise<{ created?: string }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
   const { groupId } = await params;
   const sp = await searchParams;
 
@@ -104,7 +104,7 @@ export default async function GroupDetailsPage({
     );
   }
 
-  const canAddMember = user.role === Role.SUPER_ADMIN;
+  const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
 
   return (
     <div className="space-y-6">

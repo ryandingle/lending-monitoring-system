@@ -8,7 +8,8 @@ import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
 
 const CreateUserSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(3).max(50),
+  email: z.string().email().optional().or(z.literal("")),
   name: z.string().min(1).max(100),
   role: z.enum(["SUPER_ADMIN", "ENCODER"]),
   password: z.string().min(6).max(200),
@@ -36,7 +37,8 @@ async function createUserAction(formData: FormData) {
   requireRole(actor, [Role.SUPER_ADMIN]);
 
   const parsed = CreateUserSchema.safeParse({
-    email: String(formData.get("email") || "").trim().toLowerCase(),
+    username: String(formData.get("username") || "").trim().toLowerCase(),
+    email: String(formData.get("email") || "").trim().toLowerCase() || undefined,
     name: String(formData.get("name") || "").trim(),
     role: String(formData.get("role") || ""),
     password: String(formData.get("password") || ""),
@@ -50,13 +52,14 @@ async function createUserAction(formData: FormData) {
     await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          email: parsed.data.email,
+          username: parsed.data.username,
+          email: parsed.data.email || null,
           name: parsed.data.name,
           role: parsed.data.role,
           passwordHash: await hashPassword(parsed.data.password),
           isActive: true,
         },
-        select: { id: true, email: true, name: true, role: true },
+        select: { id: true, username: true, name: true, role: true },
       });
 
       await createAuditLog(tx, {
@@ -64,7 +67,7 @@ async function createUserAction(formData: FormData) {
         action: "USER_CREATE",
         entityType: "User",
         entityId: created.id,
-        metadata: { email: created.email, name: created.name, role: created.role },
+        metadata: { username: created.username, name: created.name, role: created.role },
         request,
       });
     });
@@ -94,7 +97,7 @@ async function updateUserRoleAction(formData: FormData) {
       const updated = await tx.user.update({
         where: { id: parsed.data.userId },
         data: { role: parsed.data.role },
-        select: { id: true, email: true, role: true },
+        select: { id: true, username: true, role: true },
       });
 
       await createAuditLog(tx, {
@@ -102,7 +105,7 @@ async function updateUserRoleAction(formData: FormData) {
         action: "USER_ROLE_UPDATE",
         entityType: "User",
         entityId: updated.id,
-        metadata: { email: updated.email, role: updated.role },
+        metadata: { username: updated.username, role: updated.role },
         request,
       });
     });
@@ -137,7 +140,7 @@ async function toggleUserActiveAction(formData: FormData) {
       const updated = await tx.user.update({
         where: { id: parsed.data.userId },
         data: { isActive },
-        select: { id: true, email: true, isActive: true },
+        select: { id: true, username: true, isActive: true },
       });
 
       // If deactivating, sign out all sessions.
@@ -150,7 +153,7 @@ async function toggleUserActiveAction(formData: FormData) {
         action: isActive ? "USER_ACTIVATE" : "USER_DEACTIVATE",
         entityType: "User",
         entityId: updated.id,
-        metadata: { email: updated.email, isActive: updated.isActive },
+        metadata: { username: updated.username, isActive: updated.isActive },
         request,
       });
     });
@@ -180,7 +183,7 @@ async function resetUserPasswordAction(formData: FormData) {
       const updated = await tx.user.update({
         where: { id: parsed.data.userId },
         data: { passwordHash: await hashPassword(parsed.data.password) },
-        select: { id: true, email: true },
+        select: { id: true, username: true },
       });
 
       // Force sign-out so old sessions can't be used.
@@ -191,7 +194,7 @@ async function resetUserPasswordAction(formData: FormData) {
         action: "USER_PASSWORD_RESET",
         entityType: "User",
         entityId: updated.id,
-        metadata: { email: updated.email },
+        metadata: { username: updated.username },
         request,
       });
     });
@@ -217,8 +220,9 @@ export default async function UsersAdminPage({
     q.length > 0
       ? {
         OR: [
-          { email: { contains: q, mode: "insensitive" as const } },
+          { username: { contains: q, mode: "insensitive" as const } },
           { name: { contains: q, mode: "insensitive" as const } },
+          { email: { contains: q, mode: "insensitive" as const } },
         ],
       }
       : {};
@@ -228,6 +232,7 @@ export default async function UsersAdminPage({
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
+      username: true,
       email: true,
       name: true,
       role: true,
@@ -250,7 +255,7 @@ export default async function UsersAdminPage({
             <input
               name="q"
               defaultValue={q}
-              placeholder="Search name/email…"
+              placeholder="Search name/user…"
               className="w-64 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
             <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
@@ -265,7 +270,7 @@ export default async function UsersAdminPage({
           </div>
         ) : sp.created === "0" ? (
           <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not create user (check inputs / unique email).
+            Could not create user (check inputs / unique username).
           </div>
         ) : sp.updated === "1" ? (
           <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
@@ -281,12 +286,19 @@ export default async function UsersAdminPage({
           <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
             <div className="text-sm font-semibold text-slate-100">Add User</div>
             <form action={createUserAction} className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-slate-200">Email</label>
+              <div>
+                <label className="text-sm font-medium text-slate-200">Username</label>
+                <input
+                  name="username"
+                  required
+                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-200">Email (optional)</label>
                 <input
                   name="email"
                   type="email"
-                  required
                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
@@ -348,6 +360,7 @@ export default async function UsersAdminPage({
             <thead className="text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Username</th>
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Role</th>
                 <th className="py-2 pr-4">Status</th>
@@ -359,7 +372,8 @@ export default async function UsersAdminPage({
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-900/40">
                   <td className="py-2 pr-4 font-medium text-slate-100">{u.name}</td>
-                  <td className="py-2 pr-4 text-slate-300">{u.email}</td>
+                  <td className="py-2 pr-4 text-slate-300">{u.username}</td>
+                  <td className="py-2 pr-4 text-slate-300">{u.email ?? "-"}</td>
                   <td className="py-2 pr-4 text-slate-300">{u.role}</td>
                   <td className="py-2 pr-4 text-slate-300">
                     {u.isActive ? (
@@ -398,8 +412,8 @@ export default async function UsersAdminPage({
                         <ConfirmSubmitButton
                           confirmMessage={`${u.isActive ? "Deactivate" : "Activate"} user "${u.name}"?`}
                           className={`rounded-lg px-2 py-1 text-xs ${u.isActive
-                              ? "border border-red-900/40 bg-red-950/40 text-red-200 hover:bg-red-950/60"
-                              : "border border-emerald-900/40 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-950/40"
+                            ? "border border-red-900/40 bg-red-950/40 text-red-200 hover:bg-red-950/60"
+                            : "border border-emerald-900/40 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-950/40"
                             }`}
                         >
                           {u.isActive ? "Deactivate" : "Activate"}

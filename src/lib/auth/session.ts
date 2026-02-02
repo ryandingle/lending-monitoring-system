@@ -8,7 +8,7 @@ import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "lms_session";
 const SESSION_DAYS = 30;
 
-export type AuthUser = Pick<User, "id" | "email" | "name" | "role">;
+export type AuthUser = Pick<User, "id" | "username" | "email" | "name" | "role">;
 
 function cookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
@@ -100,6 +100,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   return {
     id: session.user.id,
+    username: session.user.username,
     email: session.user.email,
     name: session.user.name,
     role: session.user.role,

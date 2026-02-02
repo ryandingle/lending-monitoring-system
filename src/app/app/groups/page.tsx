@@ -31,7 +31,7 @@ async function createGroupAction(formData: FormData) {
   "use server";
 
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const rawCo = String(formData.get("collectionOfficerId") || "").trim();
   const parsed = CreateGroupSchema.safeParse({
@@ -84,9 +84,9 @@ export default async function GroupsPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
   const sp = await searchParams;
-  const canCreateGroup = user.role === Role.SUPER_ADMIN;
+  const canCreateGroup = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
 
   const q = (sp.q ?? "").trim();
   const page = clampInt(Number(sp.page ?? "1") || 1, 1, 10_000);
@@ -235,7 +235,7 @@ export default async function GroupsPage({
           </form>
         ) : (
           <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-300">
-            Only <span className="font-medium">super-admin</span> can create groups.
+            You do not have permission to create groups.
           </div>
         )}
 
@@ -281,22 +281,20 @@ export default async function GroupsPage({
             <Link
               href={prevHref ?? "#"}
               aria-disabled={!prevHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                prevHref
-                  ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
-                  : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
+              className={`rounded-lg border px-3 py-2 text-sm ${prevHref
+                ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+                : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
+                }`}
             >
               Prev
             </Link>
             <Link
               href={nextHref ?? "#"}
               aria-disabled={!nextHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                nextHref
-                  ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
-                  : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
+              className={`rounded-lg border px-3 py-2 text-sm ${nextHref
+                ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+                : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
+                }`}
             >
               Next
             </Link>

@@ -17,7 +17,7 @@ async function updateGroupAction(groupId: string, formData: FormData) {
   "use server";
 
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const rawCo = String(formData.get("collectionOfficerId") || "").trim();
   const parsed = UpdateGroupSchema.safeParse({
@@ -71,7 +71,7 @@ export default async function EditGroupPage({
   searchParams: Promise<{ saved?: string }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const { groupId } = await params;
   const sp = await searchParams;

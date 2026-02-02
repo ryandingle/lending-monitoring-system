@@ -4,21 +4,22 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = "admin@example.com";
-  const encoderEmail = "encoder@example.com";
+  const adminUsername = "admin";
+  const encoderUsername = "encoder";
 
   const adminPasswordHash = await bcrypt.hash("admin123", 10);
   const encoderPasswordHash = await bcrypt.hash("encoder123", 10);
 
   await prisma.user.upsert({
-    where: { email: adminEmail },
+    where: { username: adminUsername },
     update: {
       name: "Super Admin",
       role: Role.SUPER_ADMIN,
       passwordHash: adminPasswordHash,
     },
     create: {
-      email: adminEmail,
+      username: adminUsername,
+      email: "admin@example.com",
       name: "Super Admin",
       role: Role.SUPER_ADMIN,
       passwordHash: adminPasswordHash,
@@ -26,14 +27,15 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: encoderEmail },
+    where: { username: encoderUsername },
     update: {
       name: "Encoder",
       role: Role.ENCODER,
       passwordHash: encoderPasswordHash,
     },
     create: {
-      email: encoderEmail,
+      username: encoderUsername,
+      email: "encoder@example.com",
       name: "Encoder",
       role: Role.ENCODER,
       passwordHash: encoderPasswordHash,

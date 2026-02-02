@@ -42,16 +42,12 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
             </div>
           )}
           <div className="space-y-1">
-            {user.role === Role.ENCODER ? null : (
-              <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
-            )}
-            {user.role === Role.ENCODER ? null : (
-              <NavLink href="/app/groups" label={isCollapsed ? "" : "Groups"} icon={<IconFolder />} />
-            )}
+            <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
+            <NavLink href="/app/groups" label={isCollapsed ? "" : "Groups"} icon={<IconFolder />} />
             <NavLink href="/app/members" label={isCollapsed ? "" : "Members"} icon={<IconUsers />} />
-            {user.role === Role.ENCODER ? null : (
+            {user.role === Role.SUPER_ADMIN ? (
               <NavLink href="/app/employees" label={isCollapsed ? "" : "Employees"} icon={<IconBriefcase />} />
-            )}
+            ) : null}
             {user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER ? (
               <NavLink href="/app/reports" label={isCollapsed ? "" : "Reports"} icon={<IconFileText />} />
             ) : null}
@@ -74,7 +70,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
                 <div className="text-xs font-semibold text-slate-300">Signed in as</div>
                 <div className="mt-1 text-sm font-medium text-slate-100 truncate">{user.name}</div>
                 <div className="text-xs text-slate-400 truncate">
-                  {user.role} · {user.email}
+                  {user.role} · {user.username}
                 </div>
               </>
             )}

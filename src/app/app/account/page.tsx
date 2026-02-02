@@ -100,6 +100,21 @@ export default async function AccountPage({
           </div>
         ) : null}
 
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-400 font-bold uppercase tracking-wider">Username</label>
+            <div className="w-full rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-300">
+              {user.username}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-400 font-bold uppercase tracking-wider">Email</label>
+            <div className="w-full rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-300">
+              {user.email ?? "-"}
+            </div>
+          </div>
+        </div>
+
         <form action={updateAccountAction} className="mt-6 space-y-4">
           <div className="space-y-1">
             <label className="text-sm font-medium">Name</label>

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 
 const LoginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(1),
 });
 
@@ -14,7 +14,7 @@ async function loginAction(formData: FormData) {
   "use server";
 
   const parsed = LoginSchema.safeParse({
-    email: String(formData.get("email") || ""),
+    username: String(formData.get("username") || ""),
     password: String(formData.get("password") || ""),
   });
 
@@ -23,7 +23,7 @@ async function loginAction(formData: FormData) {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
+    where: { username: parsed.data.username.toLowerCase() },
   });
 
   if (!user) redirect("/login?error=invalid");
@@ -74,25 +74,25 @@ export default async function LoginPage({
                 Sign In
               </h1>
               <p className="mt-2 text-sm text-slate-400">
-                Enter your email and password to sign in.
+                Enter your username and password to sign in.
               </p>
 
               {showError ? (
                 <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-                  Invalid email or password.
+                  Invalid username or password.
                 </div>
               ) : null}
 
               <form action={loginAction} className="mt-6 space-y-4">
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-200">
-                    Email
+                    Username
                   </label>
                   <input
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="info@gmail.com"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Enter username"
                     required
                     className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                   />
