@@ -120,15 +120,23 @@ export default async function EmployeesPage({
   const where =
     q.length > 0
       ? {
-          OR: [
-            { firstName: { contains: q, mode: "insensitive" as const } },
-            { lastName: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
+        OR: [
+          { firstName: { contains: q, mode: "insensitive" as const } },
+          { lastName: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
       : {};
 
   const employees = await prisma.employee.findMany({
     where,
+    include: {
+      groupsAsCollectionOfficer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -235,9 +243,9 @@ export default async function EmployeesPage({
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-400">
               <tr>
-                <th className="py-2 pr-4">First Name</th>
-                <th className="py-2 pr-4">Last Name</th>
+                <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Position</th>
+                <th className="py-2 pr-4">Group</th>
                 <th className="py-2 pr-4">Created</th>
                 {canManage ? (
                   <th className="py-2 pr-0 text-right">Actions</th>
@@ -247,10 +255,31 @@ export default async function EmployeesPage({
             <tbody className="divide-y divide-slate-800">
               {employees.map((e) => (
                 <tr key={e.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium text-slate-100">{e.firstName}</td>
-                  <td className="py-2 pr-4 text-slate-300">{e.lastName}</td>
+                  <td className="py-2 pr-4 font-medium text-slate-100">
+                    {e.firstName} {e.lastName}
+                  </td>
                   <td className="py-2 pr-4 text-slate-300">
                     {POSITION_LABELS[e.position]}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {e.position === "COLLECTION_OFFICER" ? (
+                      <div className="flex flex-wrap gap-1">
+                        {e.groupsAsCollectionOfficer.length > 0 ? (
+                          e.groupsAsCollectionOfficer.map((g) => (
+                            <span
+                              key={g.id}
+                              className="inline-flex items-center rounded-md bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-300 ring-1 ring-inset ring-blue-700/50"
+                            >
+                              {g.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-500">—</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">—</span>
+                    )}
                   </td>
                   <td className="py-2 pr-4 text-slate-400">
                     {e.createdAt.toISOString().slice(0, 10)}

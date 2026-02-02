@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getManilaToday, formatDateYMD } from "@/lib/date";
 
 /**
  * Idempotent daily savings accrual.
@@ -7,7 +8,7 @@ import { prisma } from "@/lib/db";
  *
  * Implementation:
  * - We store `savingsLastAccruedAt` as a DATE.
- * - When job runs, it accrues from `savingsLastAccruedAt` (or `createdAt::date`) up to CURRENT_DATE.
+ * - When job runs, it accrues from `savingsLastAccruedAt` (or `createdAt::date`) up to CURRENT_DATE (Manila).
  *
  * Running multiple times same day is safe due to:
  * - generate_series ending at CURRENT_DATE
@@ -19,6 +20,10 @@ export async function accrueSavingsOnce() {
   if (!Number.isFinite(increment) || increment <= 0) {
     throw new Error(`Invalid SAVINGS_DAILY_INCREMENT: "${incrementStr}"`);
   }
+
+  // Enforce Manila Timezone for the "Effective Date"
+  const manilaNow = getManilaToday();
+  const todayStr = formatDateYMD(manilaNow);
 
   const inserted = await prisma.$queryRaw<{ inserted_count: bigint; updated_members: bigint }[]>`
     WITH candidates AS (
@@ -32,8 +37,8 @@ export async function accrueSavingsOnce() {
         c.member_id,
         gs::date AS accrued_for
       FROM candidates c
-      JOIN LATERAL generate_series(c.last_date + interval '1 day', CURRENT_DATE, interval '1 day') gs ON TRUE
-      WHERE c.last_date < CURRENT_DATE
+      JOIN LATERAL generate_series(c.last_date + interval '1 day', ${todayStr}::date, interval '1 day') gs ON TRUE
+      WHERE c.last_date < ${todayStr}::date
     ),
     ins AS (
       INSERT INTO "savings_accruals" ("id", "memberId", "accruedForDate", "amount", "createdAt")
@@ -51,7 +56,7 @@ export async function accrueSavingsOnce() {
       UPDATE "members" m
       SET
         "savings" = m."savings" + (agg.cnt * ${increment})::numeric(14,2),
-        "savingsLastAccruedAt" = CURRENT_DATE
+        "savingsLastAccruedAt" = ${todayStr}::date
       FROM agg
       WHERE m."id" = agg."memberId"
       RETURNING m."id"
@@ -66,4 +71,7 @@ export async function accrueSavingsOnce() {
     updatedMembers: Number(inserted?.[0]?.updated_members ?? 0n),
   };
 }
+
+
+
 

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
 import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit";
-import { getMonday, formatDateYMD } from "@/lib/date";
+import { getMonday, formatDateYMD, getManilaDateRange, getWeekdaysInRange } from "@/lib/date";
 
 export const runtime = "nodejs";
 
@@ -22,25 +22,7 @@ function toNumber(d: unknown) {
   }
 }
 
-/** Get all weekdays (Mon-Fri) strings between from and to (inclusive) */
-function getWeekdaysInRange(from: string, to: string): string[] {
-  const dates: string[] = [];
-  const start = new Date(from);
-  const end = new Date(to);
-  // Normalize to midnight
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
 
-  const cur = new Date(start);
-  while (cur <= end) {
-    const d = cur.getDay();
-    if (d !== 0 && d !== 6) { // Skip Sun(0) and Sat(6)
-      dates.push(formatDateYMD(cur));
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  return dates;
-}
 
 function parseDateRange(req: Request): { from: string | null; to: string | null } {
   try {
@@ -58,13 +40,13 @@ function parseDateRange(req: Request): { from: string | null; to: string | null 
 
 export async function GET(req: Request, ctx: { params: Promise<{ groupId: string }> }) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const { groupId } = await ctx.params;
   const { from: dateFromRaw, to: dateTo } = parseDateRange(req);
 
   if (!dateFromRaw || !dateTo) {
-     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
   }
 
   // Snap start date to Monday
@@ -72,7 +54,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   const dateFrom = formatDateYMD(startDateObj);
 
   // Determine report columns (days)
-  const dayColumns = getWeekdaysInRange(dateFrom, dateTo );
+  const dayColumns = getWeekdaysInRange(dateFrom, dateTo);
 
   const group = await prisma.group.findUnique({
     where: { id: groupId },
@@ -89,11 +71,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
           },
           // Fetch SAVINGS INCREASE for the period
           savingsAdjustments: {
-            where: { 
+            where: {
               type: SavingsUpdateType.INCREASE,
               createdAt: {
-                gte: new Date(dateFrom),
-                lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999)),
+                gte: getManilaDateRange(dateFrom, dateTo).from,
+                lte: getManilaDateRange(dateFrom, dateTo).to,
               }
             },
             select: { amount: true, createdAt: true },
@@ -111,7 +93,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   const Workbook = (mod as any).Workbook as new () => any;
 
   const wb = new Workbook();
-  wb.creator = "Lending Monitoring System";
+  wb.creator = process.env.NEXT_PUBLIC_APP_NAME || "TRIPLE E microfinance inc.";
   wb.created = new Date();
 
   const ws = wb.addWorksheet("Collection Report");
@@ -119,10 +101,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // --- STYLING ---
   const borderThin = { style: "thin", color: { argb: "FF000000" } } as const;
   const borderAll = { top: borderThin, left: borderThin, bottom: borderThin, right: borderThin };
-  
+
   const alignCenter = { vertical: "middle", horizontal: "center", wrapText: true } as const;
   const alignLeft = { vertical: "middle", horizontal: "left", wrapText: true } as const;
-  
+
   const fontHeader = { bold: true, name: "Arial", size: 10 };
   const fontTitle = { bold: true, name: "Arial", size: 20 };
   const fontSubTitle = { bold: true, name: "Arial", size: 14 };
@@ -147,7 +129,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // Row 3: DATE
   ws.getCell("A3").value = "DATE:";
   ws.getCell("A3").font = fontSubTitle;
-  ws.getCell("B3").value =  `${new Date(dateFrom).toLocaleDateString('en-US', { day: '2-digit', month: 'short'})} - ${new Date(dateTo).toLocaleDateString('en-US', { day: '2-digit', month: 'short'})}`;
+  ws.getCell("B3").value = `${new Date(dateFrom).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - ${new Date(dateTo).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}`;
   ws.getCell("B3").font = fontSubTitle;
 
   // Date Headers (Dynamic)
@@ -164,17 +146,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // 2: Name
   // 3: Loan Balance
   // D onwards: Days
-  
+
   let colIdx = 4;
   const dayColMap: Record<string, number> = {}; // YYYY-MM-DD -> start col index (Payment)
 
   // Header Row 3 (Date Labels mostly)
   // But we need to build the structure first.
-  
+
   // "No."
   ws.mergeCells("A4:A5");
   ws.getCell("A4").value = "NO.";
-  
+
   // "NAME"
   ws.mergeCells("B4:B5");
   ws.getCell("B4").value = "NAME";
@@ -188,11 +170,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     // Format date for header (e.g. "21-Apr")
     const d = new Date(dateStr);
     const label = d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-    
+
     // Merge 2 columns for this day
     const startCol = colIdx;
     const endCol = colIdx + 1;
-    
+
     // Header Day Label (Row 4) 
     ws.mergeCells(4, startCol, 4, endCol);
     const cellDate = ws.getCell(4, startCol);
@@ -206,7 +188,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     // Let's just say "PAYMENT" and "SAVINGS"
     ws.getCell(5, startCol).value = "PAYMENT";
     ws.getCell(5, endCol).value = "SAVINGS";
-    
+
     dayColMap[dateStr] = startCol;
     colIdx += 2;
   });
@@ -216,7 +198,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   const cellBalFwd = ws.getCell(4, colIdx);
   cellBalFwd.value = "Balance Forwarded";
   cellBalFwd.alignment = { textRotation: 0, ...alignCenter }; // Wrap
-  
+
   colIdx++;
 
   // Saving Forwarded
@@ -224,7 +206,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   const cellSavFwd = ws.getCell(4, colIdx);
   cellSavFwd.value = "Saving Forwarded";
   cellSavFwd.alignment = { textRotation: 0, ...alignCenter };
-  
+
   const lastColIdx = colIdx;
 
   // Formatting Headers
@@ -249,19 +231,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
 
   // --- DATA ROWS ---
   let currentRow = 6;
-  
+
   // Calculate Totals Row Data
   const totals: Record<number, number> = {};
 
   group.members.forEach((m, idx) => {
     const row = ws.getRow(currentRow);
-    
+
     // 1. No
     row.getCell(1).value = idx + 1;
-    
+
     // 2. Name
     row.getCell(2).value = `${m.lastName}, ${m.firstName}`;
-    
+
     // 3. Loan Balance = Current Balance + Sum(All DEDUCT payments)
     const currentBal = toNumber(m.balance);
     const totalPaymentsAllTime = m.balanceAdjustments.reduce((sum, adj) => sum + toNumber(adj.amount), 0);
@@ -278,7 +260,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       // Note: createdAt is UTC/Timestamp. Need careful comparison?
       // Just string matching YYYY-MM-DD for simplicity if safe, or compare ranges.
       // We are comparing `formatDateYMD(createdAt)` with `dateStr`.
-      
+
       const payments = m.balanceAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
       const savings = m.savingsAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
 
@@ -292,7 +274,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       // Add to Period Totals
       totalPaymentsPeriod += paymentSum;
       totalSavingsPeriod += savingsSum;
-      
+
       // Add to Column Totals for Footer (using column index)
       totals[startCol] = (totals[startCol] || 0) + paymentSum;
       totals[startCol + 1] = (totals[startCol + 1] || 0) + savingsSum;
@@ -333,9 +315,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   totalRow.getCell(3).numFmt = "#,##0.00";
   totalRow.getCell(3).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCC89B" } };
   totalRow.getCell(3).font = { bold: true };
-  
+
   // Daily Totals + Forwarded Totals
-  const dayColIndices = Object.values(dayColMap).flatMap(i => [i, i+1]).concat([lastColIdx-1, lastColIdx]);
+  const dayColIndices = Object.values(dayColMap).flatMap(i => [i, i + 1]).concat([lastColIdx - 1, lastColIdx]);
 
   dayColIndices.forEach(c => {
     const cell = totalRow.getCell(c);
@@ -346,7 +328,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     cell.border = borderAll;
     cell.alignment = alignCenter;
   });
-  
+
   // Style Total Label Cell
   totalRow.getCell(1).border = borderAll;
   totalRow.getCell(2).border = borderAll; // Merged

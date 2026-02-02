@@ -2,10 +2,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import {
-  getReportPreset1Week,
   getReportPreset2Weeks,
 } from "@/lib/date";
 import { Role } from "@prisma/client";
+import { DateRangeFilter } from "./date-filter";
 
 export default async function ReportsPage({
   searchParams,
@@ -13,17 +13,16 @@ export default async function ReportsPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const sp = await searchParams;
-  const preset1 = getReportPreset1Week();
-  const preset2 = getReportPreset2Weeks();
+  const defaultPreset = getReportPreset2Weeks();
   const from =
     (sp.from?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : null) ??
-    preset1.from;
+    defaultPreset.from;
   const to =
     (sp.to?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.to) ? sp.to : null) ??
-    preset1.to;
+    defaultPreset.to;
   const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
 
   const [groups, members] = await Promise.all([
@@ -47,58 +46,7 @@ export default async function ReportsPage({
           </p>
         </div>
 
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
-          <h2 className="text-sm font-semibold text-slate-100">Date range</h2>
-          <p className="mt-1 text-xs text-slate-400">
-            Exports will include data within the selected from and to dates.
-          </p>
-          <form method="get" action="/app/reports" className="mt-4 grid gap-3 sm:grid-cols-4">
-            <div>
-              <label className="text-sm font-medium text-slate-200">From</label>
-              <input
-                type="date"
-                name="from"
-                defaultValue={from}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-200">To</label>
-              <input
-                type="date"
-                name="to"
-                defaultValue={to}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div className="flex items-end sm:col-span-2">
-              <button
-                type="submit"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Apply
-              </button>
-            </div>
-            <div className="sm:col-span-4">
-              <span className="text-sm text-slate-400">Default range: </span>
-              <Link
-                href={`/app/reports?from=${preset1.from}&to=${preset1.to}`}
-                className="text-sm font-medium text-slate-200 hover:underline"
-              >
-                1 week
-              </Link>
-              <span className="text-slate-400"> (Mon–Fri current week)</span>
-              <span className="mx-2 text-slate-500">|</span>
-              <Link
-                href={`/app/reports?from=${preset2.from}&to=${preset2.to}`}
-                className="text-sm font-medium text-slate-200 hover:underline"
-              >
-                2 weeks
-              </Link>
-              <span className="text-slate-400"> (Mon prev week – Fri current week)</span>
-            </div>
-          </form>
-        </div>
+        <DateRangeFilter from={from} to={to} />
       </div>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">

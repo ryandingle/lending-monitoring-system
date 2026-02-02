@@ -143,12 +143,10 @@ export default async function LoginPage({
           <div className="relative flex h-full items-center justify-center p-10">
             <div className="max-w-md text-center">
               <div className="mx-auto flex w-fit items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white">
-                  <span className="text-base font-bold">L</span>
-                </div>
+                <img src="/logo.jpg" alt="Logo" className="h-14 w-14 rounded-xl object-contain shadow-sm bg-white p-1" />
                 <div className="text-left">
                   <div className="text-lg font-semibold text-slate-100">
-                    Lending Monitoring System
+                    {process.env.NEXT_PUBLIC_APP_NAME || "TRIPLE E microfinance inc."}
                   </div>
                   <div className="text-sm text-slate-400">Admin dashboard</div>
                 </div>

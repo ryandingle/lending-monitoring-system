@@ -14,7 +14,22 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+
+  // Load persistence.
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
+  }, []);
+
+  const toggleSidebar = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
 
   // Close drawer on route change.
   useEffect(() => {
@@ -65,10 +80,15 @@ export function AppShell({
       {overlay}
 
       <div className="flex min-h-screen">
-        <Sidebar user={user} />
+        <Sidebar user={user} collapsed={collapsed} />
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar user={user} onMenuClick={() => setOpen(true)} />
+        <div className="flex min-w-0 flex-1 flex-col transition-all duration-300">
+          <Topbar
+            user={user}
+            onMenuClick={() => setOpen(true)}
+            onToggleSidebar={toggleSidebar}
+            collapsed={collapsed}
+          />
           <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
         </div>
       </div>

@@ -3,76 +3,23 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { getReportPreset2Weeks, formatDateTimeManila } from "@/lib/date";
+import { DashboardDateFilter } from "./dashboard-date-filter";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function startOfUtcDay(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning!";
+  if (hour < 18) return "Good Afternoon!";
+  return "Good Evening!";
 }
 
-function startOfUtcMonth(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
-}
-
-function addUtcMonths(d: Date, months: number) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
-}
-
-function addUtcDays(d: Date, days: number) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + days));
-}
-
-function parseIsoDateOnly(input?: string) {
-  if (!input) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
-  if (!m) return null;
-  const yyyy = Number(m[1]);
-  const mm = Number(m[2]);
-  const dd = Number(m[3]);
-  const d = new Date(Date.UTC(yyyy, mm - 1, dd));
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
-}
-
-function toIsoDateOnly(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function calcProratedMonthlyTarget(rangeStart: Date, rangeEndExclusive: Date, monthlyTarget: number) {
-  if (!(monthlyTarget > 0)) return 0;
-  if (!(rangeEndExclusive.getTime() > rangeStart.getTime())) return 0;
-
-  let cursor = startOfUtcMonth(rangeStart);
-  let total = 0;
-
-  while (cursor.getTime() < rangeEndExclusive.getTime()) {
-    const monthStart = cursor;
-    const monthEnd = addUtcMonths(monthStart, 1);
-
-    const overlapStart =
-      rangeStart.getTime() > monthStart.getTime() ? rangeStart : monthStart;
-    const overlapEnd =
-      rangeEndExclusive.getTime() < monthEnd.getTime() ? rangeEndExclusive : monthEnd;
-
-    const overlapDays = Math.max(
-      0,
-      Math.round((overlapEnd.getTime() - overlapStart.getTime()) / MS_PER_DAY),
-    );
-    const monthDays = Math.max(
-      1,
-      Math.round((monthEnd.getTime() - monthStart.getTime()) / MS_PER_DAY),
-    );
-
-    total += monthlyTarget * (overlapDays / monthDays);
-    cursor = monthEnd;
-  }
-
-  return total;
-}
+const formatDateWithDay = (d: Date) => {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(d);
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -85,343 +32,388 @@ export default async function DashboardPage({
   }
   const sp = await searchParams;
 
-  const now = new Date();
-  const monthStart = startOfUtcMonth(now);
-  const nextMonthStart = addUtcMonths(monthStart, 1);
-  const todayStart = startOfUtcDay(now);
-  const tomorrowStart = addUtcDays(todayStart, 1);
+  // Dates for filtering
+  const defaultPreset = getReportPreset2Weeks();
+  const from = (sp.from?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : null) ?? defaultPreset.from;
+  const to = (sp.to?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.to) ? sp.to : null) ?? defaultPreset.to;
 
-  const fromParam = parseIsoDateOnly(sp.from);
-  const toParam = parseIsoDateOnly(sp.to);
-  const hasRangeFilter = Boolean(fromParam || toParam);
+  const startDate = new Date(from);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(to);
+  endDate.setHours(23, 59, 59, 999);
 
-  const rangeStart = fromParam ?? monthStart;
-  const rangeEndExclusive = addUtcDays(toParam ?? todayStart, 1);
-
-  const chartRangeStart = hasRangeFilter ? rangeStart : addUtcMonths(monthStart, -11);
-  const chartRangeEndExclusive = hasRangeFilter ? rangeEndExclusive : nextMonthStart;
-
-  const chartDays = Math.max(
-    1,
-    Math.round((chartRangeEndExclusive.getTime() - chartRangeStart.getTime()) / MS_PER_DAY),
-  );
-  const chartGranularity: "day" | "month" = chartDays <= 31 ? "day" : "month";
-
-  const chartPoints =
-    chartGranularity === "day"
-      ? Array.from({ length: chartDays }).map((_, i) => addUtcDays(chartRangeStart, i))
-      : (() => {
-          const start = startOfUtcMonth(chartRangeStart);
-          const end = startOfUtcMonth(addUtcDays(chartRangeEndExclusive, -1));
-          const monthsCount =
-            (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-            (end.getUTCMonth() - start.getUTCMonth()) +
-            1;
-          return Array.from({ length: monthsCount }).map((_, i) => addUtcMonths(start, i));
-        })();
-
-  const monthlyTarget = Number(process.env.LMS_MONTHLY_TARGET_PHP ?? "20000");
-  const target = Number.isFinite(monthlyTarget) ? monthlyTarget : 20000;
-  const targetInRange = hasRangeFilter
-    ? calcProratedMonthlyTarget(rangeStart, rangeEndExclusive, target)
-    : target;
-
-  const currencyFormatter = new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-  });
-
-  const accrualQuery =
-    chartGranularity === "day"
-      ? prisma.$queryRaw<{ day: Date; total: number }[]>`
-          SELECT
-            "accruedForDate"::date AS "day",
-            COALESCE(SUM("amount"), 0)::float8 AS "total"
-          FROM "savings_accruals"
-          WHERE "accruedForDate" >= ${toIsoDateOnly(chartRangeStart)}::date
-            AND "accruedForDate" < ${toIsoDateOnly(chartRangeEndExclusive)}::date
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `
-      : prisma.$queryRaw<{ month: Date; total: number }[]>`
-          SELECT
-            date_trunc('month', "accruedForDate")::date AS "month",
-            COALESCE(SUM("amount"), 0)::float8 AS "total"
-          FROM "savings_accruals"
-          WHERE "accruedForDate" >= ${toIsoDateOnly(chartRangeStart)}::date
-            AND "accruedForDate" < ${toIsoDateOnly(chartRangeEndExclusive)}::date
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `;
-
-  const endDayStart = hasRangeFilter ? startOfUtcDay(toParam ?? todayStart) : todayStart;
-  const endDayEndExclusive = addUtcDays(endDayStart, 1);
-
-  const [groupsCount, membersCount, memberAgg, accrualRowsAny, revenueRangeRow, revenueEndDayRow] =
-    await Promise.all([
-    prisma.group.count(),
+  // Fetch dashboard data
+  const [
+    memberCount,
+    globalAgg,
+    periodCollectionsRow,
+    periodSavingsRow,
+    periodNewMembers,
+    dailyCollections,
+    dailyAccruals
+  ] = await Promise.all([
     prisma.member.count(),
     prisma.member.aggregate({
       _sum: { balance: true, savings: true },
     }),
-    accrualQuery,
+    // Total Collections in period (Balance Deductions)
     prisma.$queryRaw<{ total: number }[]>`
-      SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
-      FROM "balance_adjustments"
-      WHERE "type" = 'DEDUCT'
-        AND "createdAt" >= ${rangeStart}
-        AND "createdAt" < ${rangeEndExclusive}
-    `,
+            SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
+            FROM "balance_adjustments"
+            WHERE "type" = 'DEDUCT'
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
+        `,
+    // Total Savings Increases in period (Manual)
     prisma.$queryRaw<{ total: number }[]>`
-      SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
-      FROM "balance_adjustments"
-      WHERE "type" = 'DEDUCT'
-        AND "createdAt" >= ${endDayStart}
-        AND "createdAt" < ${endDayEndExclusive}
-    `,
+            SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
+            FROM "savings_adjustments"
+            WHERE "type" = 'INCREASE'
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
+        `,
+    // New members in period
+    prisma.member.count({
+      where: {
+        createdAt: { gte: startDate, lte: endDate }
+      }
+    }),
+    // Daily collections for bar chart
+    prisma.$queryRaw<{ day_key: string; total: number }[]>`
+            SELECT 
+                TO_CHAR("createdAt", 'MM-DD') AS "day_key",
+                COALESCE(SUM("amount"), 0)::float8 AS "total"
+            FROM "balance_adjustments"
+            WHERE "type" = 'DEDUCT'
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
+            GROUP BY 1
+            ORDER BY 1 ASC
+        `,
+    // Daily accruals for line chart
+    prisma.$queryRaw<{ day: string; total: number }[]>`
+            SELECT 
+                TO_CHAR("accruedForDate", 'MM-DD') AS "day",
+                COALESCE(SUM("amount"), 0)::float8 AS "total"
+            FROM "savings_accruals"
+            WHERE "accruedForDate" >= ${from}::date
+              AND "accruedForDate" <= ${to}::date
+            GROUP BY 1
+            ORDER BY 1 ASC
+        `
   ]);
 
-  const totalBalance = memberAgg._sum.balance ?? 0;
-  const totalSavings = memberAgg._sum.savings ?? 0;
+  const globalBalance = globalAgg._sum.balance ?? 0;
+  const globalSavings = globalAgg._sum.savings ?? 0;
+  const periodCollections = periodCollectionsRow?.[0]?.total ?? 0;
+  const periodSavingsAdded = periodSavingsRow?.[0]?.total ?? 0;
 
-  const accrualRows = accrualRowsAny as Array<{ total: number } & Record<string, any>>;
-  const accrualByKey = new Map<string, number>();
-  for (const row of accrualRows ?? []) {
-    const keyDate: Date | undefined = (row as any).day ?? (row as any).month;
-    if (!keyDate) continue;
-    accrualByKey.set(toIsoDateOnly(keyDate), row.total);
+  // -- Fill Daily Collections (Last 7 days of period) --
+  const collectionsMap = new Map(dailyCollections.map(r => [r.day_key, r.total]));
+  const chartDays: { day: string; total: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - i);
+    const dayKey = d.toISOString().slice(5, 10); // MM-DD
+    const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
+    chartDays.push({
+      day: dayLabel,
+      total: collectionsMap.get(dayKey) ?? 0
+    });
   }
 
-  const accrualSeries = chartPoints.map((p) => {
-    const key = toIsoDateOnly(p);
-    return accrualByKey.get(key) ?? 0;
+  // -- Fill Daily Accruals (All days in period) --
+  const accrualsMap = new Map(dailyAccruals.map(r => [r.day, r.total]));
+  const accrualChartData: { day: string; total: number }[] = [];
+  const curr = new Date(startDate);
+  const end = new Date(endDate);
+  // Limit to max 14 days to keep it clean
+  let daysToStep = Math.min(14, Math.ceil((end.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)));
+  for (let i = 0; i <= daysToStep; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    if (d > end) break;
+    const dayKey = d.toISOString().slice(5, 10); // MM-DD
+    accrualChartData.push({
+      day: dayKey,
+      total: accrualsMap.get(dayKey) ?? 0
+    });
+  }
+
+  const currencyFormatter = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
   });
-  const maxAccrual = Math.max(1, ...accrualSeries);
 
-  const revenueRange = revenueRangeRow?.[0]?.total ?? 0;
-  const revenueEndDay = revenueEndDayRow?.[0]?.total ?? 0;
-  const pct = clamp(targetInRange > 0 ? revenueRange / targetInRange : 0, 0, 1);
-  const degrees = Math.round(pct * 360);
+  const smallCurrencyFormatter = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+  });
 
-  const fromValue = sp.from ?? "";
-  const toValue = sp.to ?? "";
-  const rangeLabel = hasRangeFilter
-    ? `${fromValue || toIsoDateOnly(rangeStart)} → ${toValue || toIsoDateOnly(addUtcDays(rangeEndExclusive, -1))}`
-    : "This month";
+  // Donut chart calculation
+  const totalAdjustments = periodCollections + periodSavingsAdded;
+  const collectionPct = totalAdjustments > 0 ? (periodCollections / totalAdjustments) * 100 : 0;
+  const savingsPct = 100 - collectionPct;
 
-  const endDayLabel = hasRangeFilter ? "End date" : "Today";
+  const maxAccrual = Math.max(1, ...accrualChartData.map(r => r.total));
+  const totalPeriodCollections = chartDays.reduce((acc, curr) => acc + curr.total, 0);
+
+  // -- Targets Calculation (Prorated) --
+  const msInPeriod = endDate.getTime() - startDate.getTime();
+  const daysInPeriod = Math.max(1, msInPeriod / (1000 * 60 * 60 * 24));
+
+  const monthlyTarget = Number(process.env.LMS_MONTHLY_TARGET_PHP ?? "20000");
+  const collectionTarget = (monthlyTarget / 30) * daysInPeriod;
+  const savingsTarget = (5000 / 30) * daysInPeriod; // Arbitrary 5k target
+  const memberTarget = Math.ceil((10 / 30) * daysInPeriod); // Arbitrary 10 target
+
+  const collectionProgress = Math.min(100, Math.max(5, (periodCollections / collectionTarget) * 100));
+  const savingsProgress = Math.min(100, Math.max(5, (periodSavingsAdded / savingsTarget) * 100));
+  const memberProgress = Math.min(100, Math.max(5, (periodNewMembers / memberTarget) * 100));
 
   return (
-    <div className="space-y-6">
-      {sp.error === "forbidden" ? (
-        <div className="rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-          You don’t have permission to perform that action.
-        </div>
-      ) : null}
-
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-100">Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Welcome back, {user.name}.
-            </p>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            {formatDateWithDay(new Date())}
           </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <form action="/app" method="get" className="flex flex-wrap items-end gap-2">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  From
-                </div>
-                <input
-                  type="date"
-                  name="from"
-                  defaultValue={fromValue}
-                  className="mt-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  To
-                </div>
-                <input
-                  type="date"
-                  name="to"
-                  defaultValue={toValue}
-                  className="mt-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <button
-                type="submit"
-                className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Apply
-              </button>
-              <Link
-                href="/app"
-                className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-4 text-sm font-medium leading-10 text-slate-200 hover:bg-slate-900/60"
-              >
-                Clear
-              </Link>
-            </form>
+          <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
+            {getGreeting()} <span className="text-white/60 font-medium">{user.name}</span>
+          </h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <DashboardDateFilter from={from} to={to} />
+        </div>
+      </div>
+
+      {/* Top Stat Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+            <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle
+                cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeDasharray="100 100"
+                strokeDashoffset={100 - collectionProgress}
+                strokeLinecap="round"
+                className="text-emerald-500 transition-all duration-1000"
+                pathLength="100"
+              />
+            </svg>
+          </div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-emerald-500/80">Total Collections</div>
+          <div className="mt-4 flex items-baseline gap-2">
+            <div className="text-4xl font-black text-white">{currencyFormatter.format(periodCollections)}</div>
+          </div>
+          <div className="mt-2 text-xs font-medium text-emerald-500/60 uppercase tracking-tight">
+            Target: {currencyFormatter.format(collectionTarget)} ({(periodCollections / collectionTarget * 100).toFixed(0)}%)
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+            <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle
+                cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeDasharray="100 100"
+                strokeDashoffset={100 - savingsProgress}
+                strokeLinecap="round"
+                className="text-blue-500 transition-all duration-1000"
+                pathLength="100"
+              />
+            </svg>
+          </div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-blue-500/80">Total Savings Added</div>
+          <div className="mt-4 flex items-baseline gap-2">
+            <div className="text-4xl font-black text-white">{currencyFormatter.format(periodSavingsAdded)}</div>
+          </div>
+          <div className="mt-2 text-xs font-medium text-blue-500/60 uppercase tracking-tight">
+            Goal: {currencyFormatter.format(savingsTarget)} ({(periodSavingsAdded / savingsTarget * 100).toFixed(0)}%)
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+            <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle
+                cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeDasharray="100 100"
+                strokeDashoffset={100 - memberProgress}
+                strokeLinecap="round"
+                className="text-amber-500 transition-all duration-1000"
+                pathLength="100"
+              />
+            </svg>
+          </div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-amber-500/80">New Members</div>
+          <div className="mt-4 flex items-baseline gap-2">
+            <div className="text-5xl font-black text-white">{periodNewMembers.toString().padStart(2, '0')}</div>
+          </div>
+          <div className="mt-2 text-xs font-medium text-amber-500/60 uppercase tracking-tight">
+            Quota: {memberTarget} ({(periodNewMembers / memberTarget * 100).toFixed(0)}%)
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Groups
+      {/* Middle Section: Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Donut Chart Component */}
+        <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl overflow-hidden relative group">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-300">Transaction Mix</h3>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-950/50 px-2 py-1 rounded">Adjustments only</div>
           </div>
-          <div className="mt-2 text-2xl font-semibold text-slate-100">
-            {groupsCount.toLocaleString()}
-          </div>
-          <div className="mt-2 text-xs text-slate-400">Total groups created</div>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Members
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-slate-100">
-            {membersCount.toLocaleString()}
-          </div>
-          <div className="mt-2 text-xs text-slate-400">Total active members</div>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Total Balance
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-slate-100">
-            {typeof totalBalance === "number"
-              ? totalBalance.toFixed(2)
-              : String(totalBalance)}
-          </div>
-          <div className="mt-2 text-xs text-slate-400">Outstanding balance</div>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Total Savings
-          </div>
-          <div className="mt-2 text-2xl font-semibold text-slate-100">
-            {typeof totalSavings === "number"
-              ? totalSavings.toFixed(2)
-              : String(totalSavings)}
-          </div>
-          <div className="mt-2 text-xs text-slate-400">Stored savings total</div>
-        </div>
-      </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm xl:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-semibold text-slate-100">
-                Savings Accruals
-              </div>
-              <div className="text-xs text-slate-400">
-                Total daily savings added (from ledger) · {rangeLabel}
+          <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
+            <div className="relative h-48 w-48 shrink-0">
+              {/* SVG Donut */}
+              <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                <circle
+                  cx="50" cy="50" r="40"
+                  fill="transparent"
+                  stroke="rgba(255,255,255,0.05)"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="50" cy="50" r="40"
+                  fill="transparent"
+                  stroke="#2563eb"
+                  strokeWidth="10"
+                  strokeDasharray={`${collectionPct * 2.51} 251.2`}
+                  className="transition-all duration-1000 ease-out"
+                />
+                <circle
+                  cx="50" cy="50" r="40"
+                  fill="transparent"
+                  stroke="#ec4899"
+                  strokeWidth="10"
+                  strokeDasharray={`${savingsPct * 2.51} 251.2`}
+                  strokeDashoffset={`-${collectionPct * 2.51}`}
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-3xl font-black text-white">{memberCount}</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Members</span>
               </div>
             </div>
-            <div className="text-xs text-slate-400">
-              {chartGranularity === "day" ? "Daily" : "Monthly"}
-            </div>
-          </div>
 
-          <div
-            className="mt-6 grid h-48 items-end gap-2"
-            style={{
-              gridTemplateColumns: `repeat(${chartPoints.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {accrualSeries.map((v, i) => (
-              <div
-                key={i}
-                className="rounded-lg bg-blue-500/20"
-                style={{
-                  height: `${Math.max(6, Math.round((v / maxAccrual) * 100))}%`,
-                }}
-                title={`${new Intl.DateTimeFormat("en-US", {
-                  timeZone: "UTC",
-                  ...(chartGranularity === "day"
-                    ? { month: "short", day: "2-digit", year: "numeric" }
-                    : { month: "short", year: "numeric" }),
-                }).format(chartPoints[i])}: ${currencyFormatter.format(v)}`}
-              />
-            ))}
-          </div>
-
-          {chartPoints.length <= 16 ? (
-            <div
-              className="mt-3 grid gap-2 text-center text-[10px] text-slate-500"
-              style={{
-                gridTemplateColumns: `repeat(${chartPoints.length}, minmax(0, 1fr))`,
-              }}
-            >
-              {chartPoints.map((p, i) => (
-                <div key={i}>
-                  {new Intl.DateTimeFormat("en-US", {
-                    timeZone: "UTC",
-                    ...(chartGranularity === "day"
-                      ? { month: "short", day: "2-digit" }
-                      : { month: "short" }),
-                  }).format(p)}
+            <div className="space-y-4 w-full max-w-[200px]">
+              <div className="flex items-center justify-between group/item">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-blue-500 shadow-lg shadow-blue-500/20"></div>
+                  <span className="text-xs font-bold text-slate-400 group-hover/item:text-slate-200 transition-colors uppercase tracking-tight">Collections</span>
                 </div>
-              ))}
+                <span className="text-xs font-black text-white">{(collectionPct).toFixed(0)}%</span>
+              </div>
+              <div className="flex items-center justify-between group/item">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-pink-500 shadow-lg shadow-pink-500/20"></div>
+                  <span className="text-xs font-bold text-slate-400 group-hover/item:text-slate-200 transition-colors uppercase tracking-tight">Savings</span>
+                </div>
+                <span className="text-xs font-black text-white">{(savingsPct).toFixed(0)}%</span>
+              </div>
             </div>
-          ) : null}
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-          <div className="text-sm font-semibold text-slate-100">Monthly Target</div>
-          <div className="mt-1 text-xs text-slate-400">
-            Collections (balance deductions) · {rangeLabel}
+        {/* Bar Chart Section */}
+        <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl relative group">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-300">Daily Revenue</h3>
+            <div className="text-lg font-black text-blue-500">{smallCurrencyFormatter.format(totalPeriodCollections)}</div>
           </div>
 
-          <div className="mt-6 flex items-center justify-center">
-            <div className="relative h-44 w-44">
-              <div className="absolute inset-0 rounded-full bg-slate-800" />
-              <div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    `conic-gradient(#2563eb 0 ${degrees}deg, #e2e8f0 ${degrees}deg 360deg)`,
-                }}
-              />
-              <div className="absolute inset-4 rounded-full bg-slate-950" />
-              <div className="absolute inset-0 grid place-items-center">
-                <div className="text-center">
-                  <div className="text-2xl font-semibold text-slate-100">
-                    {(pct * 100).toFixed(2)}%
+          <div className="flex items-end justify-between gap-2 h-48 py-4 px-2">
+            {chartDays.map((collect, i) => {
+              const maxVal = Math.max(1, ...chartDays.map(c => c.total));
+              const height = (collect.total / maxVal) * 100;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-3">
+                  <div
+                    className="w-full max-w-[40px] rounded-t-xl bg-gradient-to-t from-blue-600 via-blue-400 to-indigo-300 shadow-xl shadow-blue-900/20 transition-all hover:scale-105 hover:brightness-110 relative group/bar"
+                    style={{ height: `${Math.max(8, height)}%` }}
+                    title={smallCurrencyFormatter.format(collect.total)}
+                  >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-black text-white bg-slate-950 px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">
+                      {smallCurrencyFormatter.format(collect.total)}
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-slate-400">This month</div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{collect.day}</span>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Global Metrics Section */}
+      <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-10 shadow-3xl relative overflow-hidden">
+        <div className="grid gap-12 md:grid-cols-2">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Live Global Stats</span>
             </div>
+            <h3 className="text-5xl font-black text-white tracking-tighter">
+              {smallCurrencyFormatter.format(Number(globalBalance))}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-slate-500 uppercase tracking-widest">Total Outstanding Portfolio</p>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-              <div className="text-xs text-slate-400">Target</div>
-              <div className="text-sm font-semibold text-slate-100">
-                {currencyFormatter.format(targetInRange)}
-              </div>
+          <div className="grid grid-cols-2 gap-8 items-center border-l border-white/5 pl-12">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Savings</div>
+              <div className="text-3xl font-black text-white">{smallCurrencyFormatter.format(Number(globalSavings))}</div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-              <div className="text-xs text-slate-400">Revenue</div>
-              <div className="text-sm font-semibold text-slate-100">
-                {currencyFormatter.format(revenueRange)}
-              </div>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-              <div className="text-xs text-slate-400">{endDayLabel}</div>
-              <div className="text-sm font-semibold text-slate-100">
-                {currencyFormatter.format(revenueEndDay)}
-              </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Members</div>
+              <div className="text-3xl font-black text-white">{memberCount}</div>
             </div>
           </div>
+        </div>
+
+        {/* Trend Chart (Line-ish) */}
+        <div className="mt-12 h-64 w-full relative group">
+          <div className="absolute inset-0 flex items-end justify-between gap-1 px-4">
+            {accrualChartData.map((acc, i) => {
+              const h = (acc.total / maxAccrual) * 100;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center group/trend hover:z-20">
+                  <div
+                    className="w-full bg-emerald-500/10 border-t-2 border-emerald-500 shadow-[0_-10px_20px_-5px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-500/20 relative"
+                    style={{ height: `${Math.max(5, h)}%` }}
+                    title={`${acc.day}: ${smallCurrencyFormatter.format(acc.total)}`}
+                  >
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/trend:opacity-100 transition-opacity bg-slate-950 p-1.5 rounded text-[10px] font-black text-white whitespace-nowrap border border-white/5">
+                      {smallCurrencyFormatter.format(acc.total)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Background Grid */}
+          <div className="absolute inset-0 grid grid-rows-4 -z-10 opacity-30 pointer-events-none">
+            <div className="border-b border-white/5"></div>
+            <div className="border-b border-white/5"></div>
+            <div className="border-b border-white/5"></div>
+            <div className="border-b border-white/5"></div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 border-t border-white/5 pt-4">
+          <span>Accrual Analytics (Growth)</span>
+          <span>{from} → {to}</span>
         </div>
       </div>
     </div>
   );
 }
-

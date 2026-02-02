@@ -3,6 +3,7 @@ import { destroySession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   await destroySession();
-  return NextResponse.redirect(new URL("/login", request.url));
+  const loginUrl = new URL("/login", process.env.APP_URL || request.url);
+  return NextResponse.redirect(loginUrl);
 }
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/auth/password";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
 
 const CreateUserSchema = z.object({
   email: z.string().email(),
@@ -215,11 +216,11 @@ export default async function UsersAdminPage({
   const where =
     q.length > 0
       ? {
-          OR: [
-            { email: { contains: q, mode: "insensitive" as const } },
-            { name: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
+        OR: [
+          { email: { contains: q, mode: "insensitive" as const } },
+          { name: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
       : {};
 
   const users = await prisma.user.findMany({
@@ -394,15 +395,15 @@ export default async function UsersAdminPage({
                       <form action={toggleUserActiveAction} className="flex items-center gap-2">
                         <input type="hidden" name="userId" value={u.id} />
                         <input type="hidden" name="isActive" value={u.isActive ? "false" : "true"} />
-                        <button
-                          className={`rounded-lg px-2 py-1 text-xs ${
-                            u.isActive
+                        <ConfirmSubmitButton
+                          confirmMessage={`${u.isActive ? "Deactivate" : "Activate"} user "${u.name}"?`}
+                          className={`rounded-lg px-2 py-1 text-xs ${u.isActive
                               ? "border border-red-900/40 bg-red-950/40 text-red-200 hover:bg-red-950/60"
                               : "border border-emerald-900/40 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-950/40"
-                          }`}
+                            }`}
                         >
                           {u.isActive ? "Deactivate" : "Activate"}
-                        </button>
+                        </ConfirmSubmitButton>
                       </form>
 
                       <form action={resetUserPasswordAction} className="flex items-center gap-2">
@@ -413,9 +414,12 @@ export default async function UsersAdminPage({
                           placeholder="New password"
                           className="w-36 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                         />
-                        <button className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 hover:bg-slate-900/60">
+                        <ConfirmSubmitButton
+                          confirmMessage={`Reset password for user "${u.name}"?`}
+                          className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-200 hover:bg-slate-900/60"
+                        >
                           Reset
-                        </button>
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </td>

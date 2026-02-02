@@ -3,8 +3,11 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Lending Monitoring System",
+  title: process.env.NEXT_PUBLIC_APP_NAME || "TRIPLE E microfinance inc.",
   description: "Groups, members, and daily savings accrual",
+  icons: {
+    icon: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({

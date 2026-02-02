@@ -32,11 +32,9 @@ export default async function HomePage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-16 text-center">
         <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white shadow">
-            <span className="text-base font-bold">L</span>
-          </div>
+          <img src="/logo.jpg" alt="Logo" className="h-14 w-14 rounded-xl object-contain shadow-sm bg-white p-1" />
           <div className="text-left">
-            <div className="text-lg font-semibold text-slate-100">Lending Monitoring System</div>
+            <div className="text-lg font-semibold text-slate-100">{process.env.NEXT_PUBLIC_APP_NAME || "TRIPLE E microfinance inc."}</div>
             <div className="text-sm text-slate-400">Admin dashboard</div>
           </div>
         </div>

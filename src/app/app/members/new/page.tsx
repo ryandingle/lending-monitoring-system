@@ -20,7 +20,7 @@ async function createMemberAction(formData: FormData) {
   "use server";
 
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const parsed = CreateMemberSchema.safeParse({
     groupId: String(formData.get("groupId") || ""),
@@ -78,7 +78,7 @@ async function createMemberAction(formData: FormData) {
 
 export default async function NewMemberPage() {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const groups = await prisma.group.findMany({
     orderBy: { name: "asc" },

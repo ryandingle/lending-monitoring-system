@@ -1,4 +1,4 @@
-# Lending Monitoring System
+# TRIPLE E Microfinance Inc.
 
 Next.js app for monitoring lending groups and members.
 

@@ -1,33 +1,17 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { countBusinessDays } from "@/lib/date";
-import { Role } from "@prisma/client";
+import { Role, BalanceUpdateType, SavingsUpdateType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
-import { IconEye, IconPencil, IconTrash } from "../_components/icons";
-
-function clampInt(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function buildHref(base: string, params: Record<string, string | undefined>) {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v && v.length > 0) sp.set(k, v);
-  }
-  const qs = sp.toString();
-  return qs ? `${base}?${qs}` : base;
-}
+import { MemberBulkEditTable } from "./member-bulk-edit-table";
+import { revalidatePath } from "next/cache";
 
 export default async function MembersPage({
   searchParams,
 }: {
   searchParams: Promise<{
     q?: string;
-    page?: string;
-    pageSize?: string;
     groupId?: string;
     created?: string;
     deleted?: string;
@@ -37,15 +21,11 @@ export default async function MembersPage({
   const sp = await searchParams;
 
   const q = (sp.q ?? "").trim();
-  const page = clampInt(Number(sp.page ?? "1") || 1, 1, 10_000);
-  const pageSize = clampInt(Number(sp.pageSize ?? "20") || 20, 5, 100);
   const groupId = (sp.groupId ?? "").trim() || undefined;
-  const canAddMember = user.role === Role.SUPER_ADMIN;
-  const canManage = user.role === Role.SUPER_ADMIN;
+  const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
 
   async function deleteMemberAction(memberId: string) {
     "use server";
-
     const actor = await requireUser();
     requireRole(actor, [Role.SUPER_ADMIN]);
 
@@ -65,19 +45,143 @@ export default async function MembersPage({
           action: "MEMBER_DELETE",
           entityType: "Member",
           entityId: member.id,
-          metadata: {
-            firstName: member.firstName,
-            lastName: member.lastName,
-            groupId: member.groupId,
-          },
+          metadata: { firstName: member.firstName, lastName: member.lastName, groupId: member.groupId },
           request,
         });
       });
     } catch {
       redirect("/app/members?deleted=0");
     }
-
+    revalidatePath("/app/members");
     redirect("/app/members?deleted=1");
+  }
+
+  async function onBulkUpdate(updates: { memberId: string; balanceDeduct: string; savingsIncrease: string }[]) {
+    "use server";
+    const actor = await requireUser();
+    requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+
+    const request = await tryGetAuditRequestContext();
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      for (const update of updates) {
+        const member = await tx.member.findUnique({
+          where: { id: update.memberId },
+          select: { id: true, firstName: true, lastName: true, balance: true, savings: true },
+        });
+        if (!member) continue;
+
+        const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
+        const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+
+        if (balanceDeduct > 0) {
+          const alreadyUpdated = await tx.balanceAdjustment.findFirst({
+            where: {
+              memberId: member.id,
+              createdAt: { gte: startOfToday },
+            },
+          });
+
+          if (alreadyUpdated) {
+            await createAuditLog(tx, {
+              actorUserId: actor.id,
+              action: "ATTEMPT_MULTIPLE_BALANCE_UPDATE",
+              entityType: "Member",
+              entityId: member.id,
+              metadata: { attempt: balanceDeduct, memberName: `${member.firstName} ${member.lastName}` },
+              request,
+            });
+            errors.push({
+              memberId: member.id,
+              type: "balance",
+              message: `Balance for ${member.firstName} has already been updated today.`
+            });
+          } else {
+            const balanceBefore = member.balance;
+            const balanceAfter = balanceBefore.minus(balanceDeduct);
+
+            await tx.member.update({
+              where: { id: member.id },
+              data: { balance: balanceAfter },
+            });
+
+            await tx.balanceAdjustment.create({
+              data: {
+                memberId: member.id,
+                encodedById: actor.id,
+                type: BalanceUpdateType.DEDUCT,
+                amount: balanceDeduct,
+                balanceBefore,
+                balanceAfter,
+              },
+            });
+          }
+        }
+
+        if (savingsIncrease > 0) {
+          const alreadyUpdated = await tx.savingsAdjustment.findFirst({
+            where: {
+              memberId: member.id,
+              createdAt: { gte: startOfToday },
+            },
+          });
+
+          if (alreadyUpdated) {
+            await createAuditLog(tx, {
+              actorUserId: actor.id,
+              action: "ATTEMPT_MULTIPLE_SAVINGS_UPDATE",
+              entityType: "Member",
+              entityId: member.id,
+              metadata: { attempt: savingsIncrease, memberName: `${member.firstName} ${member.lastName}` },
+              request,
+            });
+            errors.push({
+              memberId: member.id,
+              type: "savings",
+              message: `Savings for ${member.firstName} has already been updated today.`
+            });
+          } else {
+            const savingsBefore = member.savings;
+            const savingsAfter = savingsBefore.plus(savingsIncrease);
+
+            await tx.member.update({
+              where: { id: member.id },
+              data: { savings: savingsAfter },
+            });
+
+            await tx.savingsAdjustment.create({
+              data: {
+                memberId: member.id,
+                encodedById: actor.id,
+                type: SavingsUpdateType.INCREASE,
+                amount: savingsIncrease,
+                savingsBefore,
+                savingsAfter,
+              },
+            });
+          }
+        }
+
+        if ((balanceDeduct > 0 || savingsIncrease > 0) && !errors.some(e => e.memberId === member.id)) {
+          await createAuditLog(tx, {
+            actorUserId: actor.id,
+            action: "MEMBER_BULK_UPDATE",
+            entityType: "Member",
+            entityId: member.id,
+            metadata: { balanceDeduct, savingsIncrease },
+            request,
+          });
+        }
+      }
+    });
+
+    revalidatePath("/app/members");
+    return { success: errors.length === 0, errors };
   }
 
   const where: any = {};
@@ -91,36 +195,33 @@ export default async function MembersPage({
     ];
   }
 
-  const [groups, totalCount, members] = await Promise.all([
-    prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.member.count({ where }),
-    prisma.member.findMany({
-      where,
-      include: { group: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-      take: pageSize,
-      skip: (page - 1) * pageSize,
-    }),
-  ]);
+  const skipQuery = user.role === Role.ENCODER && !groupId;
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const today = new Date();
+  const [groups, members] = skipQuery
+    ? [
+      await prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      [],
+    ]
+    : await Promise.all([
+      prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      prisma.member.findMany({
+        where,
+        include: { group: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
-  const baseParams = {
-    q: q || undefined,
-    pageSize: String(pageSize),
-    groupId: groupId || undefined,
-  };
-
-  const prevHref =
-    safePage > 1
-      ? buildHref("/app/members", { ...baseParams, page: String(safePage - 1) })
-      : undefined;
-  const nextHref =
-    safePage < totalPages
-      ? buildHref("/app/members", { ...baseParams, page: String(safePage + 1) })
-      : undefined;
+  // Transform members for client component (serializable)
+  const plainMembers = members.map((m) => ({
+    id: m.id,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    balance: Number(m.balance),
+    savings: Number(m.savings),
+    createdAt: m.createdAt.toISOString(),
+    groupId: m.groupId,
+    group: m.group ? { id: m.group.id, name: m.group.name } : null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -129,7 +230,7 @@ export default async function MembersPage({
           <div>
             <h1 className="text-xl font-semibold text-slate-100">Members</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Search and paginate members across all groups.
+              Bulk update member balances and savings directly from the table.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -168,7 +269,7 @@ export default async function MembersPage({
 
         <form method="get" className="mt-6 grid gap-3 md:grid-cols-6">
           <div className="md:col-span-3">
-            <label className="text-sm font-medium">Search</label>
+            <label className="text-sm font-medium text-slate-300">Search</label>
             <input
               name="q"
               defaultValue={q}
@@ -177,13 +278,18 @@ export default async function MembersPage({
             />
           </div>
           <div className="md:col-span-2">
-            <label className="text-sm font-medium">Group</label>
+            <label className="text-sm font-medium text-slate-300">Group</label>
             <select
               name="groupId"
               defaultValue={groupId ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              required={user.role === Role.ENCODER}
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 invalid:border-red-500/50"
             >
-              <option value="">All groups</option>
+              {user.role === Role.SUPER_ADMIN ? (
+                <option value="">All groups</option>
+              ) : (
+                <option value="" disabled>Select a group...</option>
+              )}
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
@@ -191,152 +297,22 @@ export default async function MembersPage({
               ))}
             </select>
           </div>
-          <div className="md:col-span-1">
-            <label className="text-sm font-medium">Page size</label>
-            <select
-              name="pageSize"
-              defaultValue={String(pageSize)}
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-            >
-              {["10", "20", "50", "100"].map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <input type="hidden" name="page" value="1" />
-
-          <div className="md:col-span-6">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <div className="md:col-span-1 flex items-end">
+            <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
               Apply
             </button>
           </div>
         </form>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-slate-400">
-            {totalCount} result{totalCount === 1 ? "" : "s"} · page {safePage} of{" "}
-            {totalPages}
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={prevHref ?? "#"}
-              aria-disabled={!prevHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                prevHref
-                  ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
-                  : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
-            >
-              Prev
-            </Link>
-            <Link
-              href={nextHref ?? "#"}
-              aria-disabled={!nextHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                nextHref
-                  ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
-                  : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
-            >
-              Next
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
-              <tr>
-                <th className="py-2 pr-4">Member</th>
-                <th className="py-2 pr-4">Group</th>
-                <th className="py-2 pr-4">Balance</th>
-                <th className="py-2 pr-4">Savings</th>
-                <th className="py-2 pr-4">Created</th>
-                <th className="py-2 pr-4">Days</th>
-                <th className="py-2 pr-0 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {members.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium">
-                    <Link href={`/app/members/${m.id}`} className="hover:underline">
-                      {m.firstName} {m.lastName}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4 text-slate-300">
-                    {user.role === Role.SUPER_ADMIN ? (
-                      m.group ? (
-                        <Link href={`/app/groups/${m.group.id}`} className="hover:underline">
-                          {m.group.name}
-                        </Link>
-                      ) : (
-                        <span className="text-slate-500">—</span>
-                      )
-                    ) : m.group ? (
-                      m.group.name
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4 text-slate-300">{m.balance.toFixed(2)}</td>
-                  <td className="py-2 pr-4 text-slate-300">{m.savings.toFixed(2)}</td>
-                  <td className="py-2 pr-4 text-slate-400">
-                    {m.createdAt.toISOString().slice(0, 10)}
-                  </td>
-                  <td className="py-2 pr-4 text-slate-300">
-                    {countBusinessDays(m.createdAt, today)} (excl. weekends)
-                  </td>
-                  <td className="py-2 pr-0">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/app/members/${m.id}`}
-                        title="View member details"
-                        className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
-                      >
-                        <IconEye className="h-4 w-4" />
-                      </Link>
-                      {canManage ? (
-                        <>
-                          <Link
-                            href={`/app/members/${m.id}/edit`}
-                            title="Edit member"
-                            className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-slate-200 hover:bg-slate-900/60"
-                          >
-                            <IconPencil className="h-4 w-4" />
-                          </Link>
-                          <form action={deleteMemberAction.bind(null, m.id)}>
-                            <ConfirmSubmitButton
-                              title="Delete member"
-                              confirmMessage={`Delete member "${m.firstName} ${m.lastName}"? This will also delete their ledger history.`}
-                              className="rounded-lg border border-red-900/50 bg-red-950/30 p-2 text-red-200 hover:bg-red-950/50"
-                            >
-                              <IconTrash className="h-4 w-4" />
-                            </ConfirmSubmitButton>
-                          </form>
-                        </>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {members.length === 0 ? (
-                <tr>
-                  <td className="py-4 text-slate-400" colSpan={7}>
-                    No members found.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <MemberBulkEditTable
+        initialMembers={plainMembers}
+        user={{ role: user.role }}
+        onBulkUpdate={onBulkUpdate}
+        deleteMemberAction={deleteMemberAction}
+        groupId={groupId}
+        groupName={groups.find(g => g.id === groupId)?.name}
+      />
     </div>
   );
 }
-

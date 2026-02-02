@@ -20,7 +20,7 @@ async function updateMemberAction(memberId: string, formData: FormData) {
   "use server";
 
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const groupIdRaw = String(formData.get("groupId") || "").trim();
   const parsed = UpdateMemberSchema.safeParse({
@@ -99,7 +99,7 @@ export default async function EditMemberPage({
   searchParams: Promise<{ saved?: string }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const { memberId } = await params;
   const sp = await searchParams;
