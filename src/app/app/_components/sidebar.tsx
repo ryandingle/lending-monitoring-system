@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { NavLink } from "./nav-link";
 import { IconBriefcase, IconDashboard, IconFileText, IconFolder, IconSettings, IconShield, IconUsers } from "./icons";
 import type { AuthUser } from "@/lib/auth/session";
@@ -18,7 +19,13 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
       <div className="flex h-full flex-col">
         <div className={clsx("px-5 py-5 transition-all", isCollapsed ? "px-4" : "px-5")}>
           <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Logo" className="h-10 w-10 rounded-lg object-contain bg-white p-0.5 shrink-0" />
+            <Image
+              src="/logo.jpg"
+              alt="Logo"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-lg object-contain bg-white p-0.5 shrink-0"
+            />
             {!isCollapsed && (
               <div className="transition-opacity duration-300">
                 <div className="text-base font-semibold text-slate-100 line-clamp-1">Triple E</div>

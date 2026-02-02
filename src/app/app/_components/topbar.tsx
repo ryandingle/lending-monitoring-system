@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { AuthUser } from "@/lib/auth/session";
 import { LogoutButton } from "../logout-button";
 import { NotificationsBell } from "./notifications-bell";
@@ -37,7 +38,13 @@ export function Topbar({
                 <path d="M4 18h16" />
               </svg>
             </button>
-            <img src="/logo.jpg" alt="Logo" className="h-9 w-9 rounded-lg object-contain bg-white p-0.5" />
+            <Image
+              src="/logo.jpg"
+              alt="Logo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-lg object-contain bg-white p-0.5"
+            />
           </div>
 
           {/* Desktop Collapse Toggle */}
