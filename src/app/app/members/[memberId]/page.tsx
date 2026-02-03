@@ -437,7 +437,6 @@ export default async function MemberDetailPage({
     totalAccrualCount,
     accruals,
     accrualSum,
-    totalBalanceUpdates,
     balanceUpdates,
     totalSavingsUpdates,
     savingsUpdates,
@@ -453,7 +452,6 @@ export default async function MemberDetailPage({
       where: { memberId },
       _sum: { amount: true },
     }),
-    prisma.balanceAdjustment.count({ where: { memberId } }),
     prisma.balanceAdjustment.findMany({
       where: { memberId },
       include: { encodedBy: { select: { name: true, email: true, role: true } } },
@@ -473,6 +471,9 @@ export default async function MemberDetailPage({
 
   const totalPages = Math.max(1, Math.ceil(totalAccrualCount / pageSize));
   const safePage = Math.min(page, totalPages);
+
+  // Use member.daysCount from database instead of counting balance adjustments
+  const totalBalanceUpdates = member.daysCount;
 
   const accruedTotal = accrualSum._sum.amount ?? 0;
 

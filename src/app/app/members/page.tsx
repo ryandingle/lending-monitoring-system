@@ -231,7 +231,6 @@ export default async function MembersPage({
         where,
         include: {
           group: { select: { id: true, name: true } },
-          _count: { select: { balanceAdjustments: true } }
         },
         orderBy: { lastName: "asc" },
       }),
@@ -247,7 +246,7 @@ export default async function MembersPage({
     createdAt: m.createdAt.toISOString(),
     groupId: m.groupId,
     group: m.group ? { id: m.group.id, name: m.group.name } : null,
-    daysCount: m._count.balanceAdjustments,
+    daysCount: m.daysCount,
   }));
 
   return (

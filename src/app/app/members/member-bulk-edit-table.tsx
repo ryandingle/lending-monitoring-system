@@ -223,7 +223,7 @@ export function MemberBulkEditTable({
                                                     <form action={() => deleteMemberAction(m.id)} className="inline">
                                                         <ConfirmSubmitButton
                                                             title="Delete"
-                                                            confirmMessage={`Delete member "${m.lastName}, {m.firstName}"?`}
+                                                            confirmMessage={`Delete member "${m.lastName}, ${m.firstName}"?`}
                                                             className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
                                                         >
                                                             <IconTrash className="h-4 w-4" />
