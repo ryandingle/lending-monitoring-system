@@ -29,16 +29,16 @@ export default async function AuditTrailPage({
   const where =
     terms.length > 0
       ? {
-          AND: terms.map((t) => ({
-            OR: [
-              { action: { contains: t, mode: "insensitive" as const } },
-              { entityType: { contains: t, mode: "insensitive" as const } },
-              { entityId: { contains: t, mode: "insensitive" as const } },
-              { actorUser: { is: { email: { contains: t, mode: "insensitive" as const } } } },
-              { actorUser: { is: { name: { contains: t, mode: "insensitive" as const } } } },
-            ],
-          })),
-        }
+        AND: terms.map((t) => ({
+          OR: [
+            { action: { contains: t, mode: "insensitive" as const } },
+            { entityType: { contains: t, mode: "insensitive" as const } },
+            { entityId: { contains: t, mode: "insensitive" as const } },
+            { actorUser: { is: { email: { contains: t, mode: "insensitive" as const } } } },
+            { actorUser: { is: { name: { contains: t, mode: "insensitive" as const } } } },
+          ],
+        })),
+      }
       : {};
 
   const [total, logs] = await Promise.all([
@@ -62,12 +62,12 @@ export default async function AuditTrailPage({
   const members =
     memberIds.length > 0
       ? await prisma.member.findMany({
-          where: { id: { in: memberIds } },
-          select: { id: true, firstName: true, lastName: true },
-        })
+        where: { id: { in: memberIds } },
+        select: { id: true, firstName: true, lastName: true },
+      })
       : [];
   const memberNameById = Object.fromEntries(
-    members.map((m) => [m.id, `${m.firstName} ${m.lastName}`])
+    members.map((m) => [m.id, `${m.lastName}, ${m.firstName}`])
   );
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -110,22 +110,20 @@ export default async function AuditTrailPage({
             <Link
               href={prevHref ?? "#"}
               aria-disabled={!prevHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                prevHref
+              className={`rounded-lg border px-3 py-2 text-sm ${prevHref
                   ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
                   : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
+                }`}
             >
               Prev
             </Link>
             <Link
               href={nextHref ?? "#"}
               aria-disabled={!nextHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                nextHref
+              className={`rounded-lg border px-3 py-2 text-sm ${nextHref
                   ? "border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
                   : "cursor-not-allowed border-slate-900 bg-slate-950 text-slate-600"
-              }`}
+                }`}
             >
               Next
             </Link>
@@ -176,9 +174,9 @@ export default async function AuditTrailPage({
                             const meta = l.metadata as Record<string, unknown> | null;
                             const nameFromMeta =
                               meta &&
-                              typeof meta.firstName === "string" &&
-                              typeof meta.lastName === "string"
-                                ? `${meta.firstName} ${meta.lastName}`
+                                typeof meta.firstName === "string" &&
+                                typeof meta.lastName === "string"
+                                ? `${meta.lastName}, ${meta.firstName}`
                                 : null;
                             const name = nameFromMeta ?? memberNameById[l.entityId];
                             const exists = l.entityId in memberNameById;

@@ -506,7 +506,7 @@ export default async function MemberDetailPage({
               ← Back to Members
             </Link>
             <h1 className="mt-2 text-xl font-semibold text-slate-100">
-              {member.firstName} {member.lastName}
+              {member.lastName}, {member.firstName}
             </h1>
             <p className="mt-1 text-sm text-slate-400">
               {totalBalanceUpdates} days in system

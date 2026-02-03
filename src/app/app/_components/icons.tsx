@@ -156,4 +156,3 @@ export function IconFileText(props: { className?: string }) {
     </svg>
   );
 }
-

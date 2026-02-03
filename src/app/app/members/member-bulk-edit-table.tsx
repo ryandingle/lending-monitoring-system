@@ -156,7 +156,7 @@ export function MemberBulkEditTable({
                                     <tr key={m.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
                                         <td className="border-b border-r border-slate-800 px-3 py-2 font-medium transition-colors group-hover:border-blue-500/30">
                                             <Link href={`/app/members/${m.id}`} className="block truncate hover:text-blue-400 text-slate-100">
-                                                {m.firstName} {m.lastName}
+                                                {m.lastName}, {m.firstName}
                                             </Link>
                                             <div className="text-[10px] text-slate-500 uppercase tracking-tighter truncate">
                                                 {m.group?.name || "No Group"}
@@ -211,7 +211,7 @@ export function MemberBulkEditTable({
                                                     <form action={() => deleteMemberAction(m.id)} className="inline">
                                                         <ConfirmSubmitButton
                                                             title="Delete"
-                                                            confirmMessage={`Delete member "${m.firstName} ${m.lastName}"?`}
+                                                            confirmMessage={`Delete member "${m.lastName}, {m.firstName}"?`}
                                                             className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
                                                         >
                                                             <IconTrash className="h-4 w-4" />

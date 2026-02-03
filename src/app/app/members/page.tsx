@@ -211,7 +211,7 @@ export default async function MembersPage({
           group: { select: { id: true, name: true } },
           _count: { select: { balanceAdjustments: true } }
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { lastName: "asc" },
       }),
     ]);
 

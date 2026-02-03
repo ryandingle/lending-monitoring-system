@@ -31,7 +31,7 @@ export default async function ReportsPage({
       select: { id: true, name: true },
     }),
     prisma.member.findMany({
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      orderBy: { lastName: "asc" },
       select: { id: true, firstName: true, lastName: true },
     }),
   ]);
@@ -111,7 +111,7 @@ export default async function ReportsPage({
                 <tr key={m.id} className="hover:bg-slate-900/40">
                   <td className="py-2 pr-4 font-medium text-slate-100">
                     <Link href={`/app/members/${m.id}`} className="hover:underline">
-                      {m.firstName} {m.lastName}
+                      {m.lastName}, {m.firstName}
                     </Link>
                   </td>
                   <td className="py-2 pr-0 text-right">

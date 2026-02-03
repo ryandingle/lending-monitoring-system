@@ -86,7 +86,7 @@ export default async function GroupDetailsPage({
     include: {
       collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       members: {
-        orderBy: { createdAt: "desc" },
+        orderBy: { lastName: "asc" },
       },
     },
   });
@@ -238,7 +238,7 @@ export default async function GroupDetailsPage({
                 <tr key={m.id} className="hover:bg-slate-900/40">
                   <td className="py-2 pr-4 font-medium">
                     <Link href={`/app/members/${m.id}`} className="hover:underline">
-                      {m.firstName} {m.lastName}
+                      {m.lastName}, {m.firstName}
                     </Link>
                   </td>
                   <td className="py-2 pr-4 text-slate-300">{m.age ?? "-"}</td>
