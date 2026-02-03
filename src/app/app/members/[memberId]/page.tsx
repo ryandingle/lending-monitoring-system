@@ -20,7 +20,7 @@ const BalanceUpdateSchema = z.object({
 });
 
 const SavingsUpdateSchema = z.object({
-  type: z.enum(["INCREASE", "WITHDRAW", "APPLY_TO_BALANCE"]),
+  type: z.enum(["INCREASE", "WITHDRAW"]),
   amount: z.coerce.number().positive(),
 });
 
@@ -179,41 +179,14 @@ async function updateSavingsAction(memberId: string, formData: FormData) {
       if (type === "INCREASE") {
         savingsAfter = savingsBefore.plus(amount);
       } else {
-        // WITHDRAW or APPLY_TO_BALANCE both reduce savings
+        // WITHDRAW reduces savings
         if (savingsBefore.lessThan(amount)) {
           throw new Error("Withdrawal exceeds current savings");
         }
         savingsAfter = savingsBefore.minus(amount);
       }
 
-      // If applying savings to balance, also deduct balance (payment) and record it.
-      if (type === "APPLY_TO_BALANCE") {
-        const balanceBefore = member.balance;
-        if (balanceBefore.lessThan(amount)) {
-          throw new Error("Payment exceeds current balance");
-        }
-        const balanceAfter = balanceBefore.minus(amount);
 
-        await tx.balanceAdjustment.create({
-          data: {
-            memberId,
-            encodedById: user.id,
-            type: "DEDUCT",
-            amount: amount,
-            balanceBefore,
-            balanceAfter,
-          },
-        });
-
-        // Auto-increment daysCount when deducting balance (applying savings to balance)
-        await tx.member.update({
-          where: { id: memberId },
-          data: {
-            balance: balanceAfter,
-            daysCount: member.daysCount + 1,
-          },
-        });
-      }
 
       await tx.savingsAdjustment.create({
         data: {
@@ -243,7 +216,7 @@ async function updateSavingsAction(memberId: string, formData: FormData) {
           amount: amount.toFixed(2),
           savingsBefore: savingsBefore.toFixed(2),
           savingsAfter: savingsAfter.toFixed(2),
-          appliedToBalance: type === "APPLY_TO_BALANCE",
+
         },
         request,
       });
@@ -287,9 +260,18 @@ async function revertBalanceAdjustmentAction(adjustmentId: string, memberId: str
         newBalance = member.balance.plus(adjustment.amount);
       }
 
+      // Prepare update data
+      const updateData: any = { balance: newBalance };
+
+      // Decrement daysCount when reverting a DEDUCT adjustment
+      // (since we increment it when creating DEDUCT adjustments)
+      if (adjustment.type === "DEDUCT" && member.daysCount > 0) {
+        updateData.daysCount = member.daysCount - 1;
+      }
+
       await tx.member.update({
         where: { id: memberId },
-        data: { balance: newBalance },
+        data: updateData,
       });
 
       await tx.balanceAdjustment.delete({
@@ -671,7 +653,6 @@ export default async function MemberDetailPage({
                 >
                   <option value="INCREASE">Increase (+)</option>
                   <option value="WITHDRAW">Withdraw (-)</option>
-                  <option value="APPLY_TO_BALANCE">Apply to Balance</option>
                 </select>
               </div>
               <div className="md:col-span-2">
