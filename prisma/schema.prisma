@@ -111,6 +111,7 @@ model Member {
   phoneNumber         String?
   balance             Decimal  @db.Decimal(14, 2)
   savings             Decimal  @db.Decimal(14, 2) @default(0)
+  daysCount           Int      @default(0)
   savingsLastAccruedAt DateTime? @db.Date
   createdAt           DateTime @default(now()) @db.Timestamptz
   updatedAt           DateTime @updatedAt @db.Timestamptz

@@ -57,7 +57,7 @@ export default async function MembersPage({
     redirect("/app/members?deleted=1");
   }
 
-  async function onBulkUpdate(updates: { memberId: string; balanceDeduct: string; savingsIncrease: string }[]) {
+  async function onBulkUpdate(updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) {
     "use server";
     const actor = await requireUser();
     requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
@@ -73,12 +73,13 @@ export default async function MembersPage({
       for (const update of updates) {
         const member = await tx.member.findUnique({
           where: { id: update.memberId },
-          select: { id: true, firstName: true, lastName: true, balance: true, savings: true },
+          select: { id: true, firstName: true, lastName: true, balance: true, savings: true, daysCount: true },
         });
         if (!member) continue;
 
         const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
         const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+        const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
 
         if (balanceDeduct > 0) {
           const alreadyUpdated = await tx.balanceAdjustment.findFirst({
@@ -106,9 +107,16 @@ export default async function MembersPage({
             const balanceBefore = member.balance;
             const balanceAfter = balanceBefore.minus(balanceDeduct);
 
+            // Auto-increment daysCount if not manually set
+            const shouldIncrementDays = newDaysCount === null;
+            const finalDaysCount = shouldIncrementDays ? member.daysCount + 1 : newDaysCount;
+
             await tx.member.update({
               where: { id: member.id },
-              data: { balance: balanceAfter },
+              data: {
+                balance: balanceAfter,
+                daysCount: finalDaysCount,
+              },
             });
 
             await tx.balanceAdjustment.create({
@@ -121,6 +129,12 @@ export default async function MembersPage({
                 balanceAfter,
               },
             });
+
+            // Update newDaysCount to reflect what was actually saved
+            if (shouldIncrementDays) {
+              // This ensures the audit log shows the correct value
+              update.daysCount = String(finalDaysCount);
+            }
           }
         }
 
@@ -168,13 +182,21 @@ export default async function MembersPage({
           }
         }
 
-        if ((balanceDeduct > 0 || savingsIncrease > 0) && !errors.some(e => e.memberId === member.id)) {
+        // Update daysCount if provided
+        if (newDaysCount !== null && newDaysCount !== member.daysCount) {
+          await tx.member.update({
+            where: { id: member.id },
+            data: { daysCount: newDaysCount },
+          });
+        }
+
+        if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null) && !errors.some(e => e.memberId === member.id)) {
           await createAuditLog(tx, {
             actorUserId: actor.id,
             action: "MEMBER_BULK_UPDATE",
             entityType: "Member",
             entityId: member.id,
-            metadata: { balanceDeduct, savingsIncrease },
+            metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount },
             request,
           });
         }

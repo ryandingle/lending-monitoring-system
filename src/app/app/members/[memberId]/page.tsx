@@ -93,11 +93,15 @@ async function updateBalanceAction(memberId: string, formData: FormData) {
         },
       });
 
+      // Auto-increment daysCount when deducting balance
+      const updateData: any = { balance: after };
+      if (type === "DEDUCT") {
+        updateData.daysCount = member.daysCount + 1;
+      }
+
       await tx.member.update({
         where: { id: memberId },
-        data: {
-          balance: after,
-        },
+        data: updateData,
       });
 
       await createAuditLog(tx, {
@@ -201,10 +205,12 @@ async function updateSavingsAction(memberId: string, formData: FormData) {
           },
         });
 
+        // Auto-increment daysCount when deducting balance (applying savings to balance)
         await tx.member.update({
           where: { id: memberId },
           data: {
             balance: balanceAfter,
+            daysCount: member.daysCount + 1,
           },
         });
       }

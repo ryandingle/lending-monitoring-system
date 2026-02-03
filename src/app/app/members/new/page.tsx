@@ -15,6 +15,8 @@ const CreateMemberSchema = z.object({
   address: z.string().max(255).optional(),
   phoneNumber: z.string().max(50).optional(),
   balance: z.coerce.number(),
+  savings: z.coerce.number().default(0),
+  daysCount: z.coerce.number().int().min(0).default(0),
 });
 
 async function createMemberAction(formData: FormData) {
@@ -31,6 +33,8 @@ async function createMemberAction(formData: FormData) {
     address: String(formData.get("address") || "").trim() || undefined,
     phoneNumber: String(formData.get("phoneNumber") || "").trim() || undefined,
     balance: Number(formData.get("balance")),
+    savings: Number(formData.get("savings") || 0),
+    daysCount: Number(formData.get("daysCount") || 0),
   });
 
   if (!parsed.success) redirect("/app/members?created=0");
@@ -49,7 +53,8 @@ async function createMemberAction(formData: FormData) {
           address: parsed.data.address,
           phoneNumber: parsed.data.phoneNumber,
           balance: new Prisma.Decimal(parsed.data.balance.toFixed(2)),
-          savings: new Prisma.Decimal("0.00"),
+          savings: new Prisma.Decimal(parsed.data.savings.toFixed(2)),
+          daysCount: parsed.data.daysCount,
           // ensure accrual starts "next day"
           savingsLastAccruedAt: today,
         },
@@ -171,11 +176,21 @@ export default async function NewMemberPage() {
           <div>
             <label className="text-sm font-medium">Savings</label>
             <input
+              name="savings"
               type="number"
               step="0.01"
-              value="0.00"
-              readOnly
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400 outline-none"
+              defaultValue="0.00"
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Days Count</label>
+            <input
+              name="daysCount"
+              type="number"
+              min="0"
+              defaultValue="0"
+              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 

@@ -18,27 +18,27 @@
     "job:accrue-savings": "tsx scripts/accrue-savings.ts"
   },
   "dependencies": {
+    "@esbuild/linux-arm64": "^0.27.2",
     "@prisma/client": "6.19.0",
-    "bcryptjs": "^2.4.3",
-    "clsx": "^2.1.1",
-    "exceljs": "^4.4.0",
-    "next": "15.1.6",
     "@tailwindcss/postcss": "^4.0.0",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.40",
-    "tailwindcss": "^4.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.19.25",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.20",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
+    "exceljs": "^4.4.0",
+    "next": "15.1.6",
+    "postcss": "^8.4.40",
     "prisma": "6.19.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "tailwindcss": "^4.0.0",
     "tsx": "4.21.0",
     "typescript": "^5.9.3",
     "zod": "^4.1.13"
-  },
-  "devDependencies": {}
+  }
 }

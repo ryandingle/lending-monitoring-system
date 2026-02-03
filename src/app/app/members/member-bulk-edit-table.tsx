@@ -33,31 +33,35 @@ export function MemberBulkEditTable({
 }: {
     initialMembers: Member[];
     user: User;
-    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[] }>;
+    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[] }>;
     deleteMemberAction: (memberId: string) => Promise<void>;
     groupId?: string;
     groupName?: string;
 }) {
-    const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string }>>({});
+    const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string }>>({});
     const [errors, setErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const today = useMemo(() => new Date(), []);
 
-    const handleChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease", value: string) => {
-        // Only allow numbers and decimal point
-        if (value !== "" && !/^\d*\.?\d*$/.test(value)) return;
+    const handleChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount", value: string) => {
+        // Only allow numbers and decimal point for balance/savings, integers for daysCount
+        if (field === "daysCount") {
+            if (value !== "" && !/^\d*$/.test(value)) return;
+        } else {
+            if (value !== "" && !/^\d*\.?\d*$/.test(value)) return;
+        }
 
         setUpdates((prev) => ({
             ...prev,
             [memberId]: {
-                ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "" }),
+                ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "" }),
                 [field]: value,
             },
         }));
     };
 
-    const hasChanges = Object.values(updates).some((u) => u.balanceDeduct !== "" || u.savingsIncrease !== "");
+    const hasChanges = Object.values(updates).some((u) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.daysCount !== "");
 
     const handleSave = async () => {
         if (!hasChanges || isSaving) return;
@@ -66,11 +70,12 @@ export function MemberBulkEditTable({
         setShowSuccess(false);
         try {
             const payload = Object.entries(updates)
-                .filter(([_, u]) => u.balanceDeduct !== "" || u.savingsIncrease !== "")
+                .filter(([_, u]) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.daysCount !== "")
                 .map(([id, u]) => ({
                     memberId: id,
                     balanceDeduct: u.balanceDeduct || "0",
                     savingsIncrease: u.savingsIncrease || "0",
+                    daysCount: u.daysCount || "",
                 }));
             const result = await onBulkUpdate(payload);
             if (result.success) {
@@ -188,8 +193,15 @@ export function MemberBulkEditTable({
                                                 className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-emerald-900/50 focus:bg-emerald-500/10 rounded ${memberErrors.some(e => e.type === "savings") ? "text-red-400" : "text-emerald-400"}`}
                                             />
                                         </td>
-                                        <td className="border-b border-r border-slate-800 px-3 py-2 text-center font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
-                                            {m.daysCount}
+                                        <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 bg-slate-500/5`}>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={u.daysCount}
+                                                onChange={(e) => handleChange(m.id, "daysCount", e.target.value)}
+                                                placeholder={String(m.daysCount)}
+                                                className="w-full bg-transparent px-2 py-1 text-center font-mono outline-none placeholder:text-slate-600 focus:bg-slate-500/10 rounded text-slate-300"
+                                            />
                                         </td>
                                         <td className="border-b border-slate-800 px-3 py-2 transition-colors group-hover:border-blue-500/30">
                                             <div className="flex justify-end gap-1.5">
