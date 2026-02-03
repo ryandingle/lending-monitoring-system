@@ -4,6 +4,7 @@ import { EmployeePosition, Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
+import { SubmitButton } from "../_components/submit-button";
 import { z } from "zod";
 
 const POSITION_LABELS: Record<EmployeePosition, string> = {
@@ -157,33 +158,18 @@ export default async function EmployeesPage({
               placeholder="Search by name…"
               className="w-64 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             />
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <SubmitButton variant="secondary" loadingText="Searching...">
               Search
-            </button>
+            </SubmitButton>
           </form>
         </div>
 
-        {sp.created === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Employee added.
-          </div>
-        ) : sp.created === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not add employee (check inputs).
-          </div>
-        ) : sp.deleted === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Employee deleted.
-          </div>
-        ) : sp.deleted === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not delete employee.
-          </div>
-        ) : null}
 
         {canManage ? (
           <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-sm font-semibold text-slate-100">Add Employee</div>
+            <SubmitButton loadingText="Creating Employee...">
+              Add Employee
+            </SubmitButton>
             <form action={createEmployeeAction} className="mt-4 grid gap-3 md:grid-cols-4">
               <div>
                 <label className="text-sm font-medium text-slate-200">First Name</label>
@@ -222,9 +208,9 @@ export default async function EmployeesPage({
                 </select>
               </div>
               <div className="flex items-end">
-                <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                <SubmitButton loadingText="Adding...">
                   Add Employee
-                </button>
+                </SubmitButton>
               </div>
             </form>
           </div>

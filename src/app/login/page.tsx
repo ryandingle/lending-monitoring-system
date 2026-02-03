@@ -4,6 +4,8 @@ import { verifyPassword } from "@/lib/auth/password";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { LoginButton } from "./login-button";
+import { LoginToast } from "./login-toast";
 
 const LoginSchema = z.object({
   username: z.string().min(1),
@@ -49,6 +51,7 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
+      <LoginToast />
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* Left: Sign-in form */}
         <div className="relative flex items-center justify-center px-6 py-16">
@@ -77,11 +80,6 @@ export default async function LoginPage({
                 Enter your username and password to sign in.
               </p>
 
-              {showError ? (
-                <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-                  Invalid username or password.
-                </div>
-              ) : null}
 
               <form action={loginAction} className="mt-6 space-y-4">
                 <div className="space-y-1">
@@ -111,9 +109,7 @@ export default async function LoginPage({
                   />
                 </div>
 
-                <button className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">
-                  Sign In
-                </button>
+                <LoginButton />
               </form>
             </div>
           </div>

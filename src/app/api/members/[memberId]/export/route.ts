@@ -140,7 +140,7 @@ export async function GET(
 
   ws.getCell("A3").value = "Member Since";
   ws.getCell("A3").font = fontBoldIdx;
-  ws.getCell("B3").value = `${formatDateYMD(memberCreatedDate)} (${daysSince} ${daysSince === 1 ? "day" : "days"})`;
+  ws.getCell("B3").value = `${formatDateYMD(memberCreatedDate)} (${balanceAdjustments.length} ${balanceAdjustments.length === 1 ? "day" : "days"})`;
   ws.getCell("B3").alignment = alignLeft;
 
   // Row 4: report date

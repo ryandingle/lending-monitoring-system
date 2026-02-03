@@ -5,6 +5,7 @@ import { Role, BalanceUpdateType, SavingsUpdateType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { MemberBulkEditTable } from "./member-bulk-edit-table";
+import { SubmitButton } from "../_components/submit-button";
 import { revalidatePath } from "next/cache";
 
 export default async function MembersPage({
@@ -206,7 +207,10 @@ export default async function MembersPage({
       prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
       prisma.member.findMany({
         where,
-        include: { group: { select: { id: true, name: true } } },
+        include: {
+          group: { select: { id: true, name: true } },
+          _count: { select: { balanceAdjustments: true } }
+        },
         orderBy: { createdAt: "desc" },
       }),
     ]);
@@ -221,6 +225,7 @@ export default async function MembersPage({
     createdAt: m.createdAt.toISOString(),
     groupId: m.groupId,
     group: m.group ? { id: m.group.id, name: m.group.name } : null,
+    daysCount: m._count.balanceAdjustments,
   }));
 
   return (
@@ -249,23 +254,6 @@ export default async function MembersPage({
           </div>
         </div>
 
-        {sp.created === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Member added.
-          </div>
-        ) : sp.created === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not add member (check inputs).
-          </div>
-        ) : sp.deleted === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Member deleted.
-          </div>
-        ) : sp.deleted === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not delete member.
-          </div>
-        ) : null}
 
         <form method="get" className="mt-6 grid gap-3 md:grid-cols-6">
           <div className="md:col-span-3">
@@ -298,9 +286,9 @@ export default async function MembersPage({
             </select>
           </div>
           <div className="md:col-span-1 flex items-end">
-            <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <SubmitButton className="w-full" loadingText="Applying...">
               Apply
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

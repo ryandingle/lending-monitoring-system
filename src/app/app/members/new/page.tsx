@@ -5,6 +5,7 @@ import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { SubmitButton } from "../../_components/submit-button";
 
 const CreateMemberSchema = z.object({
   groupId: z.string().uuid(),
@@ -179,9 +180,9 @@ export default async function NewMemberPage() {
           </div>
 
           <div className="md:col-span-4">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <SubmitButton loadingText="Adding Member...">
               Add Member
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

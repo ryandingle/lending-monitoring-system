@@ -6,6 +6,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
+import { SubmitButton } from "../_components/submit-button";
 import { IconEye, IconPencil, IconTrash } from "../_components/icons";
 
 function clampInt(n: number, min: number, max: number) {
@@ -139,7 +140,6 @@ export default async function GroupsPage({
   }
 
   const collectionOfficers = await prisma.employee.findMany({
-    where: { position: "COLLECTION_OFFICER" },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     select: { id: true, firstName: true, lastName: true },
   });
@@ -178,24 +178,6 @@ export default async function GroupsPage({
           </div>
         </div>
 
-        {sp.created === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Group created.
-          </div>
-        ) : sp.created === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not create group (check inputs / unique name).
-          </div>
-        ) : sp.deleted === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Group deleted.
-          </div>
-        ) : sp.deleted === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not delete group.
-          </div>
-        ) : null}
-
         {canCreateGroup ? (
           <form action={createGroupAction} className="mt-6 grid gap-3 md:grid-cols-3">
             <div className="md:col-span-1">
@@ -228,9 +210,9 @@ export default async function GroupsPage({
               </select>
             </div>
             <div className="md:col-span-3">
-              <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              <SubmitButton loadingText="Creating Group...">
                 Add Group
-              </button>
+              </SubmitButton>
             </div>
           </form>
         ) : (
@@ -265,9 +247,9 @@ export default async function GroupsPage({
           </div>
           <input type="hidden" name="page" value="1" />
           <div className="md:col-span-6">
-            <button className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60">
+            <SubmitButton variant="secondary" loadingText="Applying...">
               Apply filters
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

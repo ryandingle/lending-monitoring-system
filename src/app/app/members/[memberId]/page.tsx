@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { ConfirmSubmitButton } from "../../_components/confirm-submit-button";
+import { SubmitButton } from "../../_components/submit-button";
 
 function clampInt(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -508,7 +509,7 @@ export default async function MemberDetailPage({
               {member.firstName} {member.lastName}
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              {countBusinessDays(member.createdAt, new Date())} days in system (excl. weekends)
+              {totalBalanceUpdates} days in system
               {" · "}
               Group:{" "}
               {member.group ? (
@@ -627,9 +628,9 @@ export default async function MemberDetailPage({
                 />
               </div>
               <div className="md:col-span-2 flex items-end">
-                <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                <SubmitButton className="w-full" loadingText="Saving...">
                   Save Balance Update
-                </button>
+                </SubmitButton>
               </div>
             </form>
           ) : (
@@ -677,9 +678,9 @@ export default async function MemberDetailPage({
                 />
               </div>
               <div className="md:col-span-2 flex items-end">
-                <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                <SubmitButton className="w-full" loadingText="Saving...">
                   Save Savings Update
-                </button>
+                </SubmitButton>
               </div>
             </form>
           ) : (

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { PageLoader } from "./page-loader";
+import { ToastContainer } from "./toast-container";
 import type { AuthUser } from "@/lib/auth/session";
 
 export function AppShell({
@@ -77,6 +79,8 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <PageLoader />
+      <ToastContainer />
       {overlay}
 
       <div className="flex min-h-screen">

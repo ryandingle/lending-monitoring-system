@@ -5,7 +5,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { ModalAlert } from "../../../_components/modal-alert";
+import { SubmitButton } from "../../../_components/submit-button";
 
 const UpdateGroupSchema = z.object({
   name: z.string().min(1).max(120),
@@ -78,7 +78,6 @@ export default async function EditGroupPage({
 
   const [collectionOfficers, group] = await Promise.all([
     prisma.employee.findMany({
-      where: { position: "COLLECTION_OFFICER" },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
     }),
@@ -114,12 +113,6 @@ export default async function EditGroupPage({
           </div>
         </div>
 
-        {sp.saved === "0" ? (
-          <ModalAlert
-            title="Could not save changes"
-            message="Please check your inputs (including unique group name) and try again."
-          />
-        ) : null}
 
         <form action={updateGroupAction.bind(null, groupId)} className="mt-6 grid gap-3 md:grid-cols-3">
           <div className="md:col-span-1">
@@ -156,9 +149,9 @@ export default async function EditGroupPage({
           </div>
 
           <div className="md:col-span-3 mt-2 flex flex-wrap items-center gap-2">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <SubmitButton loadingText="Saving...">
               Save changes
-            </button>
+            </SubmitButton>
             <Link
               href={`/app/groups/${groupId}`}
               className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"

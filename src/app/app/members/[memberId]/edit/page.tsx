@@ -5,7 +5,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { ModalAlert } from "../../../_components/modal-alert";
+import { SubmitButton } from "../../../_components/submit-button";
 
 const UpdateMemberSchema = z.object({
   groupId: z.string().uuid().optional(),
@@ -149,12 +149,6 @@ export default async function EditMemberPage({
           </div>
         </div>
 
-        {sp.saved === "0" ? (
-          <ModalAlert
-            title="Could not save changes"
-            message="Please check your inputs and try again."
-          />
-        ) : null}
 
         <form
           action={updateMemberAction.bind(null, memberId)}
@@ -221,9 +215,9 @@ export default async function EditMemberPage({
           </div>
 
           <div className="md:col-span-4 mt-2 flex flex-wrap items-center gap-2">
-            <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <SubmitButton loadingText="Saving...">
               Save changes
-            </button>
+            </SubmitButton>
             <Link
               href={`/app/members/${memberId}`}
               className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"

@@ -16,6 +16,7 @@ interface Member {
     createdAt: string;
     groupId: string | null;
     group?: { id: string; name: string } | null;
+    daysCount: number;
 }
 
 interface User {
@@ -188,7 +189,7 @@ export function MemberBulkEditTable({
                                             />
                                         </td>
                                         <td className="border-b border-r border-slate-800 px-3 py-2 text-center font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
-                                            {countBusinessDays(memberCreatedAt, today)}
+                                            {m.daysCount}
                                         </td>
                                         <td className="border-b border-slate-800 px-3 py-2 transition-colors group-hover:border-blue-500/30">
                                             <div className="flex justify-end gap-1.5">
