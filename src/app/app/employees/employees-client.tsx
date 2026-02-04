@@ -43,6 +43,19 @@ export function EmployeesClient({
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    action: (() => Promise<void>) | null;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    action: null,
+  });
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -137,22 +150,35 @@ export function EmployeesClient({
   };
 
   const handleDelete = async (employee: Employee) => {
-    if (!confirm(`Are you sure you want to DELETE employee "${employee.firstName} ${employee.lastName}"?`)) return;
+    setConfirmation({
+      isOpen: true,
+      title: "Delete Employee",
+      message: `Are you sure you want to delete employee "${employee.firstName} ${employee.lastName}"? This action cannot be undone.`,
+      action: async () => {
+        try {
+          const res = await fetch(`/api/employees/${employee.id}`, {
+            method: "DELETE",
+          });
 
-    try {
-      const res = await fetch(`/api/employees/${employee.id}`, {
-        method: "DELETE",
-      });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to delete employee");
+          }
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete employee");
+          setEmployees(employees.filter(e => e.id !== employee.id));
+          setConfirmation(prev => ({ ...prev, isOpen: false }));
+        } catch (error: any) {
+          alert(error.message);
+        }
       }
+    });
+  };
 
-      setEmployees(employees.filter(e => e.id !== employee.id));
-    } catch (error: any) {
-      alert(error.message);
-    }
+  const handleConfirmAction = async () => {
+    if (!confirmation.action) return;
+    setIsConfirming(true);
+    await confirmation.action();
+    setIsConfirming(false);
   };
 
   const handleGroupToggle = (groupId: string) => {
@@ -367,6 +393,46 @@ export function EmployeesClient({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Confirmation Modal */}
+      {confirmation.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-100">{confirmation.title}</h2>
+              <button
+                onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <IconX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-300">
+              {confirmation.message}
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                disabled={isConfirming}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={isConfirming}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:opacity-50"
+              >
+                {isConfirming ? "Confirming..." : "Confirm"}
+              </button>
+            </div>
           </div>
         </div>
       )}
