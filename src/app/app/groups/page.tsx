@@ -197,7 +197,7 @@ export default async function GroupsPage({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="text-sm font-medium">Collection Officer (optional)</label>
+              <label className="text-sm font-medium">Assigned Officer (optional)</label>
               <select
                 name="collectionOfficerId"
                 className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
@@ -329,32 +329,32 @@ export default async function GroupsPage({
                       >
                         <IconPencil className="h-4 w-4" />
                       </Link>
-                    {canDeleteGroup ? (
-                      <form action={deleteGroupAction.bind(null, g.id)}>
-                        <ConfirmSubmitButton
-                          title="Delete group"
-                          confirmMessage={`Delete group "${g.name}"? Members in this group will NOT be deleted; they will become unassigned.`}
-                          className="rounded-lg border border-red-900/50 bg-red-950/30 p-2 text-red-200 hover:bg-red-950/50"
-                        >
-                          <IconTrash className="h-4 w-4" />
-                        </ConfirmSubmitButton>
-                      </form>
-                    ) : null}
-                  </div>
-                </td>
+                      {canDeleteGroup ? (
+                        <form action={deleteGroupAction.bind(null, g.id)}>
+                          <ConfirmSubmitButton
+                            title="Delete group"
+                            confirmMessage={`Delete group "${g.name}"? Members in this group will NOT be deleted; they will become unassigned.`}
+                            className="rounded-lg border border-red-900/50 bg-red-950/30 p-2 text-red-200 hover:bg-red-950/50"
+                          >
+                            <IconTrash className="h-4 w-4" />
+                          </ConfirmSubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
-            {groups.length === 0 ? (
-              <tr>
-                <td className="py-4 text-slate-400" colSpan={6}>
-                  No groups yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+              {groups.length === 0 ? (
+                <tr>
+                  <td className="py-4 text-slate-400" colSpan={6}>
+                    No groups yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
     </div >
   );
 }

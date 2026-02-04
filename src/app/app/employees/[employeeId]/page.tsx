@@ -188,7 +188,7 @@ export default async function EmployeeDetailsPage({
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-slate-200">Assign Groups (Collection Officer)</label>
+                        <label className="text-sm font-medium text-slate-200">Assign Groups</label>
                         <div className="mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
                             <div className="space-y-2">
                                 {groups.map((group) => (

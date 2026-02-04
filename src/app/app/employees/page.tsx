@@ -226,7 +226,7 @@ export default async function EmployeesPage({
                 </select>
               </div>
               <div className="md:col-span-4">
-                <label className="text-sm font-medium text-slate-200">Assign Groups (Collection Officer)</label>
+                <label className="text-sm font-medium text-slate-200">Assign Groups</label>
                 <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
                   <div className="space-y-2">
                     {groups.map((group) => (
@@ -249,7 +249,7 @@ export default async function EmployeesPage({
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  Select groups this employee will manage as a Collection Officer. Only applies if position is Collection Officer.
+                  Select groups this employee will manage.
                 </p>
               </div>
 
@@ -294,24 +294,20 @@ export default async function EmployeesPage({
                     {POSITION_LABELS[e.position]}
                   </td>
                   <td className="py-2 pr-4">
-                    {e.position === "COLLECTION_OFFICER" ? (
-                      <div className="flex flex-wrap gap-1">
-                        {e.groupsAsCollectionOfficer.length > 0 ? (
-                          e.groupsAsCollectionOfficer.map((g) => (
-                            <span
-                              key={g.id}
-                              className="inline-flex items-center rounded-md bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-300 ring-1 ring-inset ring-blue-700/50"
-                            >
-                              {g.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-slate-500">—</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {e.groupsAsCollectionOfficer.length > 0 ? (
+                        e.groupsAsCollectionOfficer.map((g) => (
+                          <span
+                            key={g.id}
+                            className="inline-flex items-center rounded-md bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-300 ring-1 ring-inset ring-blue-700/50"
+                          >
+                            {g.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-2 pr-4 text-slate-400">
                     {e.createdAt.toISOString().slice(0, 10)}
