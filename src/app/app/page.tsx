@@ -27,6 +27,10 @@ export default async function DashboardPage({
   searchParams: Promise<{ error?: string; from?: string; to?: string }>;
 }) {
   const user = await requireUser();
+  if (user.role === Role.ENCODER) {
+    redirect("/app/groups");
+  }
+
   const sp = await searchParams;
 
   // Dates for filtering

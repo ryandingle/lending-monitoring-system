@@ -454,36 +454,50 @@ export default async function MemberDetailPage({
   const totalPages = Math.max(1, Math.ceil(totalAccrualCount / pageSize));
   const safePage = Math.min(page, totalPages);
 
+  // Helper to build URLs preserving other params
+  const buildUrl = (updates: Record<string, string | number>) => {
+    const p = new URLSearchParams();
+    // Add existing params
+    Object.entries(sp).forEach(([k, v]) => {
+      if (v !== undefined) p.set(k, v);
+    });
+    // Apply updates
+    Object.entries(updates).forEach(([k, v]) => {
+      p.set(k, String(v));
+    });
+    return `/app/members/${memberId}?${p.toString()}`;
+  };
+
   // Use member.daysCount from database instead of counting balance adjustments
   const totalBalanceUpdates = member.daysCount;
 
   const accruedTotal = accrualSum._sum.amount ?? 0;
 
   const prevHref =
-    safePage > 1 ? `/app/members/${memberId}?page=${safePage - 1}&pageSize=${pageSize}` : undefined;
+    safePage > 1 ? buildUrl({ page: safePage - 1, pageSize }) : undefined;
   const nextHref =
-    safePage < totalPages ? `/app/members/${memberId}?page=${safePage + 1}&pageSize=${pageSize}` : undefined;
+    safePage < totalPages ? buildUrl({ page: safePage + 1, pageSize }) : undefined;
 
   const totalBalancePages = Math.max(1, Math.ceil(totalBalanceUpdates / balancePageSize));
   const safeBalancePage = Math.min(balancePage, totalBalancePages);
   const prevBalanceHref =
     safeBalancePage > 1
-      ? `/app/members/${memberId}?balancePage=${safeBalancePage - 1}&balancePageSize=${balancePageSize}`
+      ? buildUrl({ balancePage: safeBalancePage - 1, balancePageSize })
       : undefined;
   const nextBalanceHref =
     safeBalancePage < totalBalancePages
-      ? `/app/members/${memberId}?balancePage=${safeBalancePage + 1}&balancePageSize=${balancePageSize}`
+      ? buildUrl({ balancePage: safeBalancePage + 1, balancePageSize })
       : undefined;
 
   const totalSavingsPages = Math.max(1, Math.ceil(totalSavingsUpdates / savingsPageSize));
   const safeSavingsPage = Math.min(savingsPage, totalSavingsPages);
   const prevSavingsHref =
     safeSavingsPage > 1
-      ? `/app/members/${memberId}?savingsPage=${safeSavingsPage - 1}&savingsPageSize=${savingsPageSize}`
+      ? buildUrl({ savingsPage: safeSavingsPage - 1, savingsPageSize })
       : undefined;
   const nextSavingsHref =
     safeSavingsPage < totalSavingsPages
-      ? `/app/members/${memberId}?savingsPage=${safeSavingsPage + 1}&savingsPageSize=${savingsPageSize}`
+      ? buildUrl({ savingsPage: safeSavingsPage + 1, savingsPageSize })
       : undefined;
 
   return (

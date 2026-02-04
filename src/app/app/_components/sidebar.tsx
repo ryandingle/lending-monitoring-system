@@ -42,9 +42,13 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
             </div>
           )}
           <div className="space-y-1">
-            <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
+            {user.role !== Role.ENCODER ? (
+              <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
+            ) : null}
             <NavLink href="/app/groups" label={isCollapsed ? "" : "Groups"} icon={<IconFolder />} />
-            <NavLink href="/app/members" label={isCollapsed ? "" : "Members"} icon={<IconUsers />} />
+            {user.role !== Role.ENCODER ? (
+              <NavLink href="/app/members" label={isCollapsed ? "" : "Members"} icon={<IconUsers />} />
+            ) : null}
             {user.role === Role.SUPER_ADMIN ? (
               <NavLink href="/app/employees" label={isCollapsed ? "" : "Employees"} icon={<IconBriefcase />} />
             ) : null}

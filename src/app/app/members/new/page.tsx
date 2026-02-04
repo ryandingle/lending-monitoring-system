@@ -23,7 +23,7 @@ async function createMemberAction(formData: FormData) {
   "use server";
 
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN]);
 
   const parsed = CreateMemberSchema.safeParse({
     groupId: String(formData.get("groupId") || ""),
@@ -66,25 +66,27 @@ async function createMemberAction(formData: FormData) {
         entityType: "Member",
         entityId: member.id,
         metadata: {
-          groupId: member.groupId,
+          groupId: parsed.data.groupId,
           firstName: member.firstName,
           lastName: member.lastName,
           balance: member.balance.toFixed(2),
+          savings: member.savings.toFixed(2),
+          daysCount: member.daysCount,
           phoneNumber: member.phoneNumber ?? null,
         },
         request,
       });
     });
   } catch {
-    redirect("/app/members?created=0");
+    redirect(`/app/groups/${parsed.data.groupId}?created=0`);
   }
 
-  redirect("/app/members?created=1");
+  redirect(`/app/groups/${parsed.data.groupId}?created=1`);
 }
 
 export default async function NewMemberPage() {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN]);
 
   const groups = await prisma.group.findMany({
     orderBy: { name: "asc" },
@@ -96,8 +98,8 @@ export default async function NewMemberPage() {
       <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Link href="/app/members" className="text-sm text-slate-400 hover:underline">
-              ← Back to Members
+            <Link href="/app/groups" className="text-sm text-slate-400 hover:underline">
+              ← Back to Groups
             </Link>
             <h1 className="mt-2 text-xl font-semibold text-slate-100">Add Member</h1>
             <p className="mt-1 text-sm text-slate-400">

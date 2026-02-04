@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { hashToken, randomToken } from "./crypto";
 import type { Role, User } from "@prisma/client";
@@ -115,7 +115,7 @@ export async function requireUser() {
 
 export function requireRole(user: AuthUser, roles: Role[]) {
   if (!roles.includes(user.role)) {
-    redirect("/app?error=forbidden");
+    notFound();
   }
 }
 

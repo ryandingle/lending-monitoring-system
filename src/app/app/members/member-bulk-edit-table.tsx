@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Role } from "@prisma/client";
 import { countBusinessDays } from "@/lib/date";
 import { IconEye, IconPencil, IconTrash } from "../_components/icons";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
+import { PaginationControls } from "../_components/pagination-controls";
 
-interface Member {
+export interface Member {
     id: string;
     firstName: string;
     lastName: string;
@@ -17,6 +19,9 @@ interface Member {
     groupId: string | null;
     group?: { id: string; name: string } | null;
     daysCount: number;
+    age?: number | null;
+    address?: string | null;
+    phoneNumber?: string | null;
 }
 
 interface User {
@@ -30,6 +35,10 @@ export function MemberBulkEditTable({
     deleteMemberAction,
     groupId,
     groupName,
+    pagination,
+    sort,
+    onEditMember,
+    onDeleteMember,
 }: {
     initialMembers: Member[];
     user: User;
@@ -37,12 +46,43 @@ export function MemberBulkEditTable({
     deleteMemberAction: (memberId: string) => Promise<void>;
     groupId?: string;
     groupName?: string;
+    pagination?: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+    };
+    sort?: "asc" | "desc";
+    onEditMember?: (member: Member) => void;
+    onDeleteMember?: (member: Member) => void;
 }) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    
     const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string }>>({});
     const [errors, setErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const today = useMemo(() => new Date(), []);
+    
+    // Clear updates when page/sort/limit changes to avoid applying updates to wrong rows if they shift
+    useEffect(() => {
+        setUpdates({});
+        setErrors([]);
+        setShowSuccess(false);
+    }, [pagination?.page, pagination?.limit, sort, groupId]);
+
+    const updateUrl = (params: Record<string, string | number | null>) => {
+        const newParams = new URLSearchParams(searchParams.toString());
+        Object.entries(params).forEach(([key, value]) => {
+            if (value === null) {
+                newParams.delete(key);
+            } else {
+                newParams.set(key, String(value));
+            }
+        });
+        router.push(`${pathname}?${newParams.toString()}`);
+    };
 
     const handleChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount", value: string) => {
         // Only allow numbers and decimal point for balance/savings, integers for daysCount
@@ -142,7 +182,20 @@ export function MemberBulkEditTable({
                     <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
                         <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
                             <tr>
-                                <th className="w-48 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300">Member</th>
+                                <th 
+                                    className="w-48 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 cursor-pointer hover:bg-slate-800 transition-colors select-none"
+                                    onClick={() => updateUrl({ sort: sort === "asc" ? "desc" : "asc", page: 1 })}
+                                    title="Click to sort by Last Name"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span>Member</span>
+                                        {sort && (
+                                            <span className="text-[10px] text-blue-400">
+                                                {sort === "asc" ? "▲" : "▼"}
+                                            </span>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="w-28 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-right">Balance</th>
                                 <th className="w-24 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-blue-400 text-right">Deduct (-)</th>
                                 <th className="w-28 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-right">Savings</th>
@@ -212,23 +265,43 @@ export function MemberBulkEditTable({
                                                 >
                                                     <IconEye className="h-4 w-4" />
                                                 </Link>
-                                                <Link
-                                                    href={`/app/members/${m.id}/edit`}
-                                                    title="Edit"
-                                                    className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
-                                                >
-                                                    <IconPencil className="h-4 w-4" />
-                                                </Link>
+                                                {onEditMember ? (
+                                                    <button
+                                                        onClick={() => onEditMember(m)}
+                                                        title="Edit"
+                                                        className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                    >
+                                                        <IconPencil className="h-4 w-4" />
+                                                    </button>
+                                                ) : (
+                                                    <Link
+                                                        href={`/app/members/${m.id}/edit`}
+                                                        title="Edit"
+                                                        className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                    >
+                                                        <IconPencil className="h-4 w-4" />
+                                                    </Link>
+                                                )}
                                                 {user.role === Role.SUPER_ADMIN ? (
-                                                    <form action={() => deleteMemberAction(m.id)} className="inline">
-                                                        <ConfirmSubmitButton
+                                                    onDeleteMember ? (
+                                                        <button
+                                                            onClick={() => onDeleteMember(m)}
                                                             title="Delete"
-                                                            confirmMessage={`Delete member "${m.lastName}, ${m.firstName}"?`}
                                                             className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
                                                         >
                                                             <IconTrash className="h-4 w-4" />
-                                                        </ConfirmSubmitButton>
-                                                    </form>
+                                                        </button>
+                                                    ) : (
+                                                        <form action={() => deleteMemberAction(m.id)} className="inline">
+                                                            <ConfirmSubmitButton
+                                                                title="Delete"
+                                                                confirmMessage={`Delete member "${m.lastName}, ${m.firstName}"?`}
+                                                                className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
+                                                            >
+                                                                <IconTrash className="h-4 w-4" />
+                                                            </ConfirmSubmitButton>
+                                                        </form>
+                                                    )
                                                 ) : null}
                                             </div>
                                         </td>
@@ -238,7 +311,7 @@ export function MemberBulkEditTable({
                             {initialMembers.length === 0 ? (
                                 <tr>
                                     <td className="py-12 text-center text-slate-500 italic" colSpan={7}>
-                                        {user.role === Role.ENCODER && !groupId
+                                        {!groupId
                                             ? "Select a group to load member data..."
                                             : "No matching records found."}
                                     </td>
@@ -248,6 +321,17 @@ export function MemberBulkEditTable({
                     </table>
                 </div>
             </div>
+            {pagination && pagination.totalPages > 0 && (
+                <PaginationControls
+                    currentPage={pagination.page}
+                    totalItems={pagination.totalCount}
+                    pageSize={pagination.limit}
+                    onPageChange={(p) => updateUrl({ page: p })}
+                    onPageSizeChange={(l) => updateUrl({ limit: l, page: 1 })}
+                    pageSizeOptions={[50, 100, 200, 500, 1000]}
+                    className="border-t border-slate-800 bg-slate-900/40 px-4 py-3 rounded-2xl"
+                />
+            )}
         </div>
     );
 }

@@ -2,82 +2,10 @@ import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import Link from "next/link";
-import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { SubmitButton } from "../../_components/submit-button";
 import { revalidatePath } from "next/cache";
-import { MemberBulkEditTable } from "../../members/member-bulk-edit-table";
-
-const CreateMemberSchema = z.object({
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-  age: z.coerce.number().int().min(0).max(150).optional(),
-  address: z.string().max(255).optional(),
-  phoneNumber: z.string().max(50).optional(),
-  balance: z.coerce.number(),
-  savings: z.coerce.number().default(0),
-  daysCount: z.coerce.number().int().min(0).default(0),
-});
-
-async function createMemberAction(groupId: string, formData: FormData) {
-  "use server";
-
-  const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
-
-  const parsed = CreateMemberSchema.safeParse({
-    firstName: String(formData.get("firstName") || "").trim(),
-    lastName: String(formData.get("lastName") || "").trim(),
-    age: formData.get("age") ? Number(formData.get("age")) : undefined,
-    address: String(formData.get("address") || "").trim() || undefined,
-    phoneNumber: String(formData.get("phoneNumber") || "").trim() || undefined,
-    balance: Number(formData.get("balance")),
-    savings: Number(formData.get("savings") || 0),
-    daysCount: Number(formData.get("daysCount") || 0),
-  });
-  if (!parsed.success) redirect(`/app/groups/${groupId}?created=0`);
-
-  const today = new Date();
-
-  const request = await tryGetAuditRequestContext();
-  await prisma.$transaction(async (tx) => {
-    const member = await tx.member.create({
-      data: {
-        groupId,
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        age: parsed.data.age,
-        address: parsed.data.address,
-        phoneNumber: parsed.data.phoneNumber,
-        balance: new Prisma.Decimal(parsed.data.balance.toFixed(2)),
-        savings: new Prisma.Decimal(parsed.data.savings.toFixed(2)),
-        daysCount: parsed.data.daysCount,
-        // ensure accrual starts "next day"
-        savingsLastAccruedAt: today,
-      },
-    });
-
-    await createAuditLog(tx, {
-      actorUserId: user.id,
-      action: "MEMBER_CREATE",
-      entityType: "Member",
-      entityId: member.id,
-      metadata: {
-        groupId,
-        firstName: member.firstName,
-        lastName: member.lastName,
-        balance: member.balance.toFixed(2),
-        savings: member.savings.toFixed(2),
-        daysCount: member.daysCount,
-        phoneNumber: member.phoneNumber ?? null,
-      },
-      request,
-    });
-  });
-
-  redirect(`/app/groups/${groupId}?created=1`);
-}
+import { GroupDetailsClient } from "./group-details-client";
 
 async function deleteMemberAction(groupId: string, memberId: string) {
   "use server";
@@ -262,22 +190,49 @@ export default async function GroupDetailsPage({
   searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ 
+    created?: string;
+    page?: string;
+    limit?: string;
+    sort?: string;
+  }>;
 }) {
   const user = await requireUser();
   requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
   const { groupId } = await params;
   const sp = await searchParams;
 
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    include: {
-      collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
-      members: {
-        orderBy: { lastName: "asc" },
+  const page = parseInt(sp.page ?? "1") || 1;
+  const limit = parseInt(sp.limit ?? "50") || 50;
+  const sort = (sp.sort === "desc" ? "desc" : "asc") as "asc" | "desc";
+
+  const [group, members, totalCount, allGroups] = await Promise.all([
+    prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       },
-    },
-  });
+    }),
+    prisma.member.findMany({
+      where: { groupId },
+      include: {
+        _count: {
+          select: {
+            balanceAdjustments: true,
+            savingsAdjustments: true,
+          },
+        },
+      },
+      orderBy: { lastName: sort },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.member.count({ where: { groupId } }),
+    prisma.group.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!group) {
     return (
@@ -293,8 +248,9 @@ export default async function GroupDetailsPage({
   }
 
   const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
+  const totalPages = Math.ceil(totalCount / limit);
 
-  const plainMembers = group.members.map((m) => ({
+  const plainMembers = members.map((m) => ({
     id: m.id,
     firstName: m.firstName,
     lastName: m.lastName,
@@ -304,140 +260,27 @@ export default async function GroupDetailsPage({
     groupId: m.groupId,
     group: { id: group.id, name: group.name },
     daysCount: m.daysCount,
+    age: m.age,
+    address: m.address,
+    phoneNumber: m.phoneNumber,
+    _count: {
+      balanceAdjustments: m._count.balanceAdjustments,
+      savingsAdjustments: m._count.savingsAdjustments,
+    },
   }));
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Link href="/app/groups" className="text-sm text-slate-400 hover:underline">
-              ← Back to Groups
-            </Link>
-            <h1 className="mt-2 text-xl font-semibold text-slate-100">{group.name}</h1>
-            <p className="mt-1 text-sm text-slate-400">{group.description ?? "-"}</p>
-            {group.collectionOfficer ? (
-              <p className="mt-1 text-sm text-slate-400">
-                Collection officer: {group.collectionOfficer.firstName}{" "}
-                {group.collectionOfficer.lastName}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <Link
-              href={`/app/members?groupId=${group.id}`}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
-            >
-              View in Members page
-            </Link>
-          </div>
-        </div>
-
-        {sp.created === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
-            Member added.
-          </div>
-        ) : sp.created === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            Could not add member (check inputs).
-          </div>
-        ) : null}
-
-        {canAddMember ? (
-          <form
-            action={createMemberAction.bind(null, groupId)}
-            className="mt-6 grid gap-3 md:grid-cols-4"
-          >
-            <div>
-              <label className="text-sm font-medium">Firstname</label>
-              <input
-                name="firstName"
-                required
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Lastname</label>
-              <input
-                name="lastName"
-                required
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Age (optional)</label>
-              <input
-                name="age"
-                type="number"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Phone (optional)</label>
-              <input
-                name="phoneNumber"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium">Address (optional)</label>
-              <input
-                name="address"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Balance</label>
-              <input
-                name="balance"
-                type="number"
-                step="0.01"
-                required
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Savings</label>
-              <input
-                name="savings"
-                type="number"
-                step="0.01"
-                defaultValue="0.00"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Days in System</label>
-              <input
-                name="daysCount"
-                type="number"
-                min="0"
-                defaultValue="0"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-            <div className="md:col-span-4">
-              <SubmitButton loadingText="Adding Member...">
-                Add Member
-              </SubmitButton>
-            </div>
-          </form>
-        ) : (
-          <div className="mt-6 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-300">
-            You don’t have permission to add members.
-          </div>
-        )}
-      </div>
-
-      <MemberBulkEditTable
-        initialMembers={plainMembers}
-        user={{ role: user.role }}
-        onBulkUpdate={onBulkUpdate.bind(null, groupId)}
-        deleteMemberAction={deleteMemberAction.bind(null, groupId)}
-        groupId={groupId}
-        groupName={group.name}
-      />
-    </div>
+    <GroupDetailsClient
+      group={group}
+      groups={allGroups}
+      initialMembers={plainMembers}
+      userRole={user.role}
+      onBulkUpdate={onBulkUpdate.bind(null, groupId)}
+      deleteMemberAction={deleteMemberAction.bind(null, groupId)}
+      pagination={{ page, limit, totalCount, totalPages }}
+      sort={sort}
+      createdStatus={sp.created}
+    />
   );
 }
 

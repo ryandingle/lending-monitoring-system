@@ -20,7 +20,7 @@ async function updateMemberAction(memberId: string, formData: FormData) {
   "use server";
 
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(actor, [Role.SUPER_ADMIN]);
 
   const groupIdRaw = String(formData.get("groupId") || "").trim();
   const parsed = UpdateMemberSchema.safeParse({
