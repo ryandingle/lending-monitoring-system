@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { EmployeePosition, Role } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -23,6 +24,7 @@ const CreateEmployeeSchema = z.object({
     "UNIT_MANAGER",
     "OPERATIONS_MANAGER",
   ]),
+  assignedGroupIds: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 async function createEmployeeAction(formData: FormData) {
@@ -31,10 +33,14 @@ async function createEmployeeAction(formData: FormData) {
   const user = await requireUser();
   requireRole(user, [Role.SUPER_ADMIN]);
 
+  const rawGroupIds = formData.getAll("assignedGroupIds");
+  const assignedGroupIds = rawGroupIds.map(String).filter(Boolean);
+
   const parsed = CreateEmployeeSchema.safeParse({
     firstName: String(formData.get("firstName") || "").trim(),
     lastName: String(formData.get("lastName") || "").trim(),
     position: String(formData.get("position") || ""),
+    assignedGroupIds,
   });
 
   if (!parsed.success) redirect("/app/employees?created=0");
@@ -48,7 +54,11 @@ async function createEmployeeAction(formData: FormData) {
           firstName: parsed.data!.firstName,
           lastName: parsed.data!.lastName,
           position: parsed.data!.position,
+          groupsAsCollectionOfficer: {
+            connect: assignedGroupIds.map((id) => ({ id })),
+          },
         },
+        include: { groupsAsCollectionOfficer: true },
       });
 
       await createAuditLog(tx, {
@@ -60,6 +70,8 @@ async function createEmployeeAction(formData: FormData) {
           firstName: employee.firstName,
           lastName: employee.lastName,
           position: employee.position,
+          assignedGroupIds,
+          assignedGroupNames: employee.groupsAsCollectionOfficer.map(g => g.name).join(", "),
         },
         request,
       });
@@ -128,18 +140,24 @@ export default async function EmployeesPage({
       }
       : {};
 
-  const employees = await prisma.employee.findMany({
-    where,
-    include: {
-      groupsAsCollectionOfficer: {
-        select: {
-          id: true,
-          name: true,
+  const [employees, groups] = await Promise.all([
+    prisma.employee.findMany({
+      where,
+      include: {
+        groupsAsCollectionOfficer: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.group.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, collectionOfficerId: true },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -207,7 +225,35 @@ export default async function EmployeesPage({
                   )}
                 </select>
               </div>
-              <div className="flex items-end">
+              <div className="md:col-span-4">
+                <label className="text-sm font-medium text-slate-200">Assign Groups (Collection Officer)</label>
+                <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
+                  <div className="space-y-2">
+                    {groups.map((group) => (
+                      <label key={group.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="assignedGroupIds"
+                          value={group.id}
+                          className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-600/20"
+                        />
+                        <span className="text-sm text-slate-300">{group.name}</span>
+                        {group.collectionOfficerId ? (
+                          <span className="text-xs text-slate-500">(Has officer)</span>
+                        ) : null}
+                      </label>
+                    ))}
+                    {groups.length === 0 && (
+                      <div className="text-xs text-slate-500">No groups available.</div>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Select groups this employee will manage as a Collection Officer. Only applies if position is Collection Officer.
+                </p>
+              </div>
+
+              <div className="md:col-span-4 flex items-end">
                 <SubmitButton loadingText="Adding...">
                   Add Employee
                 </SubmitButton>
@@ -272,7 +318,13 @@ export default async function EmployeesPage({
                   </td>
                   {canManage ? (
                     <td className="py-2 pr-0">
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/app/employees/${e.id}`}
+                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700"
+                        >
+                          Edit
+                        </Link>
                         <form action={deleteEmployeeAction.bind(null, e.id)}>
                           <ConfirmSubmitButton
                             confirmMessage={`Delete employee "${e.firstName} ${e.lastName}"?`}

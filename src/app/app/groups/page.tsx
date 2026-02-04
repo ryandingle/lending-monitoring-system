@@ -88,6 +88,7 @@ export default async function GroupsPage({
   requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
   const sp = await searchParams;
   const canCreateGroup = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
+  const canDeleteGroup = user.role === Role.SUPER_ADMIN;
 
   const q = (sp.q ?? "").trim();
   const page = clampInt(Number(sp.page ?? "1") || 1, 1, 10_000);
@@ -328,6 +329,7 @@ export default async function GroupsPage({
                       >
                         <IconPencil className="h-4 w-4" />
                       </Link>
+                    {canDeleteGroup ? (
                       <form action={deleteGroupAction.bind(null, g.id)}>
                         <ConfirmSubmitButton
                           title="Delete group"
@@ -337,22 +339,23 @@ export default async function GroupsPage({
                           <IconTrash className="h-4 w-4" />
                         </ConfirmSubmitButton>
                       </form>
-                    </div>
-                  </td>
+                    ) : null}
+                  </div>
+                </td>
                 </tr>
               ))}
-              {groups.length === 0 ? (
-                <tr>
-                  <td className="py-4 text-slate-400" colSpan={6}>
-                    No groups yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+            {groups.length === 0 ? (
+              <tr>
+                <td className="py-4 text-slate-400" colSpan={6}>
+                  No groups yet.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
     </div>
+    </div >
   );
 }
 

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { SubmitButton } from "../../_components/submit-button";
+import { revalidatePath } from "next/cache";
+import { MemberBulkEditTable } from "../../members/member-bulk-edit-table";
 
 const CreateMemberSchema = z.object({
   firstName: z.string().min(1).max(80),
@@ -13,6 +16,8 @@ const CreateMemberSchema = z.object({
   address: z.string().max(255).optional(),
   phoneNumber: z.string().max(50).optional(),
   balance: z.coerce.number(),
+  savings: z.coerce.number().default(0),
+  daysCount: z.coerce.number().int().min(0).default(0),
 });
 
 async function createMemberAction(groupId: string, formData: FormData) {
@@ -28,6 +33,8 @@ async function createMemberAction(groupId: string, formData: FormData) {
     address: String(formData.get("address") || "").trim() || undefined,
     phoneNumber: String(formData.get("phoneNumber") || "").trim() || undefined,
     balance: Number(formData.get("balance")),
+    savings: Number(formData.get("savings") || 0),
+    daysCount: Number(formData.get("daysCount") || 0),
   });
   if (!parsed.success) redirect(`/app/groups/${groupId}?created=0`);
 
@@ -44,7 +51,8 @@ async function createMemberAction(groupId: string, formData: FormData) {
         address: parsed.data.address,
         phoneNumber: parsed.data.phoneNumber,
         balance: new Prisma.Decimal(parsed.data.balance.toFixed(2)),
-        savings: new Prisma.Decimal("0.00"),
+        savings: new Prisma.Decimal(parsed.data.savings.toFixed(2)),
+        daysCount: parsed.data.daysCount,
         // ensure accrual starts "next day"
         savingsLastAccruedAt: today,
       },
@@ -60,6 +68,8 @@ async function createMemberAction(groupId: string, formData: FormData) {
         firstName: member.firstName,
         lastName: member.lastName,
         balance: member.balance.toFixed(2),
+        savings: member.savings.toFixed(2),
+        daysCount: member.daysCount,
         phoneNumber: member.phoneNumber ?? null,
       },
       request,
@@ -67,6 +77,184 @@ async function createMemberAction(groupId: string, formData: FormData) {
   });
 
   redirect(`/app/groups/${groupId}?created=1`);
+}
+
+async function deleteMemberAction(groupId: string, memberId: string) {
+  "use server";
+  const actor = await requireUser();
+  requireRole(actor, [Role.SUPER_ADMIN]);
+
+  try {
+    const request = await tryGetAuditRequestContext();
+    await prisma.$transaction(async (tx) => {
+      const member = await tx.member.findUnique({
+        where: { id: memberId },
+        select: { id: true, firstName: true, lastName: true, groupId: true },
+      });
+      if (!member) return;
+
+      await tx.member.delete({ where: { id: memberId } });
+
+      await createAuditLog(tx, {
+        actorUserId: actor.id,
+        action: "MEMBER_DELETE",
+        entityType: "Member",
+        entityId: member.id,
+        metadata: { firstName: member.firstName, lastName: member.lastName, groupId: member.groupId },
+        request,
+      });
+    });
+  } catch {
+    redirect(`/app/groups/${groupId}?deleted=0`);
+  }
+  revalidatePath(`/app/groups/${groupId}`);
+  redirect(`/app/groups/${groupId}?deleted=1`);
+}
+
+async function onBulkUpdate(groupId: string, updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) {
+  "use server";
+  const actor = await requireUser();
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+
+  const request = await tryGetAuditRequestContext();
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (const update of updates) {
+      const member = await tx.member.findUnique({
+        where: { id: update.memberId },
+        select: { id: true, firstName: true, lastName: true, balance: true, savings: true, daysCount: true },
+      });
+      if (!member) continue;
+
+      const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
+      const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+      const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
+
+      if (balanceDeduct > 0) {
+        const alreadyUpdated = await tx.balanceAdjustment.findFirst({
+          where: {
+            memberId: member.id,
+            createdAt: { gte: startOfToday },
+          },
+        });
+
+        if (alreadyUpdated) {
+          await createAuditLog(tx, {
+            actorUserId: actor.id,
+            action: "ATTEMPT_MULTIPLE_BALANCE_UPDATE",
+            entityType: "Member",
+            entityId: member.id,
+            metadata: { attempt: balanceDeduct, memberName: `${member.firstName} ${member.lastName}` },
+            request,
+          });
+          errors.push({
+            memberId: member.id,
+            type: "balance",
+            message: `Balance for ${member.firstName} has already been updated today.`
+          });
+        } else {
+          const balanceBefore = member.balance;
+          const balanceAfter = balanceBefore.minus(balanceDeduct);
+
+          const shouldIncrementDays = newDaysCount === null;
+          const finalDaysCount = shouldIncrementDays ? member.daysCount + 1 : newDaysCount;
+
+          await tx.member.update({
+            where: { id: member.id },
+            data: {
+              balance: balanceAfter,
+              daysCount: finalDaysCount,
+            },
+          });
+
+          await tx.balanceAdjustment.create({
+            data: {
+              memberId: member.id,
+              encodedById: actor.id,
+              type: "DEDUCT",
+              amount: balanceDeduct,
+              balanceBefore,
+              balanceAfter,
+            },
+          });
+
+          if (shouldIncrementDays) {
+            update.daysCount = String(finalDaysCount);
+          }
+        }
+      }
+
+      if (savingsIncrease > 0) {
+        const alreadyUpdated = await tx.savingsAdjustment.findFirst({
+          where: {
+            memberId: member.id,
+            createdAt: { gte: startOfToday },
+          },
+        });
+
+        if (alreadyUpdated) {
+          await createAuditLog(tx, {
+            actorUserId: actor.id,
+            action: "ATTEMPT_MULTIPLE_SAVINGS_UPDATE",
+            entityType: "Member",
+            entityId: member.id,
+            metadata: { attempt: savingsIncrease, memberName: `${member.firstName} ${member.lastName}` },
+            request,
+          });
+          errors.push({
+            memberId: member.id,
+            type: "savings",
+            message: `Savings for ${member.firstName} has already been updated today.`
+          });
+        } else {
+          const savingsBefore = member.savings;
+          const savingsAfter = savingsBefore.plus(savingsIncrease);
+
+          await tx.member.update({
+            where: { id: member.id },
+            data: { savings: savingsAfter },
+          });
+
+          await tx.savingsAdjustment.create({
+            data: {
+              memberId: member.id,
+              encodedById: actor.id,
+              type: "INCREASE",
+              amount: savingsIncrease,
+              savingsBefore,
+              savingsAfter,
+            },
+          });
+        }
+      }
+
+      if (newDaysCount !== null && newDaysCount !== member.daysCount) {
+        await tx.member.update({
+          where: { id: member.id },
+          data: { daysCount: newDaysCount },
+        });
+      }
+
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null) && !errors.some(e => e.memberId === member.id)) {
+        await createAuditLog(tx, {
+          actorUserId: actor.id,
+          action: "MEMBER_BULK_UPDATE",
+          entityType: "Member",
+          entityId: member.id,
+          metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount },
+          request,
+        });
+      }
+    }
+  });
+
+  revalidatePath(`/app/groups/${groupId}`);
+  return { success: errors.length === 0, errors };
 }
 
 export default async function GroupDetailsPage({
@@ -105,6 +293,18 @@ export default async function GroupDetailsPage({
   }
 
   const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
+
+  const plainMembers = group.members.map((m) => ({
+    id: m.id,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    balance: Number(m.balance),
+    savings: Number(m.savings),
+    createdAt: m.createdAt.toISOString(),
+    groupId: m.groupId,
+    group: { id: group.id, name: group.name },
+    daysCount: m.daysCount,
+  }));
 
   return (
     <div className="space-y-6">
@@ -199,17 +399,27 @@ export default async function GroupDetailsPage({
             <div>
               <label className="text-sm font-medium">Savings</label>
               <input
+                name="savings"
                 type="number"
                 step="0.01"
-                value="0.00"
-                readOnly
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400 outline-none"
+                defaultValue="0.00"
+                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Days in System</label>
+              <input
+                name="daysCount"
+                type="number"
+                min="0"
+                defaultValue="0"
+                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <div className="md:col-span-4">
-              <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              <SubmitButton loadingText="Adding Member...">
                 Add Member
-              </button>
+              </SubmitButton>
             </div>
           </form>
         ) : (
@@ -219,48 +429,14 @@ export default async function GroupDetailsPage({
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-100">Members</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
-              <tr>
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Age</th>
-                <th className="py-2 pr-4">Phone</th>
-                <th className="py-2 pr-4">Balance</th>
-                <th className="py-2 pr-4">Savings</th>
-                <th className="py-2 pr-4">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {group.members.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium">
-                    <Link href={`/app/members/${m.id}`} className="hover:underline">
-                      {m.lastName}, {m.firstName}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4 text-slate-300">{m.age ?? "-"}</td>
-                  <td className="py-2 pr-4 text-slate-300">{m.phoneNumber ?? "-"}</td>
-                  <td className="py-2 pr-4 text-slate-300">{m.balance.toFixed(2)}</td>
-                  <td className="py-2 pr-4 text-slate-300">{m.savings.toFixed(2)}</td>
-                  <td className="py-2 pr-4 text-slate-400">
-                    {m.createdAt.toISOString().slice(0, 10)}
-                  </td>
-                </tr>
-              ))}
-              {group.members.length === 0 ? (
-                <tr>
-                  <td className="py-4 text-slate-400" colSpan={6}>
-                    No members yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <MemberBulkEditTable
+        initialMembers={plainMembers}
+        user={{ role: user.role }}
+        onBulkUpdate={onBulkUpdate.bind(null, groupId)}
+        deleteMemberAction={deleteMemberAction.bind(null, groupId)}
+        groupId={groupId}
+        groupName={group.name}
+      />
     </div>
   );
 }
