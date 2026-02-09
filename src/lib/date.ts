@@ -98,6 +98,21 @@ export function getReportPreset2Weeks(): { from: string; to: string } {
   return { from: formatDateYMD(monPrev), to: formatDateYMD(fri) };
 }
 
+/**
+ * Adjusts the date to the next Monday if it falls on a weekend (Saturday or Sunday).
+ * Otherwise returns the date as is.
+ */
+export function adjustDateForWeekend(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  if (day === 6) { // Saturday
+    d.setDate(d.getDate() + 2);
+  } else if (day === 0) { // Sunday
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
 /** 1 month: First day of current month to last day of current month (Manila time) */
 export function getReportPreset1Month(): { from: string; to: string } {
   const today = getManilaToday();

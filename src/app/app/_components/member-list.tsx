@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { IconSearch, IconPencil, IconTrash, IconChevronUp, IconChevronDown, IconPlus, IconX, IconEye } from "./icons";
 import { PaginationControls } from "./pagination-controls";
@@ -32,6 +32,16 @@ export type Member = {
     balanceAdjustments: number;
     savingsAdjustments: number;
   };
+  latestCycle?: {
+    cycleNumber: number;
+    startDate?: string | null;
+    endDate?: string | null;
+  } | null;
+  cycles?: {
+    cycleNumber: number;
+    startDate?: string | null;
+    endDate?: string | null;
+  }[];
 };
 
 export type Group = {
@@ -47,6 +57,7 @@ interface MemberListProps {
   initialGroupId?: string;
   fixedGroupId?: string;
   showTitle?: boolean;
+  initialDays?: number;
 }
 
 export function MemberList({
@@ -57,6 +68,7 @@ export function MemberList({
   initialGroupId,
   fixedGroupId,
   showTitle = true,
+  initialDays,
 }: MemberListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,12 +79,14 @@ export function MemberList({
   const [limit, setLimit] = useState(50);
   const [search, setSearch] = useState("");
   const [groupId, setGroupId] = useState(fixedGroupId || initialGroupId || "");
+  const [daysFilter, setDaysFilter] = useState(initialDays?.toString() || "0");
   const [sort, setSort] = useState<"asc" | "desc">("asc");
   const [isLoading, setIsLoading] = useState(false);
   
   // Bulk Edit State
   const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string }>>({});
   const [bulkErrors, setBulkErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
+  const [bulkWarnings, setBulkWarnings] = useState<{ memberId: string; message: string }[]>([]);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState(false);
 
@@ -128,27 +142,16 @@ export function MemberList({
     balance: "0",
     savings: "0",
     daysCount: "0",
+    cycles: [] as { cycleNumber: string; startDate: string; endDate: string }[],
   });
 
   const canCreate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
-  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit) => {
+  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter) => {
     // If fixedGroupId is set, always use it
     const effectiveGroupId = fixedGroupId || g;
-
-    if (!effectiveGroupId && !q) {
-      if (!fixedGroupId) {
-         // Only clear if we are not in fixed group mode (where we expect to show all members of that group)
-         // Wait, original logic: if (!g && !q) setMembers([]). 
-         // If fixedGroupId is set, effectiveGroupId is set, so we proceed.
-         setMembers([]);
-         setTotal(0);
-         setIsLoading(false);
-         return;
-      }
-    }
 
     setIsLoading(true);
     try {
@@ -158,6 +161,7 @@ export function MemberList({
       if (q) params.set("q", q);
       if (effectiveGroupId) params.set("groupId", effectiveGroupId);
       if (s) params.set("sort", s);
+      if (d && d !== "0") params.set("days", d);
 
       const res = await fetch(`/api/members?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch members");
@@ -168,6 +172,7 @@ export function MemberList({
       // Clear updates when data refreshes
       setUpdates({});
       setBulkErrors([]);
+      setBulkWarnings([]);
       setBulkSuccess(false);
     } catch (error) {
       console.error(error);
@@ -180,17 +185,27 @@ export function MemberList({
   useEffect(() => {
     const timer = setTimeout(() => {
         setPage(1);
-        fetchMembers(1, search, groupId, sort);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter);
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
 
+  const isMounted = useRef(false);
   useEffect(() => {
-    if (!fixedGroupId && groupId !== (searchParams.get("groupId") || "")) {
+    if (isMounted.current && !fixedGroupId) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter);
+    } else {
+        isMounted.current = true;
     }
   }, [groupId]);
+
+  useEffect(() => {
+    if (isMounted.current) {
+        setPage(1);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter);
+    }
+  }, [daysFilter]);
 
   useEffect(() => {
       // If fixedGroupId changes (unlikely) or on mount
@@ -202,13 +217,13 @@ export function MemberList({
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    fetchMembers(newPage, search, groupId, sort);
+    fetchMembers(newPage, search, groupId, sort, limit, daysFilter);
   };
 
   const handleSortToggle = () => {
     const newSort = sort === "asc" ? "desc" : "asc";
     setSort(newSort);
-    fetchMembers(1, search, groupId, newSort);
+    fetchMembers(1, search, groupId, newSort, limit, daysFilter);
   };
 
   // Bulk Update Handlers
@@ -232,6 +247,7 @@ export function MemberList({
     if (Object.keys(updates).length === 0 || isBulkSaving) return;
     setIsBulkSaving(true);
     setBulkErrors([]);
+    setBulkWarnings([]);
     setBulkSuccess(false);
 
     try {
@@ -253,9 +269,11 @@ export function MemberList({
         if (result.success) {
             setBulkSuccess(true);
             setUpdates({});
+            setBulkWarnings(result.warnings || []);
             fetchMembers(); // Refresh data
         } else {
             setBulkErrors(result.errors || []);
+            setBulkWarnings(result.warnings || []);
              // Refresh data to show partial updates if any
             fetchMembers();
         }
@@ -443,8 +461,31 @@ export function MemberList({
   };
 
   // CRUD Handlers
-  const handleOpenModal = (member?: Member) => {
+  const handleOpenModal = async (member?: Member) => {
     setEditingMember(member || null);
+
+    let initialCycles: { cycleNumber: string; startDate: string; endDate: string }[] = [];
+    
+    // If we have a member, try to use their cycles, fallback to latestCycle
+    if (member) {
+        // If the member object already has cycles (from View modal or specialized fetch), use them
+        if (member.cycles && member.cycles.length > 0) {
+            initialCycles = member.cycles.map(c => ({
+                cycleNumber: c.cycleNumber.toString(),
+                startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : "",
+                endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : ""
+            }));
+        } 
+        // Fallback to latestCycle if available
+        else if (member.latestCycle) {
+            initialCycles = [{
+                cycleNumber: member.latestCycle.cycleNumber.toString(),
+                startDate: member.latestCycle.startDate ? new Date(member.latestCycle.startDate).toISOString().split('T')[0] : "",
+                endDate: member.latestCycle.endDate ? new Date(member.latestCycle.endDate).toISOString().split('T')[0] : ""
+            }];
+        }
+    }
+
     setFormData({
         firstName: member?.firstName || "",
         lastName: member?.lastName || "",
@@ -455,9 +496,34 @@ export function MemberList({
         balance: member?.balance?.toString() || "0",
         savings: member?.savings?.toString() || "0",
         daysCount: member?.daysCount?.toString() || "0",
+        cycles: initialCycles,
     });
     setModalError(null);
     setIsModalOpen(true);
+
+    // If editing, fetch full details to ensure we have all cycles
+    if (member) {
+        try {
+            const res = await fetch(`/api/members/${member.id}`);
+            if (res.ok) {
+                const fullMember = await res.json();
+                if (fullMember.cycles && fullMember.cycles.length > 0) {
+                    const fetchedCycles = fullMember.cycles.map((c: any) => ({
+                        cycleNumber: c.cycleNumber.toString(),
+                        startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : "",
+                        endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : ""
+                    })).sort((a: any, b: any) => parseInt(a.cycleNumber) - parseInt(b.cycleNumber));
+                    
+                    setFormData(prev => ({
+                        ...prev,
+                        cycles: fetchedCycles
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch full member details for editing", error);
+        }
+    }
   };
 
   const handleCloseModal = () => {
@@ -484,6 +550,11 @@ export function MemberList({
                 balance: Number(formData.balance),
                 savings: Number(formData.savings),
                 daysCount: Number(formData.daysCount),
+                cycles: formData.cycles.map(c => ({
+                    cycleNumber: Number(c.cycleNumber),
+                    startDate: c.startDate,
+                    endDate: c.endDate
+                })).filter(c => c.cycleNumber)
             }),
         });
 
@@ -535,8 +606,8 @@ export function MemberList({
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-6">
-                <div className="md:col-span-3">
+            <div className="mt-6 grid gap-3 md:grid-cols-4">
+                <div className="md:col-span-2">
                     <label className="text-sm font-medium text-slate-300">Search</label>
                     <div className="relative mt-1">
                         <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -549,26 +620,48 @@ export function MemberList({
                     </div>
                 </div>
                 {!fixedGroupId && (
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-1">
                       <label className="text-sm font-medium text-slate-300">Group</label>
                       <select
                           value={groupId}
                           onChange={(e) => setGroupId(e.target.value)}
                           className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       >
-                          <option value="">Select Group</option>
+                          <option value="">All Groups</option>
                           {initialGroups.map(g => (
                               <option key={g.id} value={g.id}>{g.name}</option>
                           ))}
                       </select>
                   </div>
                 )}
+                <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300">Days</label>
+                    <select
+                        value={daysFilter}
+                        onChange={(e) => setDaysFilter(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                        <option value="0">All Days</option>
+                        <option value="40">40+ Days</option>
+                    </select>
+                </div>
             </div>
         </div>
 
         {bulkSuccess && (
             <div className="rounded-md bg-green-900/50 p-4 text-green-200">
                 Bulk update successful!
+            </div>
+        )}
+
+        {bulkWarnings.length > 0 && (
+            <div className="rounded-md bg-yellow-900/50 p-4 text-yellow-200">
+                <p className="font-bold">Warnings:</p>
+                <ul className="list-disc pl-5 text-sm">
+                    {bulkWarnings.map((w, i) => (
+                        <li key={i}>{w.message}</li>
+                    ))}
+                </ul>
             </div>
         )}
         
@@ -616,19 +709,18 @@ export function MemberList({
                         <tr>
                             <th className="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-900" onClick={handleSortToggle}>
                                 <div className="flex items-center gap-1">
-                                    Last Name
+                                    Member
                                     {sort === "asc" ? <IconChevronUp className="h-3 w-3" /> : <IconChevronDown className="h-3 w-3" />}
                                 </div>
                             </th>
-                            <th className="px-4 py-3 font-semibold">First Name</th>
                             {!fixedGroupId && <th className="px-4 py-3 font-semibold">Group</th>}
-                            <th className="px-4 py-3 font-semibold text-right">Balance</th>
-                            <th className="px-4 py-3 font-semibold text-right">Savings</th>
-                            <th className="px-4 py-3 font-semibold text-center">Days</th>
+                            <th className="px-4 py-3 font-semibold text-right">Balance Amount</th>
+                            <th className="px-4 py-3 font-semibold text-right">Savings Amount</th>
+                            <th className="px-4 py-3 font-semibold text-center"># of Days</th>
                             {canBulkUpdate && (
                                 <>
-                                    <th className="px-4 py-3 font-semibold w-24">Deduct</th>
-                                    <th className="px-4 py-3 font-semibold w-24">Save</th>
+                                    <th className="px-4 py-3 font-semibold w-24">Payment</th>
+                                    <th className="px-4 py-3 font-semibold w-24">Savings</th>
                                     <th className="px-4 py-3 font-semibold w-20">Days</th>
                                 </>
                             )}
@@ -638,27 +730,26 @@ export function MemberList({
                     <tbody className="divide-y divide-slate-800">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                                     Loading members...
                                 </td>
                             </tr>
                         ) : members.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                                     No members found.
                                 </td>
                             </tr>
                         ) : (
                             members.map((member) => (
                                 <tr key={member.id} className="hover:bg-slate-800/50">
-                                    <td className="px-4 py-3 font-medium text-slate-200">{member.lastName}</td>
-                                    <td className="px-4 py-3 text-slate-300">{member.firstName}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-200">{member.lastName}, {member.firstName}</td>
                                     {!fixedGroupId && <td className="px-4 py-3 text-slate-300">{member.group?.name || "-"}</td>}
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
-                                        {Number(member.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        {Number(member.balance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
-                                        {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
                                     <td className="px-4 py-3 text-center text-slate-300">{member.daysCount}</td>
                                     
@@ -667,7 +758,7 @@ export function MemberList({
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
-                                                    placeholder="0.00"
+                                                    placeholder="0"
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
                                                     value={updates[member.id]?.balanceDeduct || ""}
                                                     onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
@@ -676,7 +767,7 @@ export function MemberList({
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
-                                                    placeholder="0.00"
+                                                    placeholder="0"
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
                                                     value={updates[member.id]?.savingsIncrease || ""}
                                                     onChange={(e) => handleBulkChange(member.id, "savingsIncrease", e.target.value)}
@@ -764,6 +855,28 @@ export function MemberList({
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
+                                                <div className="text-xs text-slate-500">Current Cycle</div>
+                                                <div className="text-slate-300">
+                                                    {viewMember.latestCycle ? `#${viewMember.latestCycle.cycleNumber}` : "-"}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-slate-500">Status</div>
+                                                <div className="text-slate-300">
+                                                    {viewMember.latestCycle ? (
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                            viewMember.latestCycle.endDate 
+                                                                ? "bg-slate-800 text-slate-400" 
+                                                                : "bg-emerald-950/30 text-emerald-400"
+                                                        }`}>
+                                                            {viewMember.latestCycle.endDate ? "Completed" : "Active"}
+                                                        </span>
+                                                    ) : "-"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
                                                 <div className="text-xs text-slate-500">Age</div>
                                                 <div className="text-slate-300">{viewMember.age || "-"}</div>
                                             </div>
@@ -779,6 +892,34 @@ export function MemberList({
                                     </div>
                                 </div>
 
+                                <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                                    <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Cycle History</h3>
+                                    {viewMember.cycles && viewMember.cycles.length > 0 ? (
+                                        <div className="overflow-hidden rounded-lg border border-slate-800">
+                                            <table className="w-full text-left text-sm text-slate-400">
+                                                <thead className="bg-slate-900 text-xs uppercase text-slate-500">
+                                                    <tr>
+                                                        <th className="px-3 py-2 font-medium">Cycle</th>
+                                                        <th className="px-3 py-2 font-medium">Start</th>
+                                                        <th className="px-3 py-2 font-medium">End</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-800 bg-slate-950/30">
+                                                    {viewMember.cycles.map((cycle) => (
+                                                        <tr key={cycle.cycleNumber}>
+                                                            <td className="px-3 py-2 text-slate-300">#{cycle.cycleNumber}</td>
+                                                            <td className="px-3 py-2">{cycle.startDate ? new Date(cycle.startDate).toLocaleDateString() : "-"}</td>
+                                                            <td className="px-3 py-2">{cycle.endDate ? new Date(cycle.endDate).toLocaleDateString() : "-"}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 text-sm text-slate-500">No cycle history available</div>
+                                    )}
+                                </div>
+
                                 <div className="space-y-6">
                                     <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                                         <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Financials</h3>
@@ -786,20 +927,20 @@ export function MemberList({
                                             <div className="rounded-lg bg-indigo-950/20 p-3 border border-indigo-900/30">
                                                 <div className="text-xs text-indigo-400">Balance</div>
                                                 <div className="text-xl font-bold text-indigo-200">
-                                                    {Number(viewMember.balance).toLocaleString('en-US', { style: 'currency', currency: 'PHP' })}
+                                                    {Number(viewMember.balance).toLocaleString('en-US', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })}
                                                 </div>
                                             </div>
                                             <div className="rounded-lg bg-emerald-950/20 p-3 border border-emerald-900/30">
                                                 <div className="text-xs text-emerald-400">Savings</div>
                                                 <div className="text-xl font-bold text-emerald-200">
-                                                    {Number(viewMember.savings).toLocaleString('en-US', { style: 'currency', currency: 'PHP' })}
+                                                    {Number(viewMember.savings).toLocaleString('en-US', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* Manual Adjustment Form */}
-                                    {userRole === Role.SUPER_ADMIN && (
+                                {userRole === Role.SUPER_ADMIN && (
                                     <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                                         <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">New Adjustment</h3>
                                         <div className="space-y-3">
@@ -851,8 +992,7 @@ export function MemberList({
                                             </div>
                                         </div>
                                     </div>
-                                    )}
-                                </div>
+                                )}
                             </div>
 
                             {/* History Tables */}
@@ -998,25 +1138,25 @@ export function MemberList({
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    First Name <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.firstName}
-                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
                                     Last Name <span className="text-red-400">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.lastName}
-                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })}
+                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                    First Name <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formData.firstName}
+                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })}
                                     className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
@@ -1122,6 +1262,101 @@ export function MemberList({
                                 )}
                             </div>
                         </div>
+
+                        <div className="border-t border-slate-800 pt-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-slate-100">Cycle Information</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const maxCycle = formData.cycles.length > 0 
+                                            ? Math.max(...formData.cycles.map(c => parseInt(c.cycleNumber || "0"))) 
+                                            : (editingMember ? parseInt(editingMember.latestCycle?.cycleNumber?.toString() || "0") : 0);
+                                        
+                                        setFormData({
+                                            ...formData,
+                                            cycles: [
+                                                ...formData.cycles, 
+                                                { 
+                                                    cycleNumber: (maxCycle + 1).toString(), 
+                                                    startDate: new Date().toISOString().split('T')[0],
+                                                    endDate: ""
+                                                }
+                                            ]
+                                        });
+                                    }}
+                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                >
+                                    <IconPlus className="h-3 w-3" /> Add Cycle
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                {formData.cycles.map((cycle, index) => (
+                                    <div key={index} className="grid gap-4 md:grid-cols-3 relative group items-start">
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                                Cycle Number
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={cycle.cycleNumber}
+                                                onChange={(e) => {
+                                                    const newCycles = [...formData.cycles];
+                                                    newCycles[index].cycleNumber = e.target.value;
+                                                    setFormData({ ...formData, cycles: newCycles });
+                                                }}
+                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                                Start Date
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={cycle.startDate}
+                                                onChange={(e) => {
+                                                    const newCycles = [...formData.cycles];
+                                                    newCycles[index].startDate = e.target.value;
+                                                    setFormData({ ...formData, cycles: newCycles });
+                                                }}
+                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                                End Date
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={cycle.endDate}
+                                                onChange={(e) => {
+                                                    const newCycles = [...formData.cycles];
+                                                    newCycles[index].endDate = e.target.value;
+                                                    setFormData({ ...formData, cycles: newCycles });
+                                                }}
+                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                            />
+                                            {formData.cycles.length > 1 && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const newCycles = formData.cycles.filter((_, i) => i !== index);
+                                                        setFormData({ ...formData, cycles: newCycles });
+                                                    }} 
+                                                    className="absolute -right-6 top-8 text-slate-500 hover:text-red-400"
+                                                    title="Remove cycle"
+                                                >
+                                                    <IconTrash className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
 
                         <div className="mt-6 flex justify-end gap-3 pt-2 border-t border-slate-800">
                             <button

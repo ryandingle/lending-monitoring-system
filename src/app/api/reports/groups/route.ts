@@ -17,7 +17,13 @@ export async function GET(req: NextRequest) {
       // @ts-ignore
       where,
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { 
+        id: true, 
+        name: true,
+        _count: {
+          select: { members: true }
+        }
+      },
       skip: (page - 1) * limit,
       take: limit,
     }),

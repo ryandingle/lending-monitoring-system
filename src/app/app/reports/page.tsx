@@ -33,7 +33,13 @@ export default async function ReportsPage({
   const [groups, totalGroups, members, totalMembers] = await Promise.all([
     prisma.group.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { 
+        id: true, 
+        name: true,
+        _count: {
+          select: { members: true }
+        }
+      },
       skip: 0,
       take: limit,
     }),

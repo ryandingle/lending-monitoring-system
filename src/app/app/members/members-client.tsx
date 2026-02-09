@@ -9,6 +9,7 @@ interface MembersClientProps {
   initialGroups: Group[];
   userRole: Role;
   initialGroupId?: string;
+  initialDays?: number;
 }
 
 export function MembersClient({
@@ -17,6 +18,7 @@ export function MembersClient({
   initialGroups,
   userRole,
   initialGroupId,
+  initialDays,
 }: MembersClientProps) {
   return (
     <MemberList
@@ -25,6 +27,7 @@ export function MembersClient({
       initialGroups={initialGroups}
       userRole={userRole}
       initialGroupId={initialGroupId}
+      initialDays={initialDays}
     />
   );
 }

@@ -15,6 +15,11 @@ const UpdateMemberSchema = z.object({
   balance: z.coerce.number().optional(),
   savings: z.coerce.number().optional(),
   daysCount: z.coerce.number().int().min(0).optional(),
+  cycles: z.array(z.object({
+    cycleNumber: z.coerce.number().int().min(1),
+    startDate: z.string().optional(),
+    endDate: z.string().optional()
+  })).optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ memberId: string }> }) {
@@ -32,6 +37,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         savingsAdjustments: {
             orderBy: { createdAt: "desc" },
             include: { encodedBy: { select: { name: true } } }
+        },
+        cycles: {
+            orderBy: { cycleNumber: "desc" },
         }
       }
     });
@@ -58,6 +66,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         savingsBefore: Number(adj.savingsBefore),
         savingsAfter: Number(adj.savingsAfter),
         createdAt: adj.createdAt.toISOString(),
+      })),
+      latestCycle: member.cycles[0] || null,
+      cycles: member.cycles.map(c => ({
+        cycleNumber: c.cycleNumber,
+        startDate: c.startDate ? c.startDate.toISOString() : null,
+        endDate: c.endDate ? c.endDate.toISOString() : null,
       })),
     };
 
@@ -93,8 +107,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
         where: { id: memberId },
         data: {
           groupId: parsed.data.groupId,
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
+          firstName: parsed.data.firstName ? parsed.data.firstName.toUpperCase() : undefined,
+          lastName: parsed.data.lastName ? parsed.data.lastName.toUpperCase() : undefined,
           age: parsed.data.age,
           address: parsed.data.address,
           phoneNumber: parsed.data.phoneNumber,
@@ -125,6 +139,33 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
         },
         request,
       });
+
+      if (parsed.data.cycles && parsed.data.cycles.length > 0) {
+        for (const cycle of parsed.data.cycles) {
+          const existingCycle = await tx.memberCycle.findFirst({
+            where: { memberId, cycleNumber: cycle.cycleNumber },
+          });
+
+          if (existingCycle) {
+            await tx.memberCycle.update({
+              where: { id: existingCycle.id },
+              data: { 
+                startDate: cycle.startDate ? new Date(cycle.startDate) : null,
+                endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+              },
+            });
+          } else {
+            await tx.memberCycle.create({
+              data: {
+                memberId,
+                cycleNumber: cycle.cycleNumber,
+                startDate: cycle.startDate ? new Date(cycle.startDate) : null,
+                endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+              },
+            });
+          }
+        }
+      }
 
       return updated;
     });

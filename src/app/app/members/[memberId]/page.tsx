@@ -40,6 +40,8 @@ async function updateBalanceAction(memberId: string, formData: FormData) {
   const amount = new Prisma.Decimal(parsed.data.amount.toFixed(2));
   const type = parsed.data.type;
 
+  let daysCountWarning = false;
+
   try {
     const request = await tryGetAuditRequestContext();
     const now = new Date();
@@ -96,7 +98,20 @@ async function updateBalanceAction(memberId: string, formData: FormData) {
       // Auto-increment daysCount when deducting balance
       const updateData: any = { balance: after };
       if (type === "DEDUCT") {
-        updateData.daysCount = member.daysCount + 1;
+        const newDaysCount = member.daysCount + 1;
+        updateData.daysCount = newDaysCount;
+
+        if (newDaysCount >= 40) {
+          daysCountWarning = true;
+          await createAuditLog(tx, {
+            actorUserId: user.id,
+            action: "MEMBER_REACHED_40_DAYS",
+            entityType: "Member",
+            entityId: memberId,
+            metadata: { daysCount: newDaysCount },
+            request,
+          });
+        }
       }
 
       await tx.member.update({
@@ -125,6 +140,9 @@ async function updateBalanceAction(memberId: string, formData: FormData) {
     redirect(`/app/members/${memberId}?balanceUpdated=0`);
   }
 
+  if (daysCountWarning) {
+    redirect(`/app/members/${memberId}?balanceUpdated=1&warning=days_count`);
+  }
   redirect(`/app/members/${memberId}?balanceUpdated=1`);
 }
 
@@ -375,6 +393,7 @@ export default async function MemberDetailPage({
     balancePage?: string;
     balancePageSize?: string;
     balanceUpdated?: string;
+    warning?: string;
     savingsPage?: string;
     savingsPageSize?: string;
     savingsUpdated?: string;
@@ -422,6 +441,7 @@ export default async function MemberDetailPage({
     balanceUpdates,
     totalSavingsUpdates,
     savingsUpdates,
+    memberCycles,
   ] = await Promise.all([
     prisma.savingsAccrual.count({ where: { memberId } }),
     prisma.savingsAccrual.findMany({
@@ -449,7 +469,13 @@ export default async function MemberDetailPage({
       take: savingsPageSize,
       skip: (savingsPage - 1) * savingsPageSize,
     }),
+    (prisma as any).memberCycle.findMany({
+      where: { memberId },
+      orderBy: { cycleNumber: "desc" },
+    }),
   ]);
+
+  const latestCycle = memberCycles[0];
 
   const totalPages = Math.max(1, Math.ceil(totalAccrualCount / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -514,6 +540,12 @@ export default async function MemberDetailPage({
             <p className="mt-1 text-sm text-slate-400">
               {totalBalanceUpdates} days in system
               {" · "}
+              {latestCycle ? (
+                <>
+                  Cycle {latestCycle.cycleNumber} ({latestCycle.startDate.toLocaleDateString()})
+                  {" · "}
+                </>
+              ) : null}
               Group:{" "}
               {member.group ? (
                 currentUser.role === Role.SUPER_ADMIN ? (
@@ -548,6 +580,11 @@ export default async function MemberDetailPage({
         {sp.balanceUpdated === "1" ? (
           <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
             Balance updated.
+            {sp.warning === "days_count" && (
+              <div className="mt-1 font-medium text-yellow-200">
+                Warning: Member has reached 40 days.
+              </div>
+            )}
           </div>
         ) : sp.balanceUpdated === "0" ? (
           <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
@@ -728,6 +765,51 @@ export default async function MemberDetailPage({
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
         <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
           <div>
+            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Cycle History</h2>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
+              {memberCycles.length} cycle{memberCycles.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto bg-slate-950 border-t border-slate-800">
+          <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
+            <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
+              <tr className="text-[10px] uppercase tracking-widest text-slate-400">
+                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Cycle #</th>
+                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Start Date</th>
+                <th className="border-b border-slate-800 px-3 py-2 font-semibold">Recorded At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {memberCycles.map((cycle: any) => (
+                <tr key={cycle.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
+                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
+                    {cycle.cycleNumber}
+                  </td>
+                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
+                    {cycle.startDate ? cycle.startDate.toLocaleDateString() : "-"}
+                  </td>
+                  <td className="border-b border-slate-800 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-500/30">
+                    {formatDateTimeManila(cycle.createdAt)}
+                  </td>
+                </tr>
+              ))}
+              {memberCycles.length === 0 ? (
+                <tr>
+                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-800" colSpan={3}>
+                    No cycles recorded.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
+        <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
+          <div>
             <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Savings Updates</h2>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
               {totalSavingsUpdates} entry{totalSavingsUpdates === 1 ? "" : "ies"} · page{" "}
@@ -770,7 +852,7 @@ export default async function MemberDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {savingsUpdates.map((s) => (
+              {savingsUpdates.map((s: any) => (
                 <tr key={s.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
                   <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
                     {formatDateTimeManila(s.createdAt)}
@@ -864,7 +946,7 @@ export default async function MemberDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {balanceUpdates.map((b) => (
+              {balanceUpdates.map((b: any) => (
                 <tr key={b.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
                   <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
                     {formatDateTimeManila(b.createdAt)}
@@ -954,7 +1036,7 @@ export default async function MemberDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {accruals.map((a) => (
+              {accruals.map((a: any) => (
                 <tr key={a.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
                   <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
                     {a.accruedForDate.toISOString().slice(0, 10)}

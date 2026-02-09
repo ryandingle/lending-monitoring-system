@@ -4,6 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
@@ -21,7 +22,11 @@ export async function POST(req: NextRequest) {
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
 
+  // Calculate adjustment date for weekend (Manila time)
+  const adjustmentDate = adjustDateForWeekend(getManilaToday());
+
   const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+  const warnings: { memberId: string; message: string }[] = [];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -82,6 +87,7 @@ export async function POST(req: NextRequest) {
                 amount: balanceDeduct,
                 balanceBefore,
                 balanceAfter,
+                createdAt: adjustmentDate,
               },
             });
 
@@ -89,6 +95,22 @@ export async function POST(req: NextRequest) {
             if (shouldIncrementDays) {
               // This ensures the audit log shows the correct value
               update.daysCount = String(finalDaysCount);
+            }
+
+            if (finalDaysCount >= 40) {
+              warnings.push({
+                memberId: member.id,
+                message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`
+              });
+              
+              await createAuditLog(tx, {
+                actorUserId: actor.id,
+                action: "MEMBER_REACHED_40_DAYS",
+                entityType: "Member",
+                entityId: member.id,
+                metadata: { daysCount: finalDaysCount },
+                request,
+              });
             }
           }
         }
@@ -132,6 +154,7 @@ export async function POST(req: NextRequest) {
                 amount: savingsIncrease,
                 savingsBefore,
                 savingsAfter,
+                createdAt: adjustmentDate,
               },
             });
           }
@@ -158,7 +181,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ success: errors.length === 0, errors });
+    return NextResponse.json({ success: errors.length === 0, errors, warnings });
   } catch (error) {
     console.error("Error performing bulk update:", error);
     return NextResponse.json({ error: "Failed to perform bulk update" }, { status: 500 });

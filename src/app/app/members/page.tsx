@@ -12,6 +12,7 @@ export default async function MembersPage({
     page?: string;
     limit?: string;
     sort?: string;
+    days?: string;
   }>;
 }) {
   const user = await requireUser();
@@ -23,27 +24,15 @@ export default async function MembersPage({
   const page = parseInt(sp.page ?? "1") || 1;
   const limit = parseInt(sp.limit ?? "50") || 50;
   const sort = (sp.sort === "desc" ? "desc" : "asc") as "asc" | "desc";
+  // Default to 0 days (All Days) if not specified
+  const days = sp.days !== undefined ? (parseInt(sp.days) || 0) : 0;
 
   const where: any = {};
   if (groupId) {
     where.groupId = groupId;
-  } else if (!q) {
-    // If no group selected and no search query, return empty
-    // preventing "All Members" display by default
-    const groups = await prisma.group.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    });
-
-    return (
-      <MembersClient
-        initialMembers={[]}
-        initialTotal={0}
-        initialGroups={groups}
-        userRole={user.role}
-        initialGroupId={undefined}
-      />
-    );
+  }
+  if (days > 0) {
+    where.daysCount = { gte: days };
   }
   
   if (q) {
@@ -73,7 +62,11 @@ export default async function MembersPage({
             savingsAdjustments: true,
           },
         },
-      },
+        cycles: {
+          orderBy: { cycleNumber: "desc" },
+          take: 1,
+        },
+      } as any,
       orderBy: { lastName: sort },
       skip: (page - 1) * limit,
       take: limit,
@@ -81,7 +74,7 @@ export default async function MembersPage({
     prisma.member.count({ where }),
   ]);
 
-  const serializedMembers = members.map((m) => ({
+  const serializedMembers = (members as any[]).map((m) => ({
     id: m.id,
     firstName: m.firstName,
     lastName: m.lastName,
@@ -98,6 +91,11 @@ export default async function MembersPage({
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
     },
+    latestCycle: m.cycles[0] ? {
+      cycleNumber: m.cycles[0].cycleNumber,
+      startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
+      endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
+    } : null,
   }));
 
   return (
@@ -107,6 +105,7 @@ export default async function MembersPage({
       initialGroups={groups}
       userRole={user.role}
       initialGroupId={groupId}
+      initialDays={days}
     />
   );
 }

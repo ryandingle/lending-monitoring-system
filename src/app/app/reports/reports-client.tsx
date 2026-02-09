@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconChevronUp, IconChevronDown } from "../_components/icons";
 
-type Group = { id: string; name: string };
+type Group = { id: string; name: string; _count: { members: number } };
 type Member = { id: string; firstName: string; lastName: string };
 
 interface ReportsClientProps {
@@ -198,6 +198,7 @@ export function ReportsClient({
             <thead className="text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2 pr-4">Group</th>
+                <th className="py-2 pr-4 text-center">Members</th>
                 <th className="py-2 pr-0 text-right">Action</th>
               </tr>
             </thead>
@@ -209,10 +210,13 @@ export function ReportsClient({
                       {g.name}
                     </Link>
                   </td>
+                  <td className="py-2 pr-4 text-center text-slate-300">
+                    {g._count?.members || 0}
+                  </td>
                   <td className="py-2 pr-0 text-right">
                     <a
                       href={`/api/groups/${g.id}/export?${query}`}
-                      title="Download group report (Excel)"
+                      title="Download group report (PDF)"
                       className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
                     >
                       Download
@@ -301,7 +305,7 @@ export function ReportsClient({
                   <td className="py-2 pr-0 text-right">
                     <a
                       href={`/api/members/${m.id}/export?${query}`}
-                      title="Download member report (Excel)"
+                      title="Download member report (PDF)"
                       className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
                     >
                       Download

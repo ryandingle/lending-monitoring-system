@@ -50,6 +50,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
   startOfToday.setHours(0, 0, 0, 0);
 
   const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+  const warnings: { memberId: string; message: string }[] = [];
 
   await prisma.$transaction(async (tx) => {
     for (const update of updates) {
@@ -113,6 +114,22 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
 
           if (shouldIncrementDays) {
             update.daysCount = String(finalDaysCount);
+          }
+          
+          if (finalDaysCount >= 40) {
+            warnings.push({
+              memberId: member.id,
+              message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`
+            });
+            
+            await createAuditLog(tx, {
+              actorUserId: actor.id,
+              action: "MEMBER_REACHED_40_DAYS",
+              entityType: "Member",
+              entityId: member.id,
+              metadata: { daysCount: finalDaysCount },
+              request,
+            });
           }
         }
       }
@@ -182,7 +199,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
   });
 
   revalidatePath(`/app/groups/${groupId}`);
-  return { success: errors.length === 0, errors };
+  return { success: errors.length === 0, errors, warnings };
 }
 
 export default async function GroupDetailsPage({
@@ -206,26 +223,12 @@ export default async function GroupDetailsPage({
   const limit = parseInt(sp.limit ?? "50") || 50;
   const sort = (sp.sort === "desc" ? "desc" : "asc") as "asc" | "desc";
 
-  const [group, members, totalCount, allGroups] = await Promise.all([
+  const [group, totalCount, allGroups] = await Promise.all([
     prisma.group.findUnique({
       where: { id: groupId },
       include: {
         collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       },
-    }),
-    prisma.member.findMany({
-      where: { groupId },
-      include: {
-        _count: {
-          select: {
-            balanceAdjustments: true,
-            savingsAdjustments: true,
-          },
-        },
-      },
-      orderBy: { lastName: sort },
-      skip: (page - 1) * limit,
-      take: limit,
     }),
     prisma.member.count({ where: { groupId } }),
     prisma.group.findMany({
@@ -233,6 +236,25 @@ export default async function GroupDetailsPage({
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const members = await prisma.member.findMany({
+    where: { groupId },
+    include: {
+      _count: {
+        select: {
+          balanceAdjustments: true,
+          savingsAdjustments: true,
+        },
+      },
+      cycles: {
+        orderBy: { cycleNumber: "desc" },
+        take: 1,
+      },
+    } as any,
+    orderBy: { lastName: sort },
+    skip: (page - 1) * limit,
+    take: limit,
+  });
 
   if (!group) {
     return (
@@ -250,7 +272,7 @@ export default async function GroupDetailsPage({
   const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
   const totalPages = Math.ceil(totalCount / limit);
 
-  const plainMembers = members.map((m) => ({
+  const plainMembers = (members as any[]).map((m) => ({
     id: m.id,
     firstName: m.firstName,
     lastName: m.lastName,
@@ -267,6 +289,11 @@ export default async function GroupDetailsPage({
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
     },
+    latestCycle: m.cycles[0] ? {
+      cycleNumber: m.cycles[0].cycleNumber,
+      startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
+      endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
+    } : null,
   }));
 
   return (

@@ -42,7 +42,7 @@ export function MemberBulkEditTable({
 }: {
     initialMembers: Member[];
     user: User;
-    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[] }>;
+    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[], warnings?: { memberId: string, message: string }[] }>;
     deleteMemberAction: (memberId: string) => Promise<void>;
     groupId?: string;
     groupName?: string;
@@ -62,6 +62,7 @@ export function MemberBulkEditTable({
     
     const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string }>>({});
     const [errors, setErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
+    const [warnings, setWarnings] = useState<{ memberId: string; message: string }[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
@@ -69,6 +70,7 @@ export function MemberBulkEditTable({
     useEffect(() => {
         setUpdates({});
         setErrors([]);
+        setWarnings([]);
         setShowSuccess(false);
     }, [pagination?.page, pagination?.limit, sort, groupId]);
 
@@ -107,6 +109,7 @@ export function MemberBulkEditTable({
         if (!hasChanges || isSaving) return;
         setIsSaving(true);
         setErrors([]);
+        setWarnings([]);
         setShowSuccess(false);
         try {
             const payload = Object.entries(updates)
@@ -120,10 +123,12 @@ export function MemberBulkEditTable({
             const result = await onBulkUpdate(payload);
             if (result.success) {
                 setUpdates({});
+                setWarnings(result.warnings || []);
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 5000);
             } else if (result.errors) {
                 setErrors(result.errors);
+                setWarnings(result.warnings || []);
             }
         } finally {
             setIsSaving(false);
@@ -140,6 +145,24 @@ export function MemberBulkEditTable({
                         </svg>
                         <span className="text-xs font-bold uppercase tracking-wider">Updates Saved Successfully!</span>
                     </div>
+                </div>
+            )}
+
+            {warnings.length > 0 && (
+                <div className="rounded-xl border border-yellow-900/40 bg-yellow-950/30 p-4">
+                    <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-xs font-bold uppercase tracking-wider">Warnings</span>
+                    </div>
+                    <ul className="space-y-1">
+                        {warnings.map((w, i) => (
+                            <li key={i} className="text-xs text-yellow-200/80">
+                                • {w.message}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
 
@@ -221,7 +244,7 @@ export function MemberBulkEditTable({
                                             </div>
                                         </td>
                                         <td className="border-b border-r border-slate-800 px-3 py-2 text-right font-mono font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
-                                            {m.balance.toFixed(2)}
+                                            {m.balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                         </td>
                                         <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "balance") ? "bg-red-500/10" : "bg-blue-500/5"}`}>
                                             <input
@@ -229,12 +252,12 @@ export function MemberBulkEditTable({
                                                 inputMode="decimal"
                                                 value={u.balanceDeduct}
                                                 onChange={(e) => handleChange(m.id, "balanceDeduct", e.target.value)}
-                                                placeholder="0.00"
+                                                placeholder="0"
                                                 className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-blue-900/50 focus:bg-blue-500/10 rounded ${memberErrors.some(e => e.type === "balance") ? "text-red-400" : "text-blue-400"}`}
                                             />
                                         </td>
                                         <td className="border-b border-r border-slate-800 px-3 py-2 text-right font-mono font-medium text-emerald-500/70 transition-colors group-hover:border-blue-500/30">
-                                            {m.savings.toFixed(2)}
+                                            {m.savings.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                         </td>
                                         <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "savings") ? "bg-red-500/10" : "bg-emerald-500/5"}`}>
                                             <input
@@ -242,7 +265,7 @@ export function MemberBulkEditTable({
                                                 inputMode="decimal"
                                                 value={u.savingsIncrease}
                                                 onChange={(e) => handleChange(m.id, "savingsIncrease", e.target.value)}
-                                                placeholder="0.00"
+                                                placeholder="0"
                                                 className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-emerald-900/50 focus:bg-emerald-500/10 rounded ${memberErrors.some(e => e.type === "savings") ? "text-red-400" : "text-emerald-400"}`}
                                             />
                                         </td>

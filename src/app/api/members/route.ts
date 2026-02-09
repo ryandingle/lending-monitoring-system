@@ -15,6 +15,11 @@ const CreateMemberSchema = z.object({
   balance: z.coerce.number(),
   savings: z.coerce.number().default(0),
   daysCount: z.coerce.number().int().min(0).default(0),
+  cycles: z.array(z.object({
+    cycleNumber: z.coerce.number().int().min(1),
+    startDate: z.string().optional(),
+    endDate: z.string().optional()
+  })).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -27,9 +32,11 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") ?? "1") || 1;
   const limit = parseInt(searchParams.get("limit") ?? "50") || 50;
   const sort = (searchParams.get("sort") === "desc" ? "desc" : "asc") as "asc" | "desc";
+  const days = parseInt(searchParams.get("days") ?? "0") || 0;
 
   const where: any = {};
   if (groupId) where.groupId = groupId;
+  if (days > 0) where.daysCount = { gte: days };
   if (q) {
     where.OR = [
       { firstName: { contains: q, mode: "insensitive" } },
@@ -50,6 +57,10 @@ export async function GET(req: NextRequest) {
             savingsAdjustments: true,
           },
         },
+        cycles: {
+            orderBy: { cycleNumber: "desc" },
+            take: 1
+        }
       },
       orderBy: { lastName: sort },
       skip: (page - 1) * limit,
@@ -75,6 +86,11 @@ export async function GET(req: NextRequest) {
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
     },
+    latestCycle: m.cycles[0] ? {
+        cycleNumber: m.cycles[0].cycleNumber,
+        startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
+        endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined
+    } : null,
   }));
 
   return NextResponse.json({
@@ -105,8 +121,8 @@ export async function POST(req: NextRequest) {
       const newMember = await tx.member.create({
         data: {
           groupId: parsed.data.groupId,
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
+          firstName: parsed.data.firstName.toUpperCase(),
+          lastName: parsed.data.lastName.toUpperCase(),
           age: parsed.data.age,
           address: parsed.data.address,
           phoneNumber: parsed.data.phoneNumber,
@@ -136,6 +152,19 @@ export async function POST(req: NextRequest) {
         },
         request,
       });
+
+      if (parsed.data.cycles && parsed.data.cycles.length > 0) {
+        for (const cycle of parsed.data.cycles) {
+          await tx.memberCycle.create({
+            data: {
+              memberId: newMember.id,
+              cycleNumber: cycle.cycleNumber,
+              startDate: cycle.startDate ? new Date(cycle.startDate) : null,
+              endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+            },
+          });
+        }
+      }
 
       return newMember;
     });

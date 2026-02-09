@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { z } from "zod";
+import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
 
 const BalanceAdjustmentSchema = z.object({
   memberId: z.string().uuid(),
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
 
     const { memberId, type, amount } = parsed.data;
 
+    // Adjust date if weekend
+    const adjustmentDate = adjustDateForWeekend(getManilaToday());
+
     const result = await prisma.$transaction(async (tx) => {
       const member = await tx.member.findUnique({ where: { id: memberId } });
       if (!member) throw new Error("Member not found");
@@ -85,6 +89,7 @@ export async function POST(req: NextRequest) {
           amount,
           balanceBefore,
           balanceAfter,
+          createdAt: adjustmentDate,
         },
         include: { encodedBy: { select: { name: true } } }
       });
