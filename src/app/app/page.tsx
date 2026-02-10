@@ -43,6 +43,12 @@ export default async function DashboardPage({
   const endDate = new Date(to);
   endDate.setHours(23, 59, 59, 999);
 
+  // Adjust dates for Prisma Client queries (which use UTC) to match Manila timezone
+  // Manila is UTC+8. So 00:00 Manila is 16:00 UTC previous day.
+  const MANILA_OFFSET = 8 * 60 * 60 * 1000;
+  const startDateAbsolute = new Date(startDate.getTime() - MANILA_OFFSET);
+  const endDateAbsolute = new Date(endDate.getTime() - MANILA_OFFSET);
+
   // Fetch dashboard data
   const [
     memberCount,
@@ -62,44 +68,44 @@ export default async function DashboardPage({
             SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "balance_adjustments"
             WHERE "type" = 'DEDUCT'
-              AND "createdAt" >= ${startDate}
-              AND "createdAt" <= ${endDate}
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
         `,
     // Total Savings Increases in period (Manual)
     prisma.$queryRaw<{ total: number }[]>`
             SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "savings_adjustments"
             WHERE "type" = 'INCREASE'
-              AND "createdAt" >= ${startDate}
-              AND "createdAt" <= ${endDate}
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
         `,
     // New members in period
     prisma.member.count({
       where: {
-        createdAt: { gte: startDate, lte: endDate }
+        createdAt: { gte: startDateAbsolute, lte: endDateAbsolute }
       }
     }),
     // Daily collections for bar chart
     prisma.$queryRaw<{ day_key: string; total: number }[]>`
             SELECT 
-                TO_CHAR("createdAt", 'MM-DD') AS "day_key",
+                TO_CHAR("createdAt" AT TIME ZONE 'Asia/Manila', 'MM-DD') AS "day_key",
                 COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "balance_adjustments"
             WHERE "type" = 'DEDUCT'
-              AND "createdAt" >= ${startDate}
-              AND "createdAt" <= ${endDate}
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
             GROUP BY 1
             ORDER BY 1 ASC
         `,
     // Daily accruals for line chart
     prisma.$queryRaw<{ day: string; total: number }[]>`
             SELECT 
-                TO_CHAR("createdAt", 'MM-DD') AS "day",
+                TO_CHAR("createdAt" AT TIME ZONE 'Asia/Manila', 'MM-DD') AS "day",
                 COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "savings_adjustments"
             WHERE "type" = 'INCREASE'
-              AND "createdAt" >= ${startDate}
-              AND "createdAt" <= ${endDate}
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
+              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
             GROUP BY 1
             ORDER BY 1 ASC
         `
