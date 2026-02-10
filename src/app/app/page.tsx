@@ -38,16 +38,17 @@ export default async function DashboardPage({
   const from = (sp.from?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : null) ?? defaultPreset.from;
   const to = (sp.to?.trim() && /^\d{4}-\d{2}-\d{2}$/.test(sp.to) ? sp.to : null) ?? defaultPreset.to;
 
-  const startDate = new Date(from);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(to);
-  endDate.setHours(23, 59, 59, 999);
+  // Construct dates using Manila offset (+08:00) explicitly to avoid server timezone dependency.
+  // "2023-10-27" in Manila starts at 2023-10-26 16:00:00 UTC.
+  const startDate = new Date(`${from}T00:00:00+08:00`);
+  const endDate = new Date(`${to}T23:59:59.999+08:00`);
 
-  // Adjust dates for Prisma Client queries (which use UTC) to match Manila timezone
-  // Manila is UTC+8. So 00:00 Manila is 16:00 UTC previous day.
-  const MANILA_OFFSET = 8 * 60 * 60 * 1000;
-  const startDateAbsolute = new Date(startDate.getTime() - MANILA_OFFSET);
-  const endDateAbsolute = new Date(endDate.getTime() - MANILA_OFFSET);
+  console.log('[Dashboard] Filtering Data:', {
+    from,
+    to,
+    startUTC: startDate.toISOString(),
+    endUTC: endDate.toISOString()
+  });
 
   // Fetch dashboard data
   const [
@@ -68,21 +69,21 @@ export default async function DashboardPage({
             SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "balance_adjustments"
             WHERE "type" = 'DEDUCT'
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
         `,
     // Total Savings Increases in period (Manual)
     prisma.$queryRaw<{ total: number }[]>`
             SELECT COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "savings_adjustments"
             WHERE "type" = 'INCREASE'
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
         `,
     // New members in period
     prisma.member.count({
       where: {
-        createdAt: { gte: startDateAbsolute, lte: endDateAbsolute }
+        createdAt: { gte: startDate, lte: endDate }
       }
     }),
     // Daily collections for bar chart
@@ -92,8 +93,8 @@ export default async function DashboardPage({
                 COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "balance_adjustments"
             WHERE "type" = 'DEDUCT'
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
             GROUP BY 1
             ORDER BY 1 ASC
         `,
@@ -104,8 +105,8 @@ export default async function DashboardPage({
                 COALESCE(SUM("amount"), 0)::float8 AS "total"
             FROM "savings_adjustments"
             WHERE "type" = 'INCREASE'
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') >= ${startDate}::timestamp
-              AND ("createdAt" AT TIME ZONE 'Asia/Manila') <= ${endDate}::timestamp
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
             GROUP BY 1
             ORDER BY 1 ASC
         `
