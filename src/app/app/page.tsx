@@ -43,13 +43,6 @@ export default async function DashboardPage({
   const startDate = new Date(`${from}T00:00:00+08:00`);
   const endDate = new Date(`${to}T23:59:59.999+08:00`);
 
-  console.log('[Dashboard] Filtering Data:', {
-    from,
-    to,
-    startUTC: startDate.toISOString(),
-    endUTC: endDate.toISOString()
-  });
-
   // Fetch dashboard data
   const [
     memberCount,
@@ -122,13 +115,23 @@ export default async function DashboardPage({
   const chartDays: { day: string; total: number; fullDate: string }[] = [];
   let d = new Date(startDate);
   
+  // Helper to format date key in Manila Time
+  const formatManilaDateKey = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(date).replace('/', '-'); // "10/27" -> "10-27"
+  };
+
   // Iterate from start to end date
   while (d <= endDate) {
     const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const dayKey = d.toISOString().slice(5, 10); // MM-DD
-      const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
-      const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const dayKey = formatManilaDateKey(d); // Uses Manila Time
+      const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: 'Asia/Manila' }).format(d);
+      const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
+      
       chartDays.push({
         day: dayLabel,
         total: collectionsMap.get(dayKey) ?? 0,
@@ -149,8 +152,10 @@ export default async function DashboardPage({
     const d = new Date(startDate);
     d.setDate(d.getDate() + i);
     if (d > end) break;
-    const dayKey = d.toISOString().slice(5, 10); // MM-DD
-    const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    
+    const dayKey = formatManilaDateKey(d); // Uses Manila Time
+    const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
+    
     accrualChartData.push({
       day: dayKey,
       total: accrualsMap.get(dayKey) ?? 0,
