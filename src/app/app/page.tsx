@@ -94,11 +94,12 @@ export default async function DashboardPage({
     // Daily accruals for line chart
     prisma.$queryRaw<{ day: string; total: number }[]>`
             SELECT 
-                TO_CHAR("accruedForDate", 'MM-DD') AS "day",
+                TO_CHAR("createdAt", 'MM-DD') AS "day",
                 COALESCE(SUM("amount"), 0)::float8 AS "total"
-            FROM "savings_accruals"
-            WHERE "accruedForDate" >= ${from}::date
-              AND "accruedForDate" <= ${to}::date
+            FROM "savings_adjustments"
+            WHERE "type" = 'INCREASE'
+              AND "createdAt" >= ${startDate}
+              AND "createdAt" <= ${endDate}
             GROUP BY 1
             ORDER BY 1 ASC
         `
@@ -109,23 +110,30 @@ export default async function DashboardPage({
   const periodCollections = periodCollectionsRow?.[0]?.total ?? 0;
   const periodSavingsAdded = periodSavingsRow?.[0]?.total ?? 0;
 
-  // -- Fill Daily Collections (Last 7 days of period) --
+  // -- Fill Daily Collections (Weekdays in selected period) --
   const collectionsMap = new Map(dailyCollections.map(r => [r.day_key, r.total]));
-  const chartDays: { day: string; total: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(endDate);
-    d.setDate(d.getDate() - i);
-    const dayKey = d.toISOString().slice(5, 10); // MM-DD
-    const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
-    chartDays.push({
-      day: dayLabel,
-      total: collectionsMap.get(dayKey) ?? 0
-    });
+  const chartDays: { day: string; total: number; fullDate: string }[] = [];
+  let d = new Date(startDate);
+  
+  // Iterate from start to end date
+  while (d <= endDate) {
+    const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const dayKey = d.toISOString().slice(5, 10); // MM-DD
+      const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
+      const fullDate = d.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      chartDays.push({
+        day: dayLabel,
+        total: collectionsMap.get(dayKey) ?? 0,
+        fullDate
+      });
+    }
+    d.setDate(d.getDate() + 1);
   }
 
   // -- Fill Daily Accruals (All days in period) --
   const accrualsMap = new Map(dailyAccruals.map(r => [r.day, r.total]));
-  const accrualChartData: { day: string; total: number }[] = [];
+  const accrualChartData: { day: string; total: number; fullDate: string }[] = [];
   const curr = new Date(startDate);
   const end = new Date(endDate);
   // Limit to max 14 days to keep it clean
@@ -135,9 +143,11 @@ export default async function DashboardPage({
     d.setDate(d.getDate() + i);
     if (d > end) break;
     const dayKey = d.toISOString().slice(5, 10); // MM-DD
+    const fullDate = d.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     accrualChartData.push({
       day: dayKey,
-      total: accrualsMap.get(dayKey) ?? 0
+      total: accrualsMap.get(dayKey) ?? 0,
+      fullDate
     });
   }
 
@@ -332,19 +342,20 @@ export default async function DashboardPage({
             <div className="text-lg font-black text-blue-500">{smallCurrencyFormatter.format(totalPeriodCollections)}</div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 h-48 py-4 px-2">
+          <div className="flex justify-between gap-2 h-48 py-4 px-2">
             {chartDays.map((collect, i) => {
               const maxVal = Math.max(1, ...chartDays.map(c => c.total));
               const height = (collect.total / maxVal) * 100;
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3">
+                <div key={i} className="flex-1 flex flex-col items-center justify-end gap-3 h-full">
                   <div
-                    className="w-full max-w-[40px] rounded-t-xl bg-gradient-to-t from-blue-600 via-blue-400 to-indigo-300 shadow-xl shadow-blue-900/20 transition-all hover:scale-105 hover:brightness-110 relative group/bar"
+                    className="w-full max-w-[24px] rounded-t-xl bg-gradient-to-t from-blue-600 via-blue-400 to-indigo-300 shadow-xl shadow-blue-900/20 transition-all hover:scale-105 hover:brightness-110 relative group/bar"
                     style={{ height: `${Math.max(8, height)}%` }}
-                    title={smallCurrencyFormatter.format(collect.total)}
+                    title={`${collect.fullDate}: ${smallCurrencyFormatter.format(collect.total)}`}
                   >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-black text-white bg-slate-950 px-1.5 py-0.5 rounded pointer-events-none whitespace-nowrap">
-                      {smallCurrencyFormatter.format(collect.total)}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-black text-white bg-slate-950 px-2 py-1 rounded pointer-events-none whitespace-nowrap z-50 flex flex-col items-center gap-0.5 border border-white/10 shadow-xl">
+                      <span className="text-[9px] font-normal text-slate-400">{collect.fullDate}</span>
+                      <span>{smallCurrencyFormatter.format(collect.total)}</span>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{collect.day}</span>
@@ -381,22 +392,24 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* Trend Chart (Line-ish) */}
+        {/* Trend Chart (Bar Chart Style) */}
         <div className="mt-12 h-64 w-full relative group">
-          <div className="absolute inset-0 flex items-end justify-between gap-1 px-4">
+          <div className="absolute inset-0 flex items-end justify-between gap-2 px-4">
             {accrualChartData.map((acc, i) => {
               const h = (acc.total / maxAccrual) * 100;
               return (
-                <div key={i} className="flex-1 flex flex-col items-center group/trend hover:z-20">
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group/trend hover:z-20">
                   <div
-                    className="w-full bg-emerald-500/10 border-t-2 border-emerald-500 shadow-[0_-10px_20px_-5px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-500/20 relative"
+                    className="w-full max-w-[24px] rounded-t-xl bg-gradient-to-t from-emerald-600 via-emerald-400 to-teal-300 shadow-xl shadow-emerald-900/20 transition-all hover:scale-105 hover:brightness-110 relative"
                     style={{ height: `${Math.max(5, h)}%` }}
-                    title={`${acc.day}: ${smallCurrencyFormatter.format(acc.total)}`}
+                    title={`${acc.fullDate}: ${smallCurrencyFormatter.format(acc.total)}`}
                   >
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/trend:opacity-100 transition-opacity bg-slate-950 p-1.5 rounded text-[10px] font-black text-white whitespace-nowrap border border-white/5">
-                      {smallCurrencyFormatter.format(acc.total)}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover/trend:opacity-100 transition-opacity bg-slate-950 p-1.5 rounded text-[10px] font-black text-white whitespace-nowrap border border-white/5 flex flex-col items-center gap-0.5 z-50 shadow-xl">
+                      <span className="text-[9px] font-normal text-slate-400">{acc.fullDate}</span>
+                      <span>{smallCurrencyFormatter.format(acc.total)}</span>
                     </div>
                   </div>
+                  <span className="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{acc.day}</span>
                 </div>
               );
             })}
@@ -411,7 +424,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="mt-4 flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 border-t border-white/5 pt-4">
-          <span>Accrual Analytics (Growth)</span>
+          <span>Savings Growth (Deposits)</span>
           <span>{from} → {to}</span>
         </div>
       </div>
