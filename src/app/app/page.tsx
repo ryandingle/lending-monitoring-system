@@ -167,6 +167,7 @@ export default async function DashboardPage({
   const smallCurrencyFormatter = new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
+    maximumFractionDigits: 0,
   });
 
   // Donut chart calculation
