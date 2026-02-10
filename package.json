@@ -16,7 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "job:accrue-savings": "tsx scripts/accrue-savings.ts",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
