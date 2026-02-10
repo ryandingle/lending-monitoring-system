@@ -121,7 +121,7 @@ export default async function DashboardPage({
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       const dayKey = d.toISOString().slice(5, 10); // MM-DD
       const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
-      const fullDate = d.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
       chartDays.push({
         day: dayLabel,
         total: collectionsMap.get(dayKey) ?? 0,
@@ -143,7 +143,7 @@ export default async function DashboardPage({
     d.setDate(d.getDate() + i);
     if (d > end) break;
     const dayKey = d.toISOString().slice(5, 10); // MM-DD
-    const fullDate = d.toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     accrualChartData.push({
       day: dayKey,
       total: accrualsMap.get(dayKey) ?? 0,
@@ -353,10 +353,12 @@ export default async function DashboardPage({
                     style={{ height: `${Math.max(8, height)}%` }}
                     title={`${collect.fullDate}: ${smallCurrencyFormatter.format(collect.total)}`}
                   >
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity text-[10px] font-black text-white bg-slate-950 px-2 py-1 rounded pointer-events-none whitespace-nowrap z-50 flex flex-col items-center gap-0.5 border border-white/10 shadow-xl">
-                      <span className="text-[9px] font-normal text-slate-400">{collect.fullDate}</span>
-                      <span>{smallCurrencyFormatter.format(collect.total)}</span>
-                    </div>
+                    {collect.total > 0 && (
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-slate-950/90 px-2 py-1 rounded border border-white/10 shadow-xl z-20">
+                        <span className="text-[8px] font-medium text-slate-400 whitespace-nowrap">{collect.fullDate}</span>
+                        <span className="text-[10px] font-black text-white whitespace-nowrap">{smallCurrencyFormatter.format(collect.total)}</span>
+                      </div>
+                    )}
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{collect.day}</span>
                 </div>
@@ -404,10 +406,12 @@ export default async function DashboardPage({
                     style={{ height: `${Math.max(5, h)}%` }}
                     title={`${acc.fullDate}: ${smallCurrencyFormatter.format(acc.total)}`}
                   >
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover/trend:opacity-100 transition-opacity bg-slate-950 p-1.5 rounded text-[10px] font-black text-white whitespace-nowrap border border-white/5 flex flex-col items-center gap-0.5 z-50 shadow-xl">
-                      <span className="text-[9px] font-normal text-slate-400">{acc.fullDate}</span>
-                      <span>{smallCurrencyFormatter.format(acc.total)}</span>
-                    </div>
+                    {acc.total > 0 && (
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-slate-950/90 px-2 py-1 rounded border border-white/10 shadow-xl z-20">
+                        <span className="text-[8px] font-medium text-slate-400 whitespace-nowrap">{acc.fullDate}</span>
+                        <span className="text-[10px] font-black text-white whitespace-nowrap">{smallCurrencyFormatter.format(acc.total)}</span>
+                      </div>
+                    )}
                   </div>
                   <span className="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{acc.day}</span>
                 </div>
