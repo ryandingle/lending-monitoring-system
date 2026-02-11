@@ -51,9 +51,9 @@ export async function PUT(
       if (role) dataToUpdate.role = role;
       if (isActive !== undefined) dataToUpdate.isActive = isActive;
       if (password) dataToUpdate.passwordHash = await hashPassword(password);
-      if (username) dataToUpdate.username = username;
-      if (name) dataToUpdate.name = name;
-      if (email !== undefined) dataToUpdate.email = email === "" ? null : email;
+      if (username) dataToUpdate.username = username.trim().toLowerCase();
+      if (name) dataToUpdate.name = name.trim();
+      if (email !== undefined) dataToUpdate.email = email.trim().toLowerCase() || null;
 
       const user = await tx.user.update({
         where: { id },

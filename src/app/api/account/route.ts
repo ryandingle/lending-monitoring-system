@@ -17,8 +17,8 @@ export async function PUT(req: NextRequest) {
 
   const parsed = UpdateAccountSchema.safeParse({
     name: String(body.name || "").trim(),
-    currentPassword: String(body.currentPassword || "").trim() || undefined,
-    newPassword: String(body.newPassword || "").trim() || undefined,
+    currentPassword: String(body.currentPassword || "") || undefined,
+    newPassword: String(body.newPassword || "") || undefined,
   });
 
   if (!parsed.success) {
