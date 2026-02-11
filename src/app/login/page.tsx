@@ -16,7 +16,7 @@ async function loginAction(formData: FormData) {
   "use server";
 
   const parsed = LoginSchema.safeParse({
-    username: String(formData.get("username") || ""),
+    username: String(formData.get("username") || "").trim(),
     password: String(formData.get("password") || ""),
   });
 

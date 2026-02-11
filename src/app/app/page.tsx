@@ -126,10 +126,14 @@ export default async function DashboardPage({
 
   // Iterate from start to end date
   while (d <= endDate) {
-    const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    // Check day of week in Manila time (not server time)
+    // "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"
+    const manilaDay = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Manila" });
+    const isWeekend = manilaDay === "Sat" || manilaDay === "Sun";
+
+    if (!isWeekend) {
       const dayKey = formatManilaDateKey(d); // Uses Manila Time
-      const dayLabel = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: 'Asia/Manila' }).format(d);
+      const dayLabel = manilaDay;
       const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
       
       chartDays.push({
