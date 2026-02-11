@@ -21,16 +21,17 @@ export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const q = (searchParams.get("q") ?? "").trim();
 
-  const where =
-    q.length > 0
-      ? {
-          OR: [
-            { username: { contains: q, mode: "insensitive" as const } },
-            { name: { contains: q, mode: "insensitive" as const } },
-            { email: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
+  const where: any = {
+    username: { not: "administrator" },
+  };
+
+  if (q.length > 0) {
+    where.OR = [
+      { username: { contains: q, mode: "insensitive" as const } },
+      { name: { contains: q, mode: "insensitive" as const } },
+      { email: { contains: q, mode: "insensitive" as const } },
+    ];
+  }
 
   const users = await prisma.user.findMany({
     where,
