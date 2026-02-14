@@ -148,6 +148,8 @@ export async function GET(
     savings: savingsMap,
     totalPayments: totalPaymentsPeriod,
     totalSavings: totalSavingsPeriod,
+    companyName: "Triple E Microfinance",
+    logoUrl: `${new URL(req.url).origin}/logo.jpg`,
   };
 
   // --- GENERATE PDF ---

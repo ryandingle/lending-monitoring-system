@@ -1,18 +1,42 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image as PdfImage } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
-    padding: 15,
-    fontSize: 7.5, // Reduced from 9
+    padding: 6,
+    fontSize: 7.2,
     fontFamily: 'Helvetica',
   },
   infoSection: {
-    marginBottom: 15,
+    marginBottom: 10,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  logo: {
+    width: 22,
+    height: 22,
+    objectFit: 'contain',
+  },
+  logoPlaceholder: {
+    width: 22,
+    height: 22,
+    borderWidth: 1,
+    borderColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyName: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   infoLabel: {
     width: 100,
@@ -41,10 +65,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#000',
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
-    height: 30,
+    height: 20,
   },
   tableCell: {
-    padding: 1, // Reduced from 2
+    padding: 1,
     borderRightWidth: 1,
     borderRightColor: '#000',
     textAlign: 'center',
@@ -70,6 +94,8 @@ interface MemberReportData {
   savings: Record<string, number>; // date -> amount
   totalPayments: number;
   totalSavings: number;
+  companyName?: string;
+  logoUrl?: string;
 }
 
 const formatMoney = (amount: number) => {
@@ -84,16 +110,18 @@ const formatDateHeader = (dateStr: string) => {
 
 export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
   const { dayColumns, memberInfo, loanBalance, payments, savings, totalPayments, totalSavings } = data;
+  const companyName = data.companyName ?? (process.env.LMS_COMPANY_NAME || 'TRIPLE E Microfinance Inc.');
+  const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
-  // Calculate column widths
-  // Fixed: No (4%), Loan Balance (12%), Bal Fwd (8%), Sav Fwd (8%) -> Total 32%
-  // Dynamic: 68% shared among dayColumns * 2
   const numDayCols = dayColumns.length * 2;
-  const dynamicWidthPerCol = numDayCols > 0 ? (68 / numDayCols) : 0;
+  const fixedParts = [4, 12, 8, 8, 8];
+  const fixedTotal = fixedParts.reduce((a, b) => a + b, 0);
+  const dynamicWidthPerCol = numDayCols > 0 ? ((100 - fixedTotal) / numDayCols) : 0;
 
   const colWidths = {
     no: '4%',
     balance: '12%',
+    currentRelease: '8%',
     day: `${dynamicWidthPerCol}%`,
     fwd: '8%',
   };
@@ -109,7 +137,17 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
 
   return (
     <Document>
-      <Page size="LEGAL" orientation="landscape" style={styles.page}>
+      <Page size={[1008, 612]} style={styles.page}>
+        <View style={styles.brandRow}>
+          {logoUrl ? (
+            <PdfImage src={logoUrl} style={styles.logo} />
+          ) : (
+            <View style={styles.logoPlaceholder}>
+              <Text>LOGO</Text>
+            </View>
+          )}
+          <Text style={styles.companyName}>{companyName}</Text>
+        </View>
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Name</Text>
@@ -134,6 +172,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
           <View style={[styles.tableHeaderRow, { height: 20 }]}>
             <View style={[styles.tableCell, { width: colWidths.no, borderBottomWidth: 0 }]} />
             <View style={[styles.tableCell, { width: colWidths.balance, borderBottomWidth: 0 }]} />
+            <View style={[styles.tableCell, { width: colWidths.currentRelease, borderBottomWidth: 0 }]} />
             
             {dayColumns.map((date) => (
               <View key={date} style={[styles.tableCell, { width: `${dynamicWidthPerCol * 2}%` }]}>
@@ -152,6 +191,9 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
             </View>
             <View style={[styles.tableCell, { width: colWidths.balance }]}>
               <Text style={styles.bold}>LOAN BAL</Text>
+            </View>
+            <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
+              <Text style={styles.bold}>ACTIVE RELEASE</Text>
             </View>
 
             {dayColumns.map((date) => (
@@ -180,6 +222,9 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
             </View>
             <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
               <Text>{formatMoney(loanBalance)}</Text>
+            </View>
+            <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
+              <Text></Text>
             </View>
 
             {dayColumns.map((date) => (

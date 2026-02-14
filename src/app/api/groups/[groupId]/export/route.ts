@@ -146,6 +146,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     dayColumns,
     members: membersData,
     totals,
+    companyName: "Triple E Microfinance",
+    logoUrl: `${new URL(req.url).origin}/logo.jpg`,
   };
 
   // --- RENDER PDF ---
@@ -186,4 +188,3 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     },
   });
 }
-
