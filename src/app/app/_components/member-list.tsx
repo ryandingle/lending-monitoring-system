@@ -863,15 +863,6 @@ export function MemberList({
                                                 <input
                                                     type="text"
                                                     placeholder="0"
-                                                    className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
-                                                    value={updates[member.id]?.balanceDeduct || ""}
-                                                    onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <input
-                                                    type="text"
-                                                    placeholder="0"
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
                                                     value={updates[member.id]?.savingsIncrease || ""}
                                                     onChange={(e) => handleBulkChange(member.id, "savingsIncrease", e.target.value)}
