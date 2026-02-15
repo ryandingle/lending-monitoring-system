@@ -6,12 +6,15 @@ import { Document, Page, Text, View, StyleSheet, Font, Image as PdfImage } from 
 
 const styles = StyleSheet.create({
   page: {
-    padding: 6,
+    paddingTop: 32,
+    paddingBottom: 4,
+    paddingLeft: 50,
+    paddingRight: -20,
     fontSize: 7,
     fontFamily: 'Helvetica',
   },
   header: {
-    marginBottom: 4,
+    marginBottom: 14,
     textAlign: 'center',
   },
   brandRow: {
@@ -22,13 +25,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   logo: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
     objectFit: 'contain',
   },
   logoPlaceholder: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
     borderWidth: 1,
     borderColor: '#000',
     alignItems: 'center',
@@ -48,8 +51,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginBottom: 2,
   },
-  table: {
+  tableContainer: {
     width: '100%',
+    alignItems: 'center',
+  },
+  table: {
+    width: '92%',
   },
   tableRow: {
     flexDirection: 'row',
@@ -57,7 +64,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#000',
     borderLeftWidth: 1,
     borderLeftColor: '#000',
-    minHeight: 14,
+    minHeight: 12,
     alignItems: 'center',
   },
   tableHeaderRow: {
@@ -68,7 +75,7 @@ const styles = StyleSheet.create({
     borderLeftColor: '#000',
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
-    height: 18,
+    height: 16,
   },
   tableCell: {
     padding: 0.5,
@@ -93,7 +100,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
   },
   footer: {
-    marginTop: 10,
+    marginTop: 4,
     fontSize: 8,
     textAlign: 'right',
     color: 'grey',
@@ -120,7 +127,7 @@ interface ReportData {
     totalSavings: number;
   };
   companyName?: string;
-  logoUrl?: string;
+  logoUrl?: any;
 }
 
 // Helper to format currency
@@ -154,7 +161,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
     fwd: '6%',
   };
 
-  // Chunk members into pages of 30
+  // Chunk members into pages of 30 (entire page is now tuned to fit)
   const ITEMS_PER_PAGE = 30;
   const memberChunks = [];
   for (let i = 0; i < members.length; i += ITEMS_PER_PAGE) {
@@ -167,7 +174,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
   return (
     <Document>
       {memberChunks.map((chunkMembers, pageIndex) => (
-        <Page key={pageIndex} size={[1008, 612]} style={styles.page}>
+        <Page key={pageIndex} size="LEGAL" orientation="landscape" style={styles.page}>
           <View style={styles.header}>
             <View style={styles.brandRow}>
               {logoUrl ? (
@@ -184,7 +191,8 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
             </Text>
           </View>
 
-          <View style={styles.table}>
+          <View style={styles.tableContainer}>
+            <View style={styles.table}>
             {/* Header Row 1: Date Labels */}
             <View style={[styles.tableHeaderRow, { height: 20, borderTopWidth: 1, borderTopColor: '#000', backgroundColor: '#ffffff' }]}>
               <View style={[styles.tableCell, { width: colWidths.no, borderBottomWidth: 0 }]} />
@@ -305,11 +313,8 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 </View>
               </View>
             )}
+            </View>
           </View>
-
-          <Text style={styles.footer} render={({ pageNumber, totalPages }) => (
-            `Page ${pageNumber} of ${totalPages}`
-          )} fixed />
         </Page>
       ))}
     </Document>

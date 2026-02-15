@@ -7,6 +7,8 @@ import { getManilaDateRange, getMonday, formatDateYMD, getWeekdaysInRange } from
 import React from "react";
 import { renderToStream } from "@react-pdf/renderer";
 import { MemberReportPdf } from "@/lib/pdf/MemberReportPdf";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 
@@ -149,7 +151,15 @@ export async function GET(
     totalPayments: totalPaymentsPeriod,
     totalSavings: totalSavingsPeriod,
     companyName: "Triple E Microfinance",
-    logoUrl: `${new URL(req.url).origin}/logo.jpg`,
+    logoUrl: await (async () => {
+      try {
+        const logoPath = path.join(process.cwd(), "public", "logo.jpg");
+        const buf = await fs.promises.readFile(logoPath);
+        return buf;
+      } catch {
+        return undefined;
+      }
+    })(),
   };
 
   // --- GENERATE PDF ---

@@ -7,6 +7,8 @@ import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit
 import { getMonday, formatDateYMD, getManilaDateRange, getWeekdaysInRange } from "@/lib/date";
 import { renderToStream } from "@react-pdf/renderer";
 import { CollectionReportPdf } from "@/lib/pdf/CollectionReportPdf";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 
@@ -140,6 +142,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     };
   });
 
+  let logoBinary: Buffer | null = null;
+  try {
+    const logoPath = path.join(process.cwd(), "public", "logo.jpg");
+    logoBinary = await fs.promises.readFile(logoPath);
+  } catch {
+    logoBinary = null;
+  }
+
   const reportData = {
     groupName: group.name,
     dateRange: `${new Date(dateFrom).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - ${new Date(dateTo).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}`,
@@ -147,7 +157,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     members: membersData,
     totals,
     companyName: "Triple E Microfinance",
-    logoUrl: `${new URL(req.url).origin}/logo.jpg`,
+    logoUrl: logoBinary ?? undefined,
   };
 
   // --- RENDER PDF ---

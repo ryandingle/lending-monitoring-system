@@ -3,12 +3,15 @@ import { Document, Page, Text, View, StyleSheet, Image as PdfImage } from '@reac
 
 const styles = StyleSheet.create({
   page: {
-    padding: 6,
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingLeft: 50,
+    paddingRight: -20,
     fontSize: 7.2,
     fontFamily: 'Helvetica',
   },
   infoSection: {
-    marginBottom: 10,
+    marginBottom: 20,
   },
   brandRow: {
     flexDirection: 'row',
@@ -18,13 +21,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   logo: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
     objectFit: 'contain',
   },
   logoPlaceholder: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
     borderWidth: 1,
     borderColor: '#000',
     alignItems: 'center',
@@ -46,8 +49,12 @@ const styles = StyleSheet.create({
   infoValue: {
     flex: 1,
   },
-  table: {
+  tableContainer: {
     width: '100%',
+    alignItems: 'center',
+  },
+  table: {
+    width: '92%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#000',
@@ -95,7 +102,7 @@ interface MemberReportData {
   totalPayments: number;
   totalSavings: number;
   companyName?: string;
-  logoUrl?: string;
+  logoUrl?: any;
 }
 
 const formatMoney = (amount: number) => {
@@ -137,7 +144,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
 
   return (
     <Document>
-      <Page size={[1008, 612]} style={styles.page}>
+      <Page size="LEGAL" orientation="landscape" style={styles.page}>
         <View style={styles.brandRow}>
           {logoUrl ? (
             <PdfImage src={logoUrl} style={styles.logo} />
@@ -167,6 +174,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
           </View>
         </View>
 
+        <View style={styles.tableContainer}>
         <View style={styles.table}>
           {/* Header Row 1: Date Labels */}
           <View style={[styles.tableHeaderRow, { height: 20 }]}>
@@ -245,6 +253,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
               <Text>{formatMoney(totalSavings)}</Text>
             </View>
           </View>
+        </View>
         </View>
       </Page>
     </Document>

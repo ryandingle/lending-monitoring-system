@@ -16,12 +16,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sidebar-collapsed") === "true";
-    }
-    return false;
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
   const toggleSidebar = () => {
@@ -99,4 +94,3 @@ export function AppShell({
     </div>
   );
 }
-
