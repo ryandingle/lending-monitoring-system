@@ -4,6 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
 
 const UpdateMemberSchema = z.object({
   groupId: z.string().uuid().optional(),
@@ -20,13 +21,14 @@ const UpdateMemberSchema = z.object({
     startDate: z.string().optional(),
     endDate: z.string().optional()
   })).optional(),
+  activeReleaseAmount: z.coerce.number().optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ memberId: string }> }) {
   const { memberId } = await params;
   
   try {
-    const member = await prisma.member.findUnique({
+    const member = await (prisma as any).member.findUnique({
       where: { id: memberId },
       include: {
         group: { select: { id: true, name: true } },
@@ -40,7 +42,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         },
         cycles: {
             orderBy: { cycleNumber: "desc" },
-        }
+        },
+        activeReleases: {
+          orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+        },
       }
     });
 
@@ -50,25 +55,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
 
     const serializedMember = {
       ...member,
-      balance: Number(member.balance),
-      savings: Number(member.savings),
-      createdAt: member.createdAt.toISOString(),
-      balanceAdjustments: member.balanceAdjustments.map(adj => ({
+      balance: Number((member as any).balance),
+      savings: Number((member as any).savings),
+      createdAt: (member as any).createdAt.toISOString(),
+      balanceAdjustments: (member as any).balanceAdjustments.map((adj: any) => ({
         ...adj,
         amount: Number(adj.amount),
         balanceBefore: Number(adj.balanceBefore),
         balanceAfter: Number(adj.balanceAfter),
         createdAt: adj.createdAt.toISOString(),
       })),
-      savingsAdjustments: member.savingsAdjustments.map(adj => ({
+      savingsAdjustments: (member as any).savingsAdjustments.map((adj: any) => ({
         ...adj,
         amount: Number(adj.amount),
         savingsBefore: Number(adj.savingsBefore),
         savingsAfter: Number(adj.savingsAfter),
         createdAt: adj.createdAt.toISOString(),
       })),
-      latestCycle: member.cycles[0] || null,
-      cycles: member.cycles.map(c => ({
+      activeReleases: (member as any).activeReleases.map((r: any) => ({
+        ...r,
+        amount: Number(r.amount),
+        releaseDate: r.releaseDate.toISOString(),
+        createdAt: r.createdAt.toISOString(),
+      })),
+      latestCycle: (member as any).cycles[0] || null,
+      cycles: (member as any).cycles.map((c: any) => ({
         cycleNumber: c.cycleNumber,
         startDate: c.startDate ? c.startDate.toISOString() : null,
         endDate: c.endDate ? c.endDate.toISOString() : null,
@@ -95,6 +106,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
   }
 
   const request = await tryGetAuditRequestContext();
+  const releaseDate = adjustDateForWeekend(getManilaToday());
 
   try {
     const updatedMember = await prisma.$transaction(async (tx) => {
@@ -165,6 +177,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
             });
           }
         }
+      }
+
+      if (parsed.data.activeReleaseAmount && parsed.data.activeReleaseAmount > 0) {
+        await (tx as any).activeRelease.create({
+          data: {
+            memberId,
+            amount: parsed.data.activeReleaseAmount,
+            releaseDate,
+          },
+        });
+
+        await createAuditLog(tx, {
+          actorUserId: user.id,
+          action: "ACTIVE_RELEASE_CREATE",
+          entityType: "Member",
+          entityId: memberId,
+          metadata: {
+            amount: parsed.data.activeReleaseAmount,
+            releaseDate: releaseDate.toISOString(),
+            source: "member_update",
+          },
+          request,
+        });
       }
 
       return updated;

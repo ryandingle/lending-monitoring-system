@@ -121,10 +121,24 @@ model Member {
   balanceAdjustments BalanceAdjustment[]
   savingsAdjustments SavingsAdjustment[]
   cycles MemberCycle[]
+  activeReleases ActiveRelease[]
 
   @@index([groupId])
   @@index([savingsLastAccruedAt])
   @@map("members")
+}
+
+model ActiveRelease {
+  id          String   @id @default(uuid()) @db.Uuid
+  memberId    String   @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  releaseDate DateTime @db.Date
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, releaseDate])
+  @@map("active_releases")
 }
 
 model MemberCycle {
@@ -227,4 +241,3 @@ model NotificationRead {
   @@index([auditLogId, readAt])
   @@map("notification_reads")
 }
-

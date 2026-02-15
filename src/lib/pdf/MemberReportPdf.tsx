@@ -97,6 +97,7 @@ interface MemberReportData {
   };
   dayColumns: string[]; // YYYY-MM-DD
   loanBalance: number;
+  activeReleaseAmount?: number | null;
   payments: Record<string, number>; // date -> amount
   savings: Record<string, number>; // date -> amount
   totalPayments: number;
@@ -116,7 +117,16 @@ const formatDateHeader = (dateStr: string) => {
 };
 
 export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
-  const { dayColumns, memberInfo, loanBalance, payments, savings, totalPayments, totalSavings } = data;
+  const {
+    dayColumns,
+    memberInfo,
+    loanBalance,
+    activeReleaseAmount,
+    payments,
+    savings,
+    totalPayments,
+    totalSavings,
+  } = data;
   const companyName = data.companyName ?? (process.env.LMS_COMPANY_NAME || 'TRIPLE E Microfinance Inc.');
   const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
@@ -232,7 +242,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
               <Text>{formatMoney(loanBalance)}</Text>
             </View>
             <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
-              <Text></Text>
+              <Text>{formatMoney(activeReleaseAmount || 0)}</Text>
             </View>
 
             {dayColumns.map((date) => (

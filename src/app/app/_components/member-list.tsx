@@ -42,6 +42,13 @@ export type Member = {
     startDate?: string | null;
     endDate?: string | null;
   }[];
+  latestActiveReleaseAmount?: number | null;
+  activeReleases?: {
+    id: string;
+    amount: number;
+    releaseDate: string;
+    createdAt: string;
+  }[];
 };
 
 export type Group = {
@@ -84,7 +91,7 @@ export function MemberList({
   const [isLoading, setIsLoading] = useState(false);
   
   // Bulk Edit State
-  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string }>>({});
+  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; activeReleaseAmount: string }>>({});
   const [bulkErrors, setBulkErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<{ memberId: string; message: string }[]>([]);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
@@ -103,11 +110,12 @@ export function MemberList({
   
   // Adjustment Form State
   const [adjustmentForm, setAdjustmentForm] = useState<{
-    type: 'balance' | 'savings' | null;
+    type: 'balance' | 'savings' | 'activeRelease' | null;
     action: 'INCREASE' | 'DEDUCT' | 'WITHDRAW' | null;
     amount: string;
   }>({ type: null, action: null, amount: "" });
   const [adjustmentLoading, setAdjustmentLoading] = useState(false);
+  const [activeReleaseAmount, setActiveReleaseAmount] = useState("");
 
   // Adjustments State
   const [balanceAdjustments, setBalanceAdjustments] = useState<any[]>([]);
@@ -143,6 +151,7 @@ export function MemberList({
     savings: "0",
     daysCount: "0",
     cycles: [] as { cycleNumber: string; startDate: string; endDate: string }[],
+    activeReleaseAmount: "",
   });
 
   const canCreate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
@@ -227,7 +236,7 @@ export function MemberList({
   };
 
   // Bulk Update Handlers
-  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount", value: string) => {
+  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount" | "activeReleaseAmount", value: string) => {
     if (field === "daysCount") {
         if (value !== "" && !/^\d*$/.test(value)) return;
     } else {
@@ -235,11 +244,11 @@ export function MemberList({
     }
 
     setUpdates((prev) => ({
-        ...prev,
-        [memberId]: {
-            ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "" }),
-            [field]: value,
-        },
+      ...prev,
+      [memberId]: {
+        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", activeReleaseAmount: "" }),
+        [field]: value,
+      },
     }));
   };
 
@@ -251,10 +260,18 @@ export function MemberList({
     setBulkSuccess(false);
 
     try {
-        const payload = Object.entries(updates).map(([memberId, data]) => ({
-            memberId,
-            ...data
-        })).filter(u => u.balanceDeduct || u.savingsIncrease || u.daysCount);
+    const payload = Object.entries(updates)
+      .map(([memberId, data]) => ({
+        memberId,
+        ...data,
+      }))
+      .filter(
+        (u) =>
+          u.balanceDeduct ||
+          u.savingsIncrease ||
+          u.daysCount ||
+          u.activeReleaseAmount,
+      );
 
         const res = await fetch("/api/members/bulk-update", {
             method: "POST",
@@ -412,7 +429,57 @@ export function MemberList({
   };
 
   const handleSaveAdjustment = async () => {
-    if (!viewMember || !adjustmentForm.type || !adjustmentForm.action || !adjustmentForm.amount) return;
+    if (!viewMember) return;
+    if (adjustmentForm.type === 'activeRelease') {
+        if (!activeReleaseAmount) return;
+        setAdjustmentLoading(true);
+        try {
+            const res = await fetch('/api/active-releases', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    memberId: viewMember.id,
+                    amount: Number(activeReleaseAmount),
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to create active release");
+            }
+
+            const created = await res.json();
+
+            setViewMember(prev => {
+                if (!prev) return null;
+                const existing = prev.activeReleases || [];
+                const updatedReleases = [
+                    {
+                        id: created.id,
+                        amount: created.amount,
+                        releaseDate: created.releaseDate,
+                        createdAt: created.createdAt,
+                    },
+                    ...existing,
+                ];
+                return {
+                    ...prev,
+                    activeReleases: updatedReleases,
+                    latestActiveReleaseAmount: created.amount,
+                };
+            });
+
+            setActiveReleaseAmount("");
+            fetchMembers();
+        } catch (error: any) {
+            alert(error.message || "Failed to create active release");
+        } finally {
+            setAdjustmentLoading(false);
+        }
+        return;
+    }
+
+    if (!adjustmentForm.type || !adjustmentForm.action || !adjustmentForm.amount) return;
     
     setAdjustmentLoading(true);
     try {
@@ -497,6 +564,7 @@ export function MemberList({
         savings: member?.savings?.toString() || "0",
         daysCount: member?.daysCount?.toString() || "0",
         cycles: initialCycles,
+        activeReleaseAmount: member?.latestActiveReleaseAmount?.toString() || "",
     });
     setModalError(null);
     setIsModalOpen(true);
@@ -545,7 +613,7 @@ export function MemberList({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 ...formData,
-                groupId: formData.groupId, // Use form data group ID
+                groupId: formData.groupId,
                 age: formData.age ? Number(formData.age) : undefined,
                 balance: Number(formData.balance),
                 savings: Number(formData.savings),
@@ -554,7 +622,10 @@ export function MemberList({
                     cycleNumber: Number(c.cycleNumber),
                     startDate: c.startDate,
                     endDate: c.endDate
-                })).filter(c => c.cycleNumber)
+                })).filter(c => c.cycleNumber),
+                activeReleaseAmount: formData.activeReleaseAmount
+                    ? Number(formData.activeReleaseAmount)
+                    : undefined,
             }),
         });
 
@@ -582,7 +653,13 @@ export function MemberList({
     });
   };
 
-  const hasChanges = Object.values(updates).some((u) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.daysCount !== "");
+  const hasChanges = Object.values(updates).some(
+    (u) =>
+      u.balanceDeduct !== "" ||
+      u.savingsIncrease !== "" ||
+      u.daysCount !== "" ||
+      u.activeReleaseAmount !== "",
+  );
 
   return (
     <div className="space-y-6">
@@ -715,6 +792,7 @@ export function MemberList({
                             </th>
                             {!fixedGroupId && <th className="px-4 py-3 font-semibold">Group</th>}
                             <th className="px-4 py-3 font-semibold text-right">Balance Amount</th>
+                            <th className="px-4 py-3 font-semibold text-right">Active Release</th>
                             <th className="px-4 py-3 font-semibold text-right">Savings Amount</th>
                             <th className="px-4 py-3 font-semibold text-center"># of Days</th>
                             {canBulkUpdate && (
@@ -748,6 +826,23 @@ export function MemberList({
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
                                         {Number(member.balance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
+                                    <td className="px-4 py-3">
+                                        {canBulkUpdate ? (
+                                            <input
+                                                type="text"
+                                                placeholder={member.latestActiveReleaseAmount != null ? String(member.latestActiveReleaseAmount) : "0"}
+                                                className="w-full min-w-[90px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                                                value={updates[member.id]?.activeReleaseAmount ?? (member.latestActiveReleaseAmount != null ? String(member.latestActiveReleaseAmount) : "")}
+                                                onChange={(e) => handleBulkChange(member.id, "activeReleaseAmount", e.target.value)}
+                                            />
+                                        ) : (
+                                            <span className="font-mono text-slate-300">
+                                                {member.latestActiveReleaseAmount != null
+                                                    ? Number(member.latestActiveReleaseAmount).toLocaleString('en-US', { minimumFractionDigits: 0 })
+                                                    : "-"}
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
                                         {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
@@ -755,6 +850,15 @@ export function MemberList({
                                     
                                     {canBulkUpdate && (
                                         <>
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="0"
+                                                    className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
+                                                    value={updates[member.id]?.balanceDeduct || ""}
+                                                    onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
@@ -938,6 +1042,41 @@ export function MemberList({
                                             </div>
                                         </div>
                                     </div>
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Active Release History</h3>
+                                        <div className="rounded-lg border border-slate-800 overflow-hidden">
+                                            {viewMember.activeReleases && viewMember.activeReleases.length > 0 ? (
+                                                <table className="w-full text-sm text-left text-slate-400">
+                                                    <thead className="bg-slate-900 text-slate-300">
+                                                        <tr>
+                                                            <th className="px-3 py-2">Release Date</th>
+                                                            <th className="px-3 py-2 text-right">Amount</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-800">
+                                                        {viewMember.activeReleases.map((r) => (
+                                                            <tr key={r.id}>
+                                                                <td className="px-3 py-2">
+                                                                    {new Date(r.releaseDate).toLocaleDateString()}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {Number(r.amount).toLocaleString('en-US', {
+                                                                        style: 'currency',
+                                                                        currency: 'PHP',
+                                                                        minimumFractionDigits: 0,
+                                                                    })}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-slate-500">
+                                                    No active release history.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {userRole === Role.SUPER_ADMIN && (
@@ -953,12 +1092,13 @@ export function MemberList({
                                                     <option value="">Select Type</option>
                                                     <option value="balance">Balance</option>
                                                     <option value="savings">Savings</option>
+                                                    <option value="activeRelease">Active Release</option>
                                                 </select>
                                                 <select 
                                                     className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
                                                     value={adjustmentForm.action || ""}
                                                     onChange={e => setAdjustmentForm({...adjustmentForm, action: e.target.value as any})}
-                                                    disabled={!adjustmentForm.type}
+                                                    disabled={!adjustmentForm.type || adjustmentForm.type === 'activeRelease'}
                                                 >
                                                     <option value="">Select Action</option>
                                                     {adjustmentForm.type === 'balance' ? (
@@ -966,25 +1106,37 @@ export function MemberList({
                                                             <option value="DEDUCT">Deduct (Payment)</option>
                                                             <option value="INCREASE">Increase (Loan)</option>
                                                         </>
-                                                    ) : (
+                                                    ) : adjustmentForm.type === 'savings' ? (
                                                         <>
                                                             <option value="INCREASE">Deposit</option>
                                                             <option value="WITHDRAW">Withdraw</option>
                                                         </>
-                                                    )}
+                                                    ) : null}
                                                 </select>
                                             </div>
                                             <div className="flex gap-2">
                                                 <input 
                                                     type="number" 
-                                                    placeholder="Amount"
+                                                    placeholder={adjustmentForm.type === 'activeRelease' ? "Active release amount" : "Amount"}
                                                     className="flex-1 rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
-                                                    value={adjustmentForm.amount}
-                                                    onChange={e => setAdjustmentForm({...adjustmentForm, amount: e.target.value})}
+                                                    value={adjustmentForm.type === 'activeRelease' ? activeReleaseAmount : adjustmentForm.amount}
+                                                    onChange={e => {
+                                                        if (adjustmentForm.type === 'activeRelease') {
+                                                            setActiveReleaseAmount(e.target.value);
+                                                        } else {
+                                                            setAdjustmentForm({...adjustmentForm, amount: e.target.value});
+                                                        }
+                                                    }}
                                                 />
                                                 <button 
                                                     onClick={handleSaveAdjustment}
-                                                    disabled={adjustmentLoading || !adjustmentForm.type || !adjustmentForm.action || !adjustmentForm.amount}
+                                                    disabled={
+                                                        adjustmentLoading ||
+                                                        !adjustmentForm.type ||
+                                                        (adjustmentForm.type === 'activeRelease'
+                                                            ? !activeReleaseAmount
+                                                            : !adjustmentForm.action || !adjustmentForm.amount)
+                                                    }
                                                     className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                                                 >
                                                     {adjustmentLoading ? "Saving..." : "Save"}
@@ -1244,6 +1396,18 @@ export function MemberList({
                                 {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
                                     <p className="mt-1 text-xs text-amber-500">Cannot be edited due to member already has balance and savings adjustment records</p>
                                 )}
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                    Active Release (optional)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.activeReleaseAmount}
+                                    onChange={(e) => setFormData({ ...formData, activeReleaseAmount: e.target.value })}
+                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                />
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-300">

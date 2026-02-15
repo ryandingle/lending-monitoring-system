@@ -4,6 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
+import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
 
 const CreateMemberSchema = z.object({
   groupId: z.string().uuid(),
@@ -20,6 +21,7 @@ const CreateMemberSchema = z.object({
     startDate: z.string().optional(),
     endDate: z.string().optional()
   })).optional(),
+  activeReleaseAmount: z.coerce.number().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
   }
 
   const [members, total] = await Promise.all([
-    prisma.member.findMany({
+    (prisma as any).member.findMany({
       where,
       include: {
         group: { select: { id: true, name: true } },
@@ -58,9 +60,13 @@ export async function GET(req: NextRequest) {
           },
         },
         cycles: {
-            orderBy: { cycleNumber: "desc" },
-            take: 1
-        }
+          orderBy: { cycleNumber: "desc" },
+          take: 1,
+        },
+        activeReleases: {
+          orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+          take: 1,
+        },
       },
       orderBy: { lastName: sort },
       skip: (page - 1) * limit,
@@ -69,7 +75,7 @@ export async function GET(req: NextRequest) {
     prisma.member.count({ where }),
   ]);
 
-  const serializedMembers = members.map((m) => ({
+  const serializedMembers = (members as any[]).map((m) => ({
     id: m.id,
     firstName: m.firstName,
     lastName: m.lastName,
@@ -86,11 +92,15 @@ export async function GET(req: NextRequest) {
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
     },
-    latestCycle: m.cycles[0] ? {
-        cycleNumber: m.cycles[0].cycleNumber,
-        startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
-        endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined
-    } : null,
+    latestCycle: m.cycles[0]
+      ? {
+          cycleNumber: m.cycles[0].cycleNumber,
+          startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
+          endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined,
+        }
+      : null,
+    latestActiveReleaseAmount:
+      m.activeReleases[0] != null ? Number(m.activeReleases[0].amount) : null,
   }));
 
   return NextResponse.json({
@@ -114,6 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   const today = new Date();
+  const releaseDate = adjustDateForWeekend(getManilaToday());
   const request = await tryGetAuditRequestContext();
 
   try {
@@ -164,6 +175,29 @@ export async function POST(req: NextRequest) {
             },
           });
         }
+      }
+
+      if (parsed.data.activeReleaseAmount && parsed.data.activeReleaseAmount > 0) {
+        await (tx as any).activeRelease.create({
+          data: {
+            memberId: newMember.id,
+            amount: parsed.data.activeReleaseAmount,
+            releaseDate,
+          },
+        });
+
+        await createAuditLog(tx, {
+          actorUserId: user.id,
+          action: "ACTIVE_RELEASE_CREATE",
+          entityType: "Member",
+          entityId: newMember.id,
+          metadata: {
+            amount: parsed.data.activeReleaseAmount,
+            releaseDate: releaseDate.toISOString(),
+            source: "member_create",
+          },
+          request,
+        });
       }
 
       return newMember;

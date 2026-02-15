@@ -11,7 +11,15 @@ export async function POST(req: NextRequest) {
   requireRole(actor, [Role.SUPER_ADMIN]);
 
   const body = await req.json();
-  const { updates } = body as { updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[] };
+  const { updates } = body as {
+    updates: {
+      memberId: string;
+      balanceDeduct: string;
+      savingsIncrease: string;
+      daysCount: string;
+      activeReleaseAmount?: string;
+    }[];
+  };
 
   if (!updates || !Array.isArray(updates)) {
     return NextResponse.json({ error: "Invalid updates data" }, { status: 400 });
@@ -39,6 +47,7 @@ export async function POST(req: NextRequest) {
 
         const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
         const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+        const activeReleaseAmount = parseFloat(update.activeReleaseAmount ?? "") || 0;
         const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
 
         if (balanceDeduct > 0) {
@@ -160,6 +169,25 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        if (activeReleaseAmount > 0) {
+          await (tx as any).activeRelease.create({
+            data: {
+              memberId: member.id,
+              amount: activeReleaseAmount,
+              releaseDate: adjustmentDate,
+            },
+          });
+
+          await createAuditLog(tx, {
+            actorUserId: actor.id,
+            action: "ACTIVE_RELEASE_CREATE",
+            entityType: "Member",
+            entityId: member.id,
+            metadata: { amount: activeReleaseAmount, releaseDate: adjustmentDate.toISOString() },
+            request,
+          });
+        }
+
         // Update daysCount if provided
         if (newDaysCount !== null && newDaysCount !== member.daysCount) {
           await tx.member.update({
@@ -168,7 +196,13 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null) && !errors.some(e => e.memberId === member.id)) {
+        if (
+          (balanceDeduct > 0 ||
+            savingsIncrease > 0 ||
+            newDaysCount !== null ||
+            activeReleaseAmount > 0) &&
+          !errors.some((e) => e.memberId === member.id)
+        ) {
           await createAuditLog(tx, {
             actorUserId: actor.id,
             action: "MEMBER_BULK_UPDATE",

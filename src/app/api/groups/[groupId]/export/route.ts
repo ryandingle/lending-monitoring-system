@@ -59,7 +59,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // Determine report columns (days)
   const dayColumns = getWeekdaysInRange(dateFrom, dateTo);
 
-  const group = await prisma.group.findUnique({
+  const group = (await (prisma as any).group.findUnique({
     where: { id: groupId },
     include: {
       members: {
@@ -75,14 +75,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
               createdAt: {
                 gte: getManilaDateRange(dateFrom, dateTo).from,
                 lte: getManilaDateRange(dateFrom, dateTo).to,
-              }
+              },
             },
             select: { amount: true, createdAt: true },
+          },
+          activeReleases: {
+            orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+            take: 1,
+            select: { amount: true },
           },
         },
       },
     },
-  });
+  })) as any;
 
   if (!group) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -91,30 +96,34 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // --- PREPARE DATA FOR PDF ---
   const totals = {
     loanBalance: 0,
+    activeReleaseAmount: 0,
     dailyPayments: {} as Record<string, number>,
     dailySavings: {} as Record<string, number>,
     totalPayments: 0,
     totalSavings: 0,
   };
 
-  const membersData = group.members.map((m) => {
+  const membersData = group.members.map((m: any) => {
     const currentBal = toNumber(m.balance);
-    const totalPaymentsAllTime = m.balanceAdjustments.reduce((sum, adj) => sum + toNumber(adj.amount), 0);
+    const totalPaymentsAllTime = m.balanceAdjustments.reduce((sum: number, adj: any) => sum + toNumber(adj.amount), 0);
     const loanBalance = currentBal + totalPaymentsAllTime;
+    const latestActiveReleaseAmount =
+      m.activeReleases[0] != null ? toNumber(m.activeReleases[0].amount) : 0;
     
     totals.loanBalance += loanBalance;
+    totals.activeReleaseAmount += latestActiveReleaseAmount;
 
     let memberTotalPayments = 0;
     let memberTotalSavings = 0;
     const paymentsMap: Record<string, number> = {};
     const savingsMap: Record<string, number> = {};
 
-    dayColumns.forEach(dateStr => {
-      const payments = m.balanceAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
-      const savings = m.savingsAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
+    dayColumns.forEach((dateStr) => {
+      const payments = m.balanceAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
+      const savings = m.savingsAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
 
-      const paymentSum = payments.reduce((s, a) => s + toNumber(a.amount), 0);
-      const savingsSum = savings.reduce((s, a) => s + toNumber(a.amount), 0);
+      const paymentSum = payments.reduce((s: number, a: any) => s + toNumber(a.amount), 0);
+      const savingsSum = savings.reduce((s: number, a: any) => s + toNumber(a.amount), 0);
 
       if (paymentSum > 0) {
         paymentsMap[dateStr] = paymentSum;
@@ -135,6 +144,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     return {
       name: `${m.lastName}, ${m.firstName}`,
       loanBalance,
+      activeReleaseAmount: latestActiveReleaseAmount,
       payments: paymentsMap,
       savings: savingsMap,
       totalPayments: memberTotalPayments,

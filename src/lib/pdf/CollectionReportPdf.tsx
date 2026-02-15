@@ -114,6 +114,7 @@ interface ReportData {
   members: Array<{
     name: string;
     loanBalance: number;
+    activeReleaseAmount?: number | null;
     payments: Record<string, number>; // date -> amount
     savings: Record<string, number>; // date -> amount
     totalPayments: number;
@@ -121,6 +122,7 @@ interface ReportData {
   }>;
   totals: {
     loanBalance: number;
+    activeReleaseAmount: number;
     dailyPayments: Record<string, number>;
     dailySavings: Record<string, number>;
     totalPayments: number;
@@ -259,7 +261,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                     <Text>{formatMoney(member.loanBalance)}</Text>
                   </View>
                   <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
-                    <Text></Text>
+                <Text>{formatMoney(member.activeReleaseAmount || 0)}</Text>
                   </View>
 
                   {dayColumns.map((date) => (
@@ -292,7 +294,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.loanBalance)}</Text>
                 </View>
-                <View style={[styles.tableCell, { width: colWidths.currentRelease }]} />
+                <View style={[styles.tableCell, { width: colWidths.currentRelease, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.activeReleaseAmount || 0)}</Text>
+                </View>
 
                 {dayColumns.map((date) => (
                   <React.Fragment key={date}>

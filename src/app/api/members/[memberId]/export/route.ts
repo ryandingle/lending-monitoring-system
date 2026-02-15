@@ -57,6 +57,11 @@ export async function GET(
     where: { id: memberId },
     include: {
       group: { select: { id: true, name: true } },
+      activeReleases: {
+        orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        select: { amount: true },
+      },
     },
   });
 
@@ -121,6 +126,8 @@ export async function GET(
   const currentBal = toNumber(member.balance);
   const totalPaymentsAllTime = balanceAdjustments.reduce((sum, adj) => sum + toNumber(adj.amount), 0);
   const loanBalance = currentBal + totalPaymentsAllTime;
+  const latestActiveReleaseAmount =
+    member.activeReleases[0] != null ? toNumber(member.activeReleases[0].amount) : 0;
 
   // Daily Data
   const paymentsMap: Record<string, number> = {};
@@ -146,6 +153,7 @@ export async function GET(
     memberInfo,
     dayColumns,
     loanBalance,
+    activeReleaseAmount: latestActiveReleaseAmount,
     payments: paymentsMap,
     savings: savingsMap,
     totalPayments: totalPaymentsPeriod,
