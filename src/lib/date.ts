@@ -34,6 +34,12 @@ export function getManilaToday(): Date {
   return new Date(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
 }
 
+export function getManilaBusinessDate(): Date {
+  const adjusted = adjustDateForWeekend(getManilaToday());
+  const ymd = formatDateYMD(adjusted);
+  return new Date(`${ymd}T12:00:00.000+08:00`);
+}
+
 /** YYYY-MM-DD */
 export function formatDateYMD(d: Date): string {
   const year = d.getFullYear();

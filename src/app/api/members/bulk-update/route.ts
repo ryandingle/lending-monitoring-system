@@ -4,7 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
-import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
+import { getManilaBusinessDate } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
@@ -30,8 +30,7 @@ export async function POST(req: NextRequest) {
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
 
-  // Calculate adjustment date for weekend (Manila time)
-  const adjustmentDate = adjustDateForWeekend(getManilaToday());
+  const adjustmentDate = getManilaBusinessDate();
 
   const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
   const warnings: { memberId: string; message: string }[] = [];

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { z } from "zod";
-import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
+import { getManilaBusinessDate } from "@/lib/date";
 
 const SavingsAdjustmentSchema = z.object({
   memberId: z.string().uuid(),
@@ -65,8 +65,7 @@ export async function POST(req: NextRequest) {
 
     const { memberId, type, amount } = parsed.data;
 
-    // Adjust date if weekend
-    const adjustmentDate = adjustDateForWeekend(getManilaToday());
+    const adjustmentDate = getManilaBusinessDate();
 
     const result = await prisma.$transaction(async (tx) => {
       const member = await tx.member.findUnique({ where: { id: memberId } });

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
+import { getManilaBusinessDate } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   const request = await tryGetAuditRequestContext();
-  const releaseDate = adjustDateForWeekend(getManilaToday());
+  const releaseDate = getManilaBusinessDate();
 
   try {
     const created = await prisma.$transaction(async (tx) => {

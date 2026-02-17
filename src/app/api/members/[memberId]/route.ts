@@ -4,7 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
+import { getManilaBusinessDate } from "@/lib/date";
 
 const UpdateMemberSchema = z.object({
   groupId: z.string().uuid().optional(),
@@ -106,7 +106,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
   }
 
   const request = await tryGetAuditRequestContext();
-  const releaseDate = adjustDateForWeekend(getManilaToday());
+  const releaseDate = getManilaBusinessDate();
 
   try {
     const updatedMember = await prisma.$transaction(async (tx) => {

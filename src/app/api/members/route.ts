@@ -4,7 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { adjustDateForWeekend, getManilaToday } from "@/lib/date";
+import { getManilaBusinessDate } from "@/lib/date";
 
 const CreateMemberSchema = z.object({
   groupId: z.string().uuid(),
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   const today = new Date();
-  const releaseDate = adjustDateForWeekend(getManilaToday());
+  const releaseDate = getManilaBusinessDate();
   const request = await tryGetAuditRequestContext();
 
   try {
