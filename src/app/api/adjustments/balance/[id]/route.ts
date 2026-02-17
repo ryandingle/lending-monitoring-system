@@ -38,11 +38,17 @@ export async function DELETE(
         ? -Number(adjustment.amount) 
         : Number(adjustment.amount);
 
+      const updateData: any = {
+        balance: { increment: reverseAmount },
+      };
+
+      if (adjustment.type === "DEDUCT" && adjustment.member && adjustment.member.daysCount > 0) {
+        updateData.daysCount = adjustment.member.daysCount - 1;
+      }
+
       await tx.member.update({
         where: { id: adjustment.memberId },
-        data: {
-          balance: { increment: reverseAmount },
-        },
+        data: updateData,
       });
 
       await tx.balanceAdjustment.delete({

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { Prisma, Role } from "@prisma/client";
+import { BalanceUpdateType, Prisma, Role, SavingsUpdateType } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { getManilaBusinessDate } from "@/lib/date";
+import { getManilaBusinessDate, getManilaDateRange, getManilaToday, formatDateYMD } from "@/lib/date";
 
 const CreateMemberSchema = z.object({
   groupId: z.string().uuid(),
@@ -48,6 +48,10 @@ export async function GET(req: NextRequest) {
     ];
   }
 
+  const manilaToday = getManilaToday();
+  const todayStr = formatDateYMD(manilaToday);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
+
   const [members, total] = await Promise.all([
     (prisma as any).member.findMany({
       where,
@@ -58,6 +62,26 @@ export async function GET(req: NextRequest) {
             balanceAdjustments: true,
             savingsAdjustments: true,
           },
+        },
+        balanceAdjustments: {
+          where: {
+            type: BalanceUpdateType.DEDUCT,
+            createdAt: {
+              gte: todayRange.from,
+              lte: todayRange.to,
+            },
+          },
+          select: { amount: true },
+        },
+        savingsAdjustments: {
+          where: {
+            type: SavingsUpdateType.INCREASE,
+            createdAt: {
+              gte: todayRange.from,
+              lte: todayRange.to,
+            },
+          },
+          select: { amount: true },
         },
         cycles: {
           orderBy: { cycleNumber: "desc" },
@@ -75,33 +99,51 @@ export async function GET(req: NextRequest) {
     prisma.member.count({ where }),
   ]);
 
-  const serializedMembers = (members as any[]).map((m) => ({
-    id: m.id,
-    firstName: m.firstName,
-    lastName: m.lastName,
-    age: m.age,
-    address: m.address,
-    phoneNumber: m.phoneNumber,
-    balance: Number(m.balance),
-    savings: Number(m.savings),
-    createdAt: m.createdAt.toISOString(),
-    groupId: m.groupId,
-    group: m.group ? { id: m.group.id, name: m.group.name } : null,
-    daysCount: m.daysCount,
-    _count: {
-      balanceAdjustments: m._count.balanceAdjustments,
-      savingsAdjustments: m._count.savingsAdjustments,
-    },
-    latestCycle: m.cycles[0]
-      ? {
-          cycleNumber: m.cycles[0].cycleNumber,
-          startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
-          endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined,
-        }
-      : null,
-    latestActiveReleaseAmount:
-      m.activeReleases[0] != null ? Number(m.activeReleases[0].amount) : null,
-  }));
+  const serializedMembers = (members as any[]).map((m) => {
+    const todayPayment = Array.isArray(m.balanceAdjustments)
+      ? m.balanceAdjustments.reduce(
+          (sum: number, adj: any) => sum + Number(adj.amount ?? 0),
+          0,
+        )
+      : 0;
+
+    const todaySavings = Array.isArray(m.savingsAdjustments)
+      ? m.savingsAdjustments.reduce(
+          (sum: number, adj: any) => sum + Number(adj.amount ?? 0),
+          0,
+        )
+      : 0;
+
+    return {
+      id: m.id,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      age: m.age,
+      address: m.address,
+      phoneNumber: m.phoneNumber,
+      balance: Number(m.balance),
+      savings: Number(m.savings),
+      createdAt: m.createdAt.toISOString(),
+      groupId: m.groupId,
+      group: m.group ? { id: m.group.id, name: m.group.name } : null,
+      daysCount: m.daysCount,
+      todayPayment,
+      todaySavings,
+      _count: {
+        balanceAdjustments: m._count.balanceAdjustments,
+        savingsAdjustments: m._count.savingsAdjustments,
+      },
+      latestCycle: m.cycles[0]
+        ? {
+            cycleNumber: m.cycles[0].cycleNumber,
+            startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
+            endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined,
+          }
+        : null,
+      latestActiveReleaseAmount:
+        m.activeReleases[0] != null ? Number(m.activeReleases[0].amount) : null,
+    };
+  });
 
   return NextResponse.json({
     items: serializedMembers,

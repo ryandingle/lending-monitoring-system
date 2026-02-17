@@ -114,6 +114,7 @@ interface ReportData {
   members: Array<{
     name: string;
     loanBalance: number;
+    savingsBalance: number;
     activeReleaseAmount?: number | null;
     payments: Record<string, number>; // date -> amount
     savings: Record<string, number>; // date -> amount
@@ -122,6 +123,7 @@ interface ReportData {
   }>;
   totals: {
     loanBalance: number;
+    savingsBalance: number;
     activeReleaseAmount: number;
     dailyPayments: Record<string, number>;
     dailySavings: Record<string, number>;
@@ -150,7 +152,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
   const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
   const numDayCols = dayColumns.length * 2;
-  const fixedParts = [2, 12, 6, 6, 6, 6];
+  const fixedParts = [2, 12, 6, 6, 6, 6, 6];
   const fixedTotal = fixedParts.reduce((a, b) => a + b, 0);
   const dynamicWidthPerCol = numDayCols > 0 ? ((100 - fixedTotal) / numDayCols) : 0;
 
@@ -158,6 +160,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
     no: '2%',
     name: '12%',
     balance: '6%',
+    savingsBalance: '6%',
     currentRelease: '6%',
     day: `${dynamicWidthPerCol}%`,
     fwd: '6%',
@@ -200,6 +203,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
               <View style={[styles.tableCell, { width: colWidths.no, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.name, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.balance, borderBottomWidth: 0 }]} />
+              <View style={[styles.tableCell, { width: colWidths.savingsBalance, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.currentRelease, borderBottomWidth: 0 }]} />
               
               {dayColumns.map((date, i) => (
@@ -222,6 +226,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
               </View>
               <View style={[styles.tableCell, { width: colWidths.balance }]}>
                 <Text style={styles.bold}>LOAN BAL</Text>
+              </View>
+              <View style={[styles.tableCell, { width: colWidths.savingsBalance }]}>
+                <Text style={styles.bold}>SAV BAL</Text>
               </View>
               <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
                 <Text style={styles.bold}>ACTIVE RELEASE</Text>
@@ -260,7 +267,10 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                   <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
                     <Text>{formatMoney(member.loanBalance)}</Text>
                   </View>
-                  <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
+                  <View style={[styles.tableCell, { width: colWidths.savingsBalance, textAlign: 'right', paddingRight: 2 }]}>
+                    <Text>{formatMoney(member.savingsBalance)}</Text>
+                  </View>
+                  <View style={[styles.tableCell, { width: colWidths.currentRelease, textAlign: 'right', paddingRight: 2 }]}>
                 <Text>{formatMoney(member.activeReleaseAmount || 0)}</Text>
                   </View>
 
@@ -293,6 +303,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 </View>
                 <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.loanBalance)}</Text>
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.savingsBalance, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.savingsBalance)}</Text>
                 </View>
                 <View style={[styles.tableCell, { width: colWidths.currentRelease, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.activeReleaseAmount || 0)}</Text>

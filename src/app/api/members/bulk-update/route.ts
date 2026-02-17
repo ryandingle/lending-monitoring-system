@@ -36,13 +36,22 @@ export async function POST(req: NextRequest) {
   const warnings: { memberId: string; message: string }[] = [];
 
   try {
-    await prisma.$transaction(async (tx) => {
-      for (const update of updates) {
+    for (const update of updates) {
+      await prisma.$transaction(async (tx) => {
         const member = await tx.member.findUnique({
           where: { id: update.memberId },
-          select: { id: true, firstName: true, lastName: true, balance: true, savings: true, daysCount: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            balance: true,
+            savings: true,
+            daysCount: true,
+          },
         });
-        if (!member) continue;
+        if (!member) {
+          return;
+        }
 
         const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
         const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
@@ -69,13 +78,12 @@ export async function POST(req: NextRequest) {
             errors.push({
               memberId: member.id,
               type: "balance",
-              message: `Balance for ${member.firstName} has already been updated today.`
+              message: `Balance for ${member.firstName} has already been updated today.`,
             });
           } else {
             const balanceBefore = member.balance;
             const balanceAfter = balanceBefore.minus(balanceDeduct);
 
-            // Auto-increment daysCount if not manually set
             const shouldIncrementDays = newDaysCount === null;
             const finalDaysCount = shouldIncrementDays ? member.daysCount + 1 : newDaysCount;
 
@@ -99,18 +107,16 @@ export async function POST(req: NextRequest) {
               },
             });
 
-            // Update newDaysCount to reflect what was actually saved
             if (shouldIncrementDays) {
-              // This ensures the audit log shows the correct value
               update.daysCount = String(finalDaysCount);
             }
 
             if (finalDaysCount >= 40) {
               warnings.push({
                 memberId: member.id,
-                message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`
+                message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`,
               });
-              
+
               await createAuditLog(tx, {
                 actorUserId: actor.id,
                 action: "MEMBER_REACHED_40_DAYS",
@@ -143,7 +149,7 @@ export async function POST(req: NextRequest) {
             errors.push({
               memberId: member.id,
               type: "savings",
-              message: `Savings for ${member.firstName} has already been updated today.`
+              message: `Savings for ${member.firstName} has already been updated today.`,
             });
           } else {
             const savingsBefore = member.savings;
@@ -187,7 +193,6 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Update daysCount if provided
         if (newDaysCount !== null && newDaysCount !== member.daysCount) {
           await tx.member.update({
             where: { id: member.id },
@@ -211,8 +216,8 @@ export async function POST(req: NextRequest) {
             request,
           });
         }
-      }
-    });
+      });
+    }
 
     return NextResponse.json({ success: errors.length === 0, errors, warnings });
   } catch (error) {

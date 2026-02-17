@@ -122,10 +122,11 @@ export async function GET(
     reportDate: reportDateStr,
   };
 
-  // Loan Balance Calculation
+  // Loan/Savings Balance Calculation (aligned with group report)
   const currentBal = toNumber(member.balance);
+  const savingsBalance = toNumber(member.savings);
   const totalPaymentsAllTime = balanceAdjustments.reduce((sum, adj) => sum + toNumber(adj.amount), 0);
-  const loanBalance = currentBal + totalPaymentsAllTime;
+  const loanBalance = currentBal;
   const latestActiveReleaseAmount =
     member.activeReleases[0] != null ? toNumber(member.activeReleases[0].amount) : 0;
 
@@ -153,6 +154,7 @@ export async function GET(
     memberInfo,
     dayColumns,
     loanBalance,
+    savingsBalance,
     activeReleaseAmount: latestActiveReleaseAmount,
     payments: paymentsMap,
     savings: savingsMap,

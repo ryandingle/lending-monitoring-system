@@ -97,6 +97,7 @@ interface MemberReportData {
   };
   dayColumns: string[]; // YYYY-MM-DD
   loanBalance: number;
+  savingsBalance: number;
   activeReleaseAmount?: number | null;
   payments: Record<string, number>; // date -> amount
   savings: Record<string, number>; // date -> amount
@@ -121,6 +122,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
     dayColumns,
     memberInfo,
     loanBalance,
+    savingsBalance,
     activeReleaseAmount,
     payments,
     savings,
@@ -131,13 +133,14 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
   const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
   const numDayCols = dayColumns.length * 2;
-  const fixedParts = [4, 12, 8, 8, 8];
+  const fixedParts = [4, 12, 8, 8, 8, 8];
   const fixedTotal = fixedParts.reduce((a, b) => a + b, 0);
   const dynamicWidthPerCol = numDayCols > 0 ? ((100 - fixedTotal) / numDayCols) : 0;
 
   const colWidths = {
     no: '4%',
     balance: '12%',
+    savingsBalance: '8%',
     currentRelease: '8%',
     day: `${dynamicWidthPerCol}%`,
     fwd: '8%',
@@ -190,6 +193,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
           <View style={[styles.tableHeaderRow, { height: 20 }]}>
             <View style={[styles.tableCell, { width: colWidths.no, borderBottomWidth: 0 }]} />
             <View style={[styles.tableCell, { width: colWidths.balance, borderBottomWidth: 0 }]} />
+            <View style={[styles.tableCell, { width: colWidths.savingsBalance, borderBottomWidth: 0 }]} />
             <View style={[styles.tableCell, { width: colWidths.currentRelease, borderBottomWidth: 0 }]} />
             
             {dayColumns.map((date) => (
@@ -209,6 +213,9 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
             </View>
             <View style={[styles.tableCell, { width: colWidths.balance }]}>
               <Text style={styles.bold}>LOAN BAL</Text>
+            </View>
+            <View style={[styles.tableCell, { width: colWidths.savingsBalance }]}>
+              <Text style={styles.bold}>SAV BAL</Text>
             </View>
             <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
               <Text style={styles.bold}>ACTIVE RELEASE</Text>
@@ -241,7 +248,10 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
             <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
               <Text>{formatMoney(loanBalance)}</Text>
             </View>
-            <View style={[styles.tableCell, { width: colWidths.currentRelease }]}>
+            <View style={[styles.tableCell, { width: colWidths.savingsBalance, textAlign: 'right', paddingRight: 2 }]}>
+              <Text>{formatMoney(savingsBalance)}</Text>
+            </View>
+            <View style={[styles.tableCell, { width: colWidths.currentRelease, textAlign: 'right', paddingRight: 2 }]}>
               <Text>{formatMoney(activeReleaseAmount || 0)}</Text>
             </View>
 

@@ -96,6 +96,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   // --- PREPARE DATA FOR PDF ---
   const totals = {
     loanBalance: 0,
+    savingsBalance: 0,
     activeReleaseAmount: 0,
     dailyPayments: {} as Record<string, number>,
     dailySavings: {} as Record<string, number>,
@@ -105,12 +106,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
 
   const membersData = group.members.map((m: any) => {
     const currentBal = toNumber(m.balance);
-    const totalPaymentsAllTime = m.balanceAdjustments.reduce((sum: number, adj: any) => sum + toNumber(adj.amount), 0);
-    const loanBalance = currentBal + totalPaymentsAllTime;
+    const savingsBalance = toNumber(m.savings);
+    const totalPaymentsAllTime = m.balanceAdjustments.reduce(
+      (sum: number, adj: any) => sum + toNumber(adj.amount),
+      0
+    );
+    const loanBalance = currentBal;
     const latestActiveReleaseAmount =
       m.activeReleases[0] != null ? toNumber(m.activeReleases[0].amount) : 0;
     
     totals.loanBalance += loanBalance;
+    totals.savingsBalance += savingsBalance;
     totals.activeReleaseAmount += latestActiveReleaseAmount;
 
     let memberTotalPayments = 0;
@@ -144,6 +150,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     return {
       name: `${m.lastName}, ${m.firstName}`,
       loanBalance,
+      savingsBalance,
       activeReleaseAmount: latestActiveReleaseAmount,
       payments: paymentsMap,
       savings: savingsMap,

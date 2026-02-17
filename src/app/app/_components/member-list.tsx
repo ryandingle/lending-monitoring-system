@@ -16,6 +16,8 @@ export type Member = {
   groupId: string | null;
   group?: { id: string; name: string } | null;
   daysCount: number;
+  todayPayment?: number;
+  todaySavings?: number;
   age?: number | null;
   address?: string | null;
   phoneNumber?: string | null;
@@ -129,6 +131,39 @@ export function MemberList({
   const [savingsPage, setSavingsPage] = useState(1);
   const [savingsLimit, setSavingsLimit] = useState(5);
   const [savingsLoading, setSavingsLoading] = useState(false);
+
+  const totals = members.reduce(
+    (acc, m) => {
+      acc.balance += Number(m.balance ?? 0);
+      acc.savings += Number(m.savings ?? 0);
+
+      const activeInput = updates[m.id]?.activeReleaseAmount;
+      const activeValue =
+        activeInput !== undefined && activeInput !== ""
+          ? parseFloat(activeInput) || 0
+          : m.latestActiveReleaseAmount != null
+          ? Number(m.latestActiveReleaseAmount)
+          : 0;
+      acc.activeRelease += activeValue;
+
+      const paymentInput = updates[m.id]?.balanceDeduct;
+      const paymentValue =
+        paymentInput !== undefined && paymentInput !== ""
+          ? parseFloat(paymentInput) || 0
+          : m.todayPayment ?? 0;
+      acc.payment += paymentValue;
+
+      const savingsInput = updates[m.id]?.savingsIncrease;
+      const savingsValue =
+        savingsInput !== undefined && savingsInput !== ""
+          ? parseFloat(savingsInput) || 0
+          : m.todaySavings ?? 0;
+      acc.paymentSavings += savingsValue;
+
+      return acc;
+    },
+    { balance: 0, activeRelease: 0, savings: 0, payment: 0, paymentSavings: 0 },
+  );
 
   // Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{
@@ -819,8 +854,17 @@ export function MemberList({
                                 </td>
                             </tr>
                         ) : (
-                            members.map((member) => (
-                                <tr key={member.id} className="hover:bg-slate-800/50">
+                            <>
+                            {members.map((member) => {
+                                const hasTodayUpdate =
+                                  (member.todayPayment ?? 0) > 0 ||
+                                  (member.todaySavings ?? 0) > 0;
+                                const rowClass = hasTodayUpdate
+                                  ? "bg-emerald-950/40 hover:bg-emerald-900/50"
+                                  : "hover:bg-slate-800/50";
+
+                                return (
+                                <tr key={member.id} className={rowClass}>
                                     <td className="px-4 py-3 font-medium text-slate-200">{member.lastName}, {member.firstName}</td>
                                     {!fixedGroupId && <td className="px-4 py-3 text-slate-300">{member.group?.name || "-"}</td>}
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
@@ -853,27 +897,35 @@ export function MemberList({
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
-                                                    placeholder="0"
+                                                    placeholder={
+                                                        member.todayPayment && member.todayPayment > 0
+                                                            ? String(member.todayPayment)
+                                                            : "0"
+                                                    }
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
-                                                    value={updates[member.id]?.balanceDeduct || ""}
+                                                    value={updates[member.id]?.balanceDeduct ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
-                                                    placeholder="0"
+                                                    placeholder={
+                                                        member.todaySavings && member.todaySavings > 0
+                                                            ? String(member.todaySavings)
+                                                            : "0"
+                                                    }
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-                                                    value={updates[member.id]?.savingsIncrease || ""}
+                                                    value={updates[member.id]?.savingsIncrease ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "savingsIncrease", e.target.value)}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
-                                                    placeholder={String(member.daysCount + 1)}
+                                                    placeholder={String(member.daysCount)}
                                                     className="w-full min-w-[60px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-center text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
-                                                    value={updates[member.id]?.daysCount || ""}
+                                                    value={updates[member.id]?.daysCount ?? String(member.daysCount)}
                                                     onChange={(e) => handleBulkChange(member.id, "daysCount", e.target.value)}
                                                 />
                                             </td>
@@ -908,7 +960,36 @@ export function MemberList({
                                         </div>
                                     </td>
                                 </tr>
-                            ))
+                                );
+                            })}
+                            <tr className="bg-slate-950/80 font-semibold">
+                                <td className="px-4 py-3 text-right text-slate-200" colSpan={fixedGroupId ? 1 : 2}>
+                                    Totals
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                    {totals.balance.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                    {totals.activeRelease.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                    {totals.savings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                </td>
+                                <td className="px-4 py-3" />
+                                {canBulkUpdate && (
+                                    <>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                            {totals.payment.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                            {totals.paymentSavings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                        </td>
+                                        <td className="px-4 py-3" />
+                                    </>
+                                )}
+                                <td className="px-4 py-3" />
+                            </tr>
+                            </>
                         )}
                     </tbody>
                 </table>
