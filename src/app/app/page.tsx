@@ -27,7 +27,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ error?: string; from?: string; to?: string }>;
 }) {
   const user = await requireUser();
-  if (user.role === Role.ENCODER) {
+  if (user.role === Role.ENCODER || user.role === Role.VIEWER) {
     redirect("/app/groups");
   }
 

@@ -17,7 +17,7 @@ export default async function GroupsPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
   const sp = await searchParams;
   const canCreate = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
   const canDelete = user.role === Role.SUPER_ADMIN;

@@ -152,16 +152,34 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
         request,
       });
 
-      if (parsed.data.cycles && parsed.data.cycles.length > 0) {
-        for (const cycle of parsed.data.cycles) {
-          const existingCycle = await tx.memberCycle.findFirst({
-            where: { memberId, cycleNumber: cycle.cycleNumber },
+      if (parsed.data.cycles) {
+        const existingCycles = await tx.memberCycle.findMany({
+          where: { memberId },
+        });
+
+        const incomingCycleNumbers = new Set(parsed.data.cycles.map((c) => c.cycleNumber));
+
+        const cyclesToDelete = existingCycles.filter(
+          (existingCycle) => !incomingCycleNumbers.has(existingCycle.cycleNumber),
+        );
+
+        if (cyclesToDelete.length > 0) {
+          await tx.memberCycle.deleteMany({
+            where: {
+              id: { in: cyclesToDelete.map((c) => c.id) },
+            },
           });
+        }
+
+        for (const cycle of parsed.data.cycles) {
+          const existingCycle = existingCycles.find(
+            (c) => c.cycleNumber === cycle.cycleNumber,
+          );
 
           if (existingCycle) {
             await tx.memberCycle.update({
               where: { id: existingCycle.id },
-              data: { 
+              data: {
                 startDate: cycle.startDate ? new Date(cycle.startDate) : null,
                 endDate: cycle.endDate ? new Date(cycle.endDate) : null,
               },

@@ -35,7 +35,9 @@ async function loginAction(formData: FormData) {
   if (!ok) redirect("/login?error=invalid");
 
   await createSession(user.id);
-  redirect(user.role === Role.ENCODER ? "/app/members" : "/app");
+  redirect(
+    user.role === Role.ENCODER || user.role === Role.VIEWER ? "/app/groups" : "/app",
+  );
 }
 
 export default async function LoginPage({
@@ -158,4 +160,3 @@ export default async function LoginPage({
     </main>
   );
 }
-

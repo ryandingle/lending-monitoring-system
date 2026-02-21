@@ -8,7 +8,7 @@ import { getManilaBusinessDate } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const body = await req.json();
   const { updates } = body as {

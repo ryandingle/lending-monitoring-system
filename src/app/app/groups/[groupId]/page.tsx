@@ -215,7 +215,7 @@ export default async function GroupDetailsPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
   const { groupId } = await params;
   const sp = await searchParams;
 
@@ -310,4 +310,3 @@ export default async function GroupDetailsPage({
     />
   );
 }
-

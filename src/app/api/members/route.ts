@@ -4,7 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Prisma, Role, SavingsUpdateType } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { getManilaBusinessDate, getManilaDateRange, getManilaToday, formatDateYMD } from "@/lib/date";
+import { getManilaBusinessDate, getManilaDateRange, formatDateYMD } from "@/lib/date";
 
 const CreateMemberSchema = z.object({
   groupId: z.string().uuid(),
@@ -26,7 +26,7 @@ const CreateMemberSchema = z.object({
 
 export async function GET(req: NextRequest) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const manilaToday = getManilaToday();
-  const todayStr = formatDateYMD(manilaToday);
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
   const todayRange = getManilaDateRange(todayStr, todayStr);
 
   const [members, total] = await Promise.all([

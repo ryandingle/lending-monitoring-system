@@ -6,12 +6,19 @@ import { IconSearch, IconChevronUp, IconChevronDown } from "../_components/icons
 
 type Group = { id: string; name: string; _count: { members: number } };
 type Member = { id: string; firstName: string; lastName: string };
+type Officer = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  groupsAsCollectionOfficer: { id: string; name: string }[];
+};
 
 interface ReportsClientProps {
   initialGroups: Group[];
   initialTotalGroups: number;
   initialMembers: Member[];
   initialTotalMembers: number;
+  initialOfficers: Officer[];
   from: string;
   to: string;
 }
@@ -69,6 +76,7 @@ export function ReportsClient({
   initialTotalGroups,
   initialMembers,
   initialTotalMembers,
+  initialOfficers,
   from,
   to,
 }: ReportsClientProps) {
@@ -85,7 +93,12 @@ export function ReportsClient({
   const [isMembersLoading, setIsMembersLoading] = useState(false);
   const [memberSort, setMemberSort] = useState<"asc" | "desc">("asc");
 
+  const [officerDate, setOfficerDate] = useState(to);
+
   const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const officerQuery = `from=${encodeURIComponent(officerDate)}&to=${encodeURIComponent(
+    officerDate,
+  )}`;
   const limit = 20;
   const totalGroupPages = Math.ceil(totalGroups / limit);
   const totalMemberPages = Math.ceil(totalMembers / limit);
@@ -161,8 +174,8 @@ export function ReportsClient({
 
   return (
     <div className="space-y-6">
-      {/* Groups Section */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-100">Export group data</h2>
@@ -242,9 +255,88 @@ export function ReportsClient({
           isLoading={isGroupsLoading}
           className="mt-4 border-t border-slate-800 pt-4"
         />
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">
+                Daily collection report (per officer)
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Download a daily collection summary per collection officer and their groups.
+              </p>
+            </div>
+            <div className="flex flex-col items-start gap-1 text-sm text-slate-300">
+              <span className="text-xs uppercase tracking-wide text-slate-500">
+                Report date
+              </span>
+              <input
+                type="date"
+                className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+                value={officerDate}
+                onChange={(e) => setOfficerDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-400">
+                <tr>
+                  <th className="py-2 pr-4">Collection officer</th>
+                  <th className="py-2 pr-0 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {initialOfficers.map((o) => (
+                  <tr key={o.id} className="hover:bg-slate-900/40">
+                    <td className="py-2 pr-4 font-medium text-slate-100">
+                      <div>
+                        <div>
+                          {o.lastName}, {o.firstName}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-400">
+                          <span className="text-slate-500">Groups:</span>
+                          {o.groupsAsCollectionOfficer.length > 0 ? (
+                            o.groupsAsCollectionOfficer.map((g) => (
+                              <span
+                                key={g.id}
+                                className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] text-slate-200"
+                              >
+                                {g.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-600">None</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-0 text-right">
+                      <a
+                        href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
+                        title="Download daily collection report (PDF)"
+                        className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+                      >
+                        Download
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+                {initialOfficers.length === 0 ? (
+                  <tr>
+                    <td className="py-4 text-slate-400" colSpan={2}>
+                      No collection officers found.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Members Section */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>

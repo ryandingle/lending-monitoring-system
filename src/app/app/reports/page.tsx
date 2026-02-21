@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import {
   getReportPreset2Weeks,
 } from "@/lib/date";
-import { Role } from "@prisma/client";
+import { EmployeePosition, Role } from "@prisma/client";
 import { DateRangeFilter } from "./date-filter";
 import { ReportsClient } from "./reports-client";
 
@@ -30,7 +29,7 @@ export default async function ReportsPage({
 
   const limit = 20;
 
-  const [groups, totalGroups, members, totalMembers] = await Promise.all([
+  const [groups, totalGroups, members, totalMembers, officers] = await Promise.all([
     prisma.group.findMany({
       orderBy: { name: "asc" },
       select: { 
@@ -51,6 +50,21 @@ export default async function ReportsPage({
       take: limit,
     }),
     prisma.member.count(),
+    prisma.employee.findMany({
+      where: { position: EmployeePosition.COLLECTION_OFFICER },
+      orderBy: { lastName: "asc" },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        groupsAsCollectionOfficer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    }),
   ]);
 
   return (
@@ -71,6 +85,7 @@ export default async function ReportsPage({
         initialTotalGroups={totalGroups}
         initialMembers={members}
         initialTotalMembers={totalMembers}
+        initialOfficers={officers}
         from={from}
         to={to}
       />

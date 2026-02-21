@@ -10,7 +10,7 @@ const CreateUserSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email().optional().or(z.literal("")),
   name: z.string().min(1).max(100),
-  role: z.enum(["SUPER_ADMIN", "ENCODER"]),
+  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER"]),
   password: z.string().min(6).max(200),
 });
 

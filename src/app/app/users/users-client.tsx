@@ -395,6 +395,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                  <option value="VIEWER">VIEWER</option>
                 </select>
               </div>
               <div>
@@ -483,6 +484,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                  <option value="VIEWER">VIEWER</option>
                 </select>
               </div>
 

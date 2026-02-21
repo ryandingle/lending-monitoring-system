@@ -7,7 +7,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 
 const UpdateUserSchema = z.object({
-  role: z.enum(["SUPER_ADMIN", "ENCODER"]).optional(),
+  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER"]).optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(6).max(200).optional(),
   username: z.string().min(1).max(50).optional(),

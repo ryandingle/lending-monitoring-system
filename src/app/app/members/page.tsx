@@ -16,7 +16,7 @@ export default async function MembersPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
   const sp = await searchParams;
 
   const q = (sp.q ?? "").trim();

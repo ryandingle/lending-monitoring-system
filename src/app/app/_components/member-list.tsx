@@ -132,6 +132,8 @@ export function MemberList({
   const [savingsLimit, setSavingsLimit] = useState(5);
   const [savingsLoading, setSavingsLoading] = useState(false);
 
+  const paymentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const totals = members.reduce(
     (acc, m) => {
       acc.balance += Number(m.balance ?? 0);
@@ -287,6 +289,24 @@ export function MemberList({
     }));
   };
 
+  const handleBulkInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, memberId: string) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+
+    const index = members.findIndex((m) => m.id === memberId);
+    if (index === -1) return;
+
+    const nextIndex = e.key === "ArrowDown" ? index + 1 : index - 1;
+    if (nextIndex < 0 || nextIndex >= members.length) return;
+
+    const nextMemberId = members[nextIndex].id;
+    const nextInput = paymentInputRefs.current[nextMemberId];
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select();
+    }
+  };
+
   const handleBulkSave = async () => {
     if (Object.keys(updates).length === 0 || isBulkSaving) return;
     setIsBulkSaving(true);
@@ -295,40 +315,50 @@ export function MemberList({
     setBulkSuccess(false);
 
     try {
-    const payload = Object.entries(updates)
-      .map(([memberId, data]) => ({
-        memberId,
-        ...data,
-      }))
-      .filter(
-        (u) =>
-          u.balanceDeduct ||
-          u.savingsIncrease ||
-          u.daysCount ||
-          u.activeReleaseAmount,
-      );
+      const payload = Object.entries(updates)
+        .map(([memberId, data]) => ({
+          memberId,
+          ...data,
+        }))
+        .filter(
+          (u) =>
+            u.balanceDeduct ||
+            u.savingsIncrease ||
+            u.daysCount ||
+            u.activeReleaseAmount,
+        );
 
-        const res = await fetch("/api/members/bulk-update", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ updates: payload }),
-        });
-        
-        const result = await res.json();
-        
-        if (!res.ok) throw new Error(result.error || "Failed to update");
+      if (payload.length === 0) {
+        setBulkSuccess(false);
+        return;
+      }
 
-        if (result.success) {
-            setBulkSuccess(true);
-            setUpdates({});
-            setBulkWarnings(result.warnings || []);
-            fetchMembers(); // Refresh data
-        } else {
-            setBulkErrors(result.errors || []);
-            setBulkWarnings(result.warnings || []);
-             // Refresh data to show partial updates if any
-            fetchMembers();
-        }
+      const res = await fetch("/api/members/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates: payload }),
+      });
+
+      let result: any = null;
+      try {
+        result = await res.json();
+      } catch (e) {
+        throw new Error("Failed to parse server response for bulk update");
+      }
+
+      if (!res.ok) throw new Error(result.error || "Failed to update");
+
+      if (result.success) {
+        setBulkSuccess(true);
+        setUpdates({});
+        setBulkWarnings(result.warnings || []);
+        fetchMembers(); // Refresh data
+      } else {
+        setBulkErrors(result.errors || []);
+        setBulkWarnings(result.warnings || []);
+        // Refresh data to show partial updates if any
+        fetchMembers();
+      }
     } catch (error: any) {
         console.error(error);
         alert("An error occurred during bulk update.");
@@ -830,6 +860,7 @@ export function MemberList({
                             <th className="px-4 py-3 font-semibold text-right">Active Release</th>
                             <th className="px-4 py-3 font-semibold text-right">Savings Amount</th>
                             <th className="px-4 py-3 font-semibold text-center"># of Days</th>
+                            <th className="px-4 py-3 font-semibold text-center">Cycle</th>
                             {canBulkUpdate && (
                                 <>
                                     <th className="px-4 py-3 font-semibold w-24">Payment</th>
@@ -859,9 +890,12 @@ export function MemberList({
                                 const hasTodayUpdate =
                                   (member.todayPayment ?? 0) > 0 ||
                                   (member.todaySavings ?? 0) > 0;
-                                const rowClass = hasTodayUpdate
-                                  ? "bg-emerald-950/40 hover:bg-emerald-900/50"
-                                  : "hover:bg-slate-800/50";
+                                const hasZeroBalance = Number(member.balance) === 0;
+                                const rowClass = hasZeroBalance
+                                  ? "bg-red-950/40 hover:bg-red-900/50"
+                                  : hasTodayUpdate
+                                    ? "bg-emerald-950/40 hover:bg-emerald-900/50"
+                                    : "hover:bg-slate-800/50";
 
                                 return (
                                 <tr key={member.id} className={rowClass}>
@@ -891,6 +925,9 @@ export function MemberList({
                                         {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
                                     <td className="px-4 py-3 text-center text-slate-300">{member.daysCount}</td>
+                                    <td className="px-4 py-3 text-center text-slate-300">
+                                        {member.latestCycle ? `#${member.latestCycle.cycleNumber}` : "-"}
+                                    </td>
                                     
                                     {canBulkUpdate && (
                                         <>
@@ -905,6 +942,10 @@ export function MemberList({
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
                                                     value={updates[member.id]?.balanceDeduct ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
+                                                    ref={(el) => {
+                                                        paymentInputRefs.current[member.id] = el;
+                                                    }}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -918,6 +959,7 @@ export function MemberList({
                                                     className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
                                                     value={updates[member.id]?.savingsIncrease ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "savingsIncrease", e.target.value)}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -927,6 +969,7 @@ export function MemberList({
                                                     className="w-full min-w-[60px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-center text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
                                                     value={updates[member.id]?.daysCount ?? String(member.daysCount)}
                                                     onChange={(e) => handleBulkChange(member.id, "daysCount", e.target.value)}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
                                                 />
                                             </td>
                                         </>
@@ -941,13 +984,15 @@ export function MemberList({
                                             >
                                                 <IconEye className="h-4 w-4" />
                                             </button>
-                                            <button 
-                                                onClick={() => handleOpenModal(member)}
-                                                className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-emerald-400"
-                                                title="Edit"
-                                            >
-                                                <IconPencil className="h-4 w-4" />
-                                            </button>
+                                            {(userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER) && (
+                                              <button 
+                                                  onClick={() => handleOpenModal(member)}
+                                                  className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-emerald-400"
+                                                  title="Edit"
+                                              >
+                                                  <IconPencil className="h-4 w-4" />
+                                              </button>
+                                            )}
                                             {canDelete && (
                                                 <button 
                                                     onClick={() => handleDelete(member.id)}
@@ -975,6 +1020,7 @@ export function MemberList({
                                 <td className="px-4 py-3 text-right font-mono text-slate-200">
                                     {totals.savings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                 </td>
+                                <td className="px-4 py-3" />
                                 <td className="px-4 py-3" />
                                 {canBulkUpdate && (
                                     <>
@@ -1151,7 +1197,7 @@ export function MemberList({
                                     </div>
                                 </div>
 
-                                {userRole === Role.SUPER_ADMIN && (
+                                {(userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER) && (
                                     <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                                         <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">New Adjustment</h3>
                                         <div className="space-y-3">
@@ -1528,8 +1574,8 @@ export function MemberList({
                             </div>
                             <div className="space-y-4">
                                 {formData.cycles.map((cycle, index) => (
-                                    <div key={index} className="grid gap-4 md:grid-cols-3 relative group items-start">
-                                        <div>
+                                    <div key={index} className="grid gap-4 md:grid-cols-[minmax(0,120px)_minmax(0,1fr)_minmax(0,1fr)] relative group items-start">
+                                        <div className="max-w-[120px]">
                                             <label className="mb-1 block text-sm font-medium text-slate-300">
                                                 Cycle Number
                                             </label>
@@ -1545,7 +1591,7 @@ export function MemberList({
                                                 className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
                                         </div>
-                                        <div>
+                                        <div className="min-w-[140px]">
                                             <label className="mb-1 block text-sm font-medium text-slate-300">
                                                 Start Date
                                             </label>
@@ -1560,7 +1606,7 @@ export function MemberList({
                                                 className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
                                         </div>
-                                        <div className="relative">
+                                        <div className="relative min-w-[140px] pr-6">
                                             <label className="mb-1 block text-sm font-medium text-slate-300">
                                                 End Date
                                             </label>
@@ -1574,19 +1620,17 @@ export function MemberList({
                                                 }}
                                                 className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
-                                            {formData.cycles.length > 1 && (
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => {
-                                                        const newCycles = formData.cycles.filter((_, i) => i !== index);
-                                                        setFormData({ ...formData, cycles: newCycles });
-                                                    }} 
-                                                    className="absolute -right-6 top-8 text-slate-500 hover:text-red-400"
-                                                    title="Remove cycle"
-                                                >
-                                                    <IconTrash className="h-4 w-4" />
-                                                </button>
-                                            )}
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    const newCycles = formData.cycles.filter((_, i) => i !== index);
+                                                    setFormData({ ...formData, cycles: newCycles });
+                                                }} 
+                                                className="absolute right-0 top-8 text-slate-500 hover:text-red-400"
+                                                title="Remove cycle"
+                                            >
+                                                <IconTrash className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
