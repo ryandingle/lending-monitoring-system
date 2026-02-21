@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import {
-  getReportPreset2Weeks,
-} from "@/lib/date";
-import { EmployeePosition, Role } from "@prisma/client";
+import { getReportPreset2Weeks } from "@/lib/date";
+import { Role } from "@prisma/client";
 import { DateRangeFilter } from "./date-filter";
 import { ReportsClient } from "./reports-client";
 
@@ -51,7 +49,11 @@ export default async function ReportsPage({
     }),
     prisma.member.count(),
     prisma.employee.findMany({
-      where: { position: EmployeePosition.COLLECTION_OFFICER },
+      where: {
+        groupsAsCollectionOfficer: {
+          some: {},
+        },
+      },
       orderBy: { lastName: "asc" },
       select: {
         id: true,
