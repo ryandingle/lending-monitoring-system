@@ -99,6 +99,30 @@ export function MemberList({
   
   // Bulk Edit State
   const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; activeReleaseAmount: string }>>({});
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
+  const DRAFT_KEY = "member_list_bulk_draft";
+
+  // Load draft on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setUpdates(parsed);
+      } catch (e) {
+        console.error("Failed to parse draft", e);
+      }
+    }
+    setIsDraftLoaded(true);
+  }, []);
+
+  // Save draft on change
+  useEffect(() => {
+    if (isDraftLoaded) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(updates));
+    }
+  }, [updates, isDraftLoaded]);
+
   const [bulkErrors, setBulkErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<{ memberId: string; message: string }[]>([]);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
@@ -223,7 +247,7 @@ export function MemberList({
       setTotal(data.total);
       
       // Clear updates when data refreshes
-      setUpdates({});
+      // setUpdates({}); // Removed to allow draft persistence across navigations
       setBulkErrors([]);
       setBulkWarnings([]);
       setBulkSuccess(false);
@@ -865,13 +889,26 @@ export function MemberList({
              </div>
             
             {hasChanges && (
-                <button
-                    onClick={handleBulkSave}
-                    disabled={isBulkSaving}
-                    className="ml-4 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                    {isBulkSaving ? "Saving..." : "Save Changes"}
-                </button>
+                <div className="flex items-center gap-2 ml-4">
+                    <button
+                        onClick={() => {
+                            if (confirm("Are you sure you want to discard all pending changes?")) {
+                                setUpdates({});
+                            }
+                        }}
+                        disabled={isBulkSaving}
+                        className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/50 hover:text-red-300 disabled:opacity-50"
+                    >
+                        Discard Draft
+                    </button>
+                    <button
+                        onClick={handleBulkSave}
+                        disabled={isBulkSaving}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                        {isBulkSaving ? "Saving..." : "Save Changes"}
+                    </button>
+                </div>
             )}
         </div>
 
@@ -1072,6 +1109,33 @@ export function MemberList({
                 </table>
             </div>
         </div>
+
+        {/* Bottom Actions */}
+        {hasChanges && (
+            <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-2xl backdrop-blur-sm md:static md:mt-4 md:justify-end md:bg-transparent md:p-0 md:shadow-none md:border-0">
+                <div className="hidden md:block text-sm text-slate-400 mr-2">
+                    You have unsaved changes
+                </div>
+                <button
+                    onClick={() => {
+                        if (confirm("Are you sure you want to discard all pending changes?")) {
+                            setUpdates({});
+                        }
+                    }}
+                    disabled={isBulkSaving}
+                    className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/50 hover:text-red-300 disabled:opacity-50"
+                >
+                    Discard Draft
+                </button>
+                <button
+                    onClick={handleBulkSave}
+                    disabled={isBulkSaving}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 shadow-lg shadow-green-900/20 disabled:opacity-50"
+                >
+                    {isBulkSaving ? "Saving..." : "Save Changes"}
+                </button>
+            </div>
+        )}
 
         {/* View Modal */}
         {isViewModalOpen && (
