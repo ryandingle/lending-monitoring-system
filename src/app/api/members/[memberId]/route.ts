@@ -16,7 +16,9 @@ const UpdateMemberSchema = z.object({
   balance: z.coerce.number().optional(),
   savings: z.coerce.number().optional(),
   daysCount: z.coerce.number().int().min(0).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   cycles: z.array(z.object({
+    id: z.string().optional(),
     cycleNumber: z.coerce.number().int().min(1),
     startDate: z.string().optional(),
     endDate: z.string().optional()
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
             include: { encodedBy: { select: { name: true } } }
         },
         cycles: {
-            orderBy: { cycleNumber: "desc" },
+            orderBy: [{ cycleNumber: "desc" }, { startDate: "desc" }],
         },
         activeReleases: {
           orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
@@ -80,6 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
       })),
       latestCycle: (member as any).cycles[0] || null,
       cycles: (member as any).cycles.map((c: any) => ({
+        id: c.id,
         cycleNumber: c.cycleNumber,
         startDate: c.startDate ? c.startDate.toISOString() : null,
         endDate: c.endDate ? c.endDate.toISOString() : null,
@@ -127,6 +130,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
           balance: parsed.data.balance !== undefined ? new Prisma.Decimal(parsed.data.balance.toFixed(2)) : undefined,
           savings: parsed.data.savings !== undefined ? new Prisma.Decimal(parsed.data.savings.toFixed(2)) : undefined,
           daysCount: parsed.data.daysCount,
+          status: parsed.data.status as "ACTIVE" | "INACTIVE" | undefined,
         },
         include: {
             group: { select: { id: true, name: true } }
@@ -157,10 +161,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
           where: { memberId },
         });
 
-        const incomingCycleNumbers = new Set(parsed.data.cycles.map((c) => c.cycleNumber));
+        // Use Set of IDs for deletion check instead of cycle numbers
+        const incomingCycleIds = new Set(
+            parsed.data.cycles
+                .map((c) => c.id)
+                .filter((id): id is string => !!id)
+        );
 
         const cyclesToDelete = existingCycles.filter(
-          (existingCycle) => !incomingCycleNumbers.has(existingCycle.cycleNumber),
+          (existingCycle) => !incomingCycleIds.has(existingCycle.id),
         );
 
         if (cyclesToDelete.length > 0) {
@@ -171,30 +180,34 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
           });
         }
 
-        for (const cycle of parsed.data.cycles) {
-          const existingCycle = existingCycles.find(
-            (c) => c.cycleNumber === cycle.cycleNumber,
-          );
-
-          if (existingCycle) {
-            await tx.memberCycle.update({
-              where: { id: existingCycle.id },
-              data: {
-                startDate: cycle.startDate ? new Date(cycle.startDate) : null,
-                endDate: cycle.endDate ? new Date(cycle.endDate) : null,
-              },
-            });
-          } else {
-            await tx.memberCycle.create({
-              data: {
-                memberId,
-                cycleNumber: cycle.cycleNumber,
-                startDate: cycle.startDate ? new Date(cycle.startDate) : null,
-                endDate: cycle.endDate ? new Date(cycle.endDate) : null,
-              },
-            });
-          }
-        }
+        await Promise.all(
+          parsed.data.cycles.map(async (cycle) => {
+            // If cycle has ID and exists in DB, update it
+            if (cycle.id) {
+              const existingCycle = existingCycles.find((c) => c.id === cycle.id);
+              if (existingCycle) {
+                await tx.memberCycle.update({
+                  where: { id: cycle.id },
+                  data: {
+                    cycleNumber: cycle.cycleNumber, // Allow updating cycle number too
+                    startDate: cycle.startDate ? new Date(cycle.startDate) : null,
+                    endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+                  },
+                });
+              }
+            } else {
+              // No ID means new cycle
+              await tx.memberCycle.create({
+                data: {
+                  memberId,
+                  cycleNumber: cycle.cycleNumber,
+                  startDate: cycle.startDate ? new Date(cycle.startDate) : null,
+                  endDate: cycle.endDate ? new Date(cycle.endDate) : null,
+                },
+              });
+            }
+          })
+        );
       }
 
       if (parsed.data.activeReleaseAmount && parsed.data.activeReleaseAmount > 0) {
@@ -221,7 +234,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
       }
 
       return updated;
-    });
+    }, { timeout: 20000 });
 
     const serializedMember = updatedMember ? {
         ...updatedMember,
@@ -255,7 +268,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ m
       });
       if (!member) return;
 
-      await tx.member.delete({ where: { id: memberId } });
+      await tx.member.update({
+        where: { id: memberId },
+        data: { status: "INACTIVE" },
+      });
 
       await createAuditLog(tx, {
         actorUserId: user.id,
