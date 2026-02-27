@@ -35,10 +35,12 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") ?? "50") || 50;
   const sort = (searchParams.get("sort") === "desc" ? "desc" : "asc") as "asc" | "desc";
   const days = parseInt(searchParams.get("days") ?? "0") || 0;
+  const status = searchParams.get("status");
 
   const where: any = {};
   if (groupId) where.groupId = groupId;
   if (days > 0) where.daysCount = { gte: days };
+  if (status && status !== "ALL") where.status = status;
   if (q) {
     where.OR = [
       { firstName: { contains: q, mode: "insensitive" } },

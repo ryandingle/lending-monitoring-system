@@ -10,6 +10,7 @@ interface MembersClientProps {
   userRole: Role;
   initialGroupId?: string;
   initialDays?: number;
+  initialStatus?: string;
 }
 
 export function MembersClient({
@@ -19,6 +20,7 @@ export function MembersClient({
   userRole,
   initialGroupId,
   initialDays,
+  initialStatus,
 }: MembersClientProps) {
   return (
     <MemberList
@@ -28,6 +30,7 @@ export function MembersClient({
       userRole={userRole}
       initialGroupId={initialGroupId}
       initialDays={initialDays}
+      initialStatus={initialStatus}
     />
   );
 }

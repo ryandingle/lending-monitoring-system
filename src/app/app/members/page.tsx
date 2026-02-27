@@ -13,6 +13,7 @@ export default async function MembersPage({
     limit?: string;
     sort?: string;
     days?: string;
+    status?: string;
   }>;
 }) {
   const user = await requireUser();
@@ -26,8 +27,12 @@ export default async function MembersPage({
   const sort = (sp.sort === "desc" ? "desc" : "asc") as "asc" | "desc";
   // Default to 0 days (All Days) if not specified
   const days = sp.days !== undefined ? (parseInt(sp.days) || 0) : 0;
+  const status = (sp.status ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "ALL";
 
   const where: any = {};
+  if (status !== "ALL") {
+    where.status = status;
+  }
   if (groupId) {
     where.groupId = groupId;
   }
@@ -106,6 +111,7 @@ export default async function MembersPage({
       userRole={user.role}
       initialGroupId={groupId}
       initialDays={days}
+      initialStatus={status}
     />
   );
 }
