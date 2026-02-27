@@ -40,6 +40,7 @@ export type Member = {
     endDate?: string | null;
   } | null;
   cycles?: {
+    id?: string;
     cycleNumber: number;
     startDate?: string | null;
     endDate?: string | null;
@@ -51,6 +52,7 @@ export type Member = {
     releaseDate: string;
     createdAt: string;
   }[];
+  status?: string;
 };
 
 export type Group = {
@@ -67,6 +69,7 @@ interface MemberListProps {
   fixedGroupId?: string;
   showTitle?: boolean;
   initialDays?: number;
+  initialStatus?: string;
 }
 
 export function MemberList({
@@ -78,6 +81,7 @@ export function MemberList({
   fixedGroupId,
   showTitle = true,
   initialDays,
+  initialStatus,
 }: MemberListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,6 +93,7 @@ export function MemberList({
   const [search, setSearch] = useState("");
   const [groupId, setGroupId] = useState(fixedGroupId || initialGroupId || "");
   const [daysFilter, setDaysFilter] = useState(initialDays?.toString() || "0");
+  const [statusFilter, setStatusFilter] = useState(initialStatus || "ACTIVE");
   const [sort, setSort] = useState<"asc" | "desc">("asc");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -187,15 +192,16 @@ export function MemberList({
     balance: "0",
     savings: "0",
     daysCount: "0",
-    cycles: [] as { cycleNumber: string; startDate: string; endDate: string }[],
+    cycles: [] as { id?: string; cycleNumber: string; startDate: string; endDate: string }[],
     activeReleaseAmount: "",
+    status: "ACTIVE",
   });
 
   const canCreate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
-  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter) => {
+  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter) => {
     // If fixedGroupId is set, always use it
     const effectiveGroupId = fixedGroupId || g;
 
@@ -208,6 +214,7 @@ export function MemberList({
       if (effectiveGroupId) params.set("groupId", effectiveGroupId);
       if (s) params.set("sort", s);
       if (d && d !== "0") params.set("days", d);
+      if (stat && stat !== "ALL") params.set("status", stat);
 
       const res = await fetch(`/api/members?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch members");
@@ -231,7 +238,7 @@ export function MemberList({
   useEffect(() => {
     const timer = setTimeout(() => {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
@@ -240,7 +247,7 @@ export function MemberList({
   useEffect(() => {
     if (isMounted.current && !fixedGroupId) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
     } else {
         isMounted.current = true;
     }
@@ -249,9 +256,16 @@ export function MemberList({
   useEffect(() => {
     if (isMounted.current) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
     }
   }, [daysFilter]);
+
+  useEffect(() => {
+    if (isMounted.current) {
+        setPage(1);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
+    }
+  }, [statusFilter]);
 
   useEffect(() => {
       // If fixedGroupId changes (unlikely) or on mount
@@ -263,13 +277,13 @@ export function MemberList({
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    fetchMembers(newPage, search, groupId, sort, limit, daysFilter);
+    fetchMembers(newPage, search, groupId, sort, limit, daysFilter, statusFilter);
   };
 
   const handleSortToggle = () => {
     const newSort = sort === "asc" ? "desc" : "asc";
     setSort(newSort);
-    fetchMembers(1, search, groupId, newSort, limit, daysFilter);
+    fetchMembers(1, search, groupId, newSort, limit, daysFilter, statusFilter);
   };
 
   // Bulk Update Handlers
@@ -596,13 +610,14 @@ export function MemberList({
   const handleOpenModal = async (member?: Member) => {
     setEditingMember(member || null);
 
-    let initialCycles: { cycleNumber: string; startDate: string; endDate: string }[] = [];
+    let initialCycles: { id?: string; cycleNumber: string; startDate: string; endDate: string }[] = [];
     
     // If we have a member, try to use their cycles, fallback to latestCycle
     if (member) {
         // If the member object already has cycles (from View modal or specialized fetch), use them
         if (member.cycles && member.cycles.length > 0) {
             initialCycles = member.cycles.map(c => ({
+                id: c.id,
                 cycleNumber: c.cycleNumber.toString(),
                 startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : "",
                 endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : ""
@@ -630,6 +645,7 @@ export function MemberList({
         daysCount: member?.daysCount?.toString() || "0",
         cycles: initialCycles,
         activeReleaseAmount: member?.latestActiveReleaseAmount?.toString() || "",
+        status: member?.status || "ACTIVE",
     });
     setModalError(null);
     setIsModalOpen(true);
@@ -642,6 +658,7 @@ export function MemberList({
                 const fullMember = await res.json();
                 if (fullMember.cycles && fullMember.cycles.length > 0) {
                     const fetchedCycles = fullMember.cycles.map((c: any) => ({
+                        id: c.id,
                         cycleNumber: c.cycleNumber.toString(),
                         startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : "",
                         endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : ""
@@ -683,7 +700,9 @@ export function MemberList({
                 balance: Number(formData.balance),
                 savings: Number(formData.savings),
                 daysCount: Number(formData.daysCount),
+                status: formData.status,
                 cycles: formData.cycles.map(c => ({
+                    id: c.id,
                     cycleNumber: Number(c.cycleNumber),
                     startDate: c.startDate,
                     endDate: c.endDate
@@ -713,8 +732,8 @@ export function MemberList({
         isOpen: true,
         type: 'DELETE_MEMBER',
         id,
-        title: "Delete Member",
-        message: "Are you sure you want to delete this member? This action cannot be undone."
+        title: "Deactivate Member",
+        message: "Are you sure you want to deactivate this member? This will mark them as INACTIVE instead of permanently deleting them."
     });
   };
 
@@ -748,7 +767,7 @@ export function MemberList({
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-4">
+            <div className="mt-6 grid gap-3 md:grid-cols-5">
                 <div className="md:col-span-2">
                     <label className="text-sm font-medium text-slate-300">Search</label>
                     <div className="relative mt-1">
@@ -785,6 +804,18 @@ export function MemberList({
                     >
                         <option value="0">All Days</option>
                         <option value="40">40+ Days</option>
+                    </select>
+                </div>
+                <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-300">Status</label>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="ALL">All</option>
                     </select>
                 </div>
             </div>
@@ -1127,8 +1158,8 @@ export function MemberList({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-800 bg-slate-950/30">
-                                                    {viewMember.cycles.map((cycle) => (
-                                                        <tr key={cycle.cycleNumber}>
+                                                    {viewMember.cycles.map((cycle, index) => (
+                                                        <tr key={cycle.id || index}>
                                                             <td className="px-3 py-2 text-slate-300">#{cycle.cycleNumber}</td>
                                                             <td className="px-3 py-2">{cycle.startDate ? new Date(cycle.startDate).toLocaleDateString() : "-"}</td>
                                                             <td className="px-3 py-2">{cycle.endDate ? new Date(cycle.endDate).toLocaleDateString() : "-"}</td>
@@ -1526,6 +1557,20 @@ export function MemberList({
                                     onChange={(e) => setFormData({ ...formData, activeReleaseAmount: e.target.value })}
                                     className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                    Status <span className="text-red-400">*</span>
+                                </label>
+                                <select
+                                    required
+                                    value={formData.status}
+                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                >
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">Inactive</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-300">
