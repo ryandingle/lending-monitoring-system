@@ -51,7 +51,7 @@ function PaginationControls({
 
   return (
     <div className={`flex items-center justify-between ${className}`}>
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-slate-500">
         Page {currentPage} of {totalPages}
       </div>
       <div className="flex gap-2">
@@ -60,8 +60,8 @@ function PaginationControls({
           disabled={currentPage <= 1 || isLoading}
           className={`rounded px-2 py-1 text-xs font-medium ${
             currentPage > 1 && !isLoading
-              ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-              : "pointer-events-none bg-slate-900 text-slate-600"
+              ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+              : "pointer-events-none bg-slate-50 text-slate-400"
           }`}
         >
           Previous
@@ -71,8 +71,8 @@ function PaginationControls({
           disabled={currentPage >= totalPages || isLoading}
           className={`rounded px-2 py-1 text-xs font-medium ${
             currentPage < totalPages && !isLoading
-              ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-              : "pointer-events-none bg-slate-900 text-slate-600"
+              ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+              : "pointer-events-none bg-slate-50 text-slate-400"
           }`}
         >
           Next
@@ -260,23 +260,23 @@ export function GroupsClient({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Groups</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <h1 className="text-xl font-semibold text-slate-900">Groups</h1>
+            <p className="mt-1 text-sm text-slate-500">
               Create and manage lending groups.
             </p>
           </div>
           <div className="flex gap-3">
              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                   <IconSearch className="h-4 w-4" />
                 </div>
                 <input
                   type="text"
                   placeholder="Search groups..."
-                  className="w-full sm:w-64 rounded-lg border border-slate-800 bg-slate-950 pl-10 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full sm:w-64 rounded-lg border border-slate-200 bg-white pl-10 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -303,13 +303,13 @@ export function GroupsClient({
 
         <div className="overflow-x-auto relative min-h-[200px]">
           {isLoading && (
-            <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center text-slate-300 text-sm">
+            <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center text-slate-500 text-sm">
               Loading...
             </div>
           )}
           
           <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
+            <thead className="text-xs uppercase text-slate-500 border-b border-slate-200">
               <tr>
                 <th className="py-3 pr-4 font-medium">Name</th>
                 <th className="py-3 px-4 font-medium">Description</th>
@@ -318,30 +318,30 @@ export function GroupsClient({
                 <th className="py-3 pl-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {groups.map((group) => (
-                <tr key={group.id} className="group hover:bg-slate-900/40 transition-colors">
-                  <td className="py-3 pr-4 font-medium text-slate-100">
-                    <Link href={`/app/groups/${group.id}`} className="hover:text-indigo-400 hover:underline">
+                <tr key={group.id} className="group hover:bg-slate-50 transition-colors">
+                  <td className="py-3 pr-4 font-medium text-slate-900">
+                    <Link href={`/app/groups/${group.id}`} className="hover:text-indigo-600 hover:underline">
                       {group.name}
                     </Link>
                   </td>
-                  <td className="py-3 px-4 text-slate-400 max-w-[200px] truncate">
+                  <td className="py-3 px-4 text-slate-500 max-w-[200px] truncate">
                     {group.description || "-"}
                   </td>
-                  <td className="py-3 px-4 text-slate-300">
+                  <td className="py-3 px-4 text-slate-600">
                     {group.collectionOfficer
                       ? `${group.collectionOfficer.lastName}, ${group.collectionOfficer.firstName}`
-                      : <span className="text-slate-500 italic">Unassigned</span>}
+                      : <span className="text-slate-400 italic">Unassigned</span>}
                   </td>
-                  <td className="py-3 px-4 text-right text-slate-300">
+                  <td className="py-3 px-4 text-right text-slate-600">
                     {group._count.members}
                   </td>
                   <td className="py-3 pl-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/app/groups/${group.id}`}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-indigo-400"
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
                         title="View Details"
                       >
                         <IconEye className="h-4 w-4" />
@@ -349,7 +349,7 @@ export function GroupsClient({
                       {canCreate && (
                         <button
                           onClick={() => handleOpenModal(group)}
-                          className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-indigo-400"
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
                           title="Edit"
                         >
                           <IconPencil className="h-4 w-4" />
@@ -358,7 +358,7 @@ export function GroupsClient({
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(group.id)}
-                          className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-red-400"
+                          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600"
                           title="Delete"
                         >
                           <IconTrash className="h-4 w-4" />
@@ -384,68 +384,68 @@ export function GroupsClient({
           totalPages={totalPages}
           onPageChange={setPage}
           isLoading={isLoading}
-          className="mt-4 border-t border-slate-800 pt-4"
+          className="mt-4 border-t border-slate-200 pt-4"
         />
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">
+              <h2 className="text-lg font-semibold text-slate-900">
                 {editingGroup ? "Edit Group" : "Create New Group"}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <IconX className="h-5 w-5" />
               </button>
             </div>
 
             {modalError && (
-              <div className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">
-                  Group Name <span className="text-red-400">*</span>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Group Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                   placeholder="e.g. North District A"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">
+                <label className="mb-1 block text-sm font-medium text-slate-700">
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                   placeholder="Optional description..."
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">
+                <label className="mb-1 block text-sm font-medium text-slate-700">
                   Assigned Officer
                 </label>
                 <select
                   value={formData.collectionOfficerId}
                   onChange={(e) => setFormData({ ...formData, collectionOfficerId: e.target.value })}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                 >
                   <option value="">Select an officer...</option>
                   {initialCollectionOfficers.map((officer) => (
@@ -460,7 +460,7 @@ export function GroupsClient({
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                   disabled={modalLoading}
                 >
                   Cancel
@@ -480,19 +480,19 @@ export function GroupsClient({
 
       {/* Confirmation Modal */}
       {confirmation.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">{confirmation.title}</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{confirmation.title}</h2>
               <button
                 onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <IconX className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600">
               {confirmation.message}
             </p>
 
@@ -500,7 +500,7 @@ export function GroupsClient({
               <button
                 type="button"
                 onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                 disabled={isConfirming}
               >
                 Cancel

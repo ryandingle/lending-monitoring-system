@@ -111,10 +111,10 @@ export default async function EmployeeDetailsPage({
 
     if (!employee) {
         return (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-                <div className="text-sm text-slate-300">Employee not found.</div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="text-sm text-slate-500">Employee not found.</div>
                 <div className="mt-4">
-                    <Link href="/app/employees" className="text-sm font-medium text-slate-200 hover:underline">
+                    <Link href="/app/employees" className="text-sm font-medium text-slate-700 hover:underline">
                         Back to Employees
                     </Link>
                 </div>
@@ -126,23 +126,23 @@ export default async function EmployeeDetailsPage({
 
     return (
         <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
-                    <Link href="/app/employees" className="text-sm text-slate-400 hover:text-slate-300">
+                    <Link href="/app/employees" className="text-sm text-slate-500 hover:text-slate-700">
                         ← Back to Employees
                     </Link>
                     <div className="text-right">
-                        <h1 className="text-xl font-semibold text-slate-100">{employee.firstName} {employee.lastName}</h1>
+                        <h1 className="text-xl font-semibold text-slate-900">{employee.firstName} {employee.lastName}</h1>
                         <p className="text-xs text-slate-500">Edit Employee Details</p>
                     </div>
                 </div>
 
                 {sp.updated === "1" ? (
-                    <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+                    <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
                         Employee updated successfully.
                     </div>
                 ) : sp.updated === "0" ? (
-                    <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                         Update failed.
                     </div>
                 ) : null}
@@ -150,32 +150,32 @@ export default async function EmployeeDetailsPage({
                 <form action={updateEmployeeAction.bind(null, employeeId)} className="mt-8 grid gap-6 max-w-3xl">
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label className="text-sm font-medium text-slate-200">First Name</label>
+                            <label className="text-sm font-medium text-slate-700">First Name</label>
                             <input
                                 name="firstName"
                                 defaultValue={employee.firstName}
                                 required
-                                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-slate-200">Last Name</label>
+                            <label className="text-sm font-medium text-slate-700">Last Name</label>
                             <input
                                 name="lastName"
                                 defaultValue={employee.lastName}
                                 required
-                                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-slate-200">Position</label>
+                        <label className="text-sm font-medium text-slate-700">Position</label>
                         <select
                             name="position"
                             defaultValue={employee.position}
                             required
-                            className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         >
                             {(Object.entries(POSITION_LABELS) as [EmployeePosition, string][]).map(
                                 ([value, label]) => (
@@ -188,19 +188,19 @@ export default async function EmployeeDetailsPage({
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-slate-200">Assign Groups</label>
-                        <div className="mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
+                        <label className="text-sm font-medium text-slate-700">Assign Groups</label>
+                        <div className="mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                             <div className="space-y-2">
                                 {groups.map((group) => (
-                                    <label key={group.id} className="flex items-center gap-2 hover:bg-slate-900/50 p-1 rounded cursor-pointer">
+                                    <label key={group.id} className="flex items-center gap-2 hover:bg-slate-100 p-1 rounded cursor-pointer">
                                         <input
                                             type="checkbox"
                                             name="assignedGroupIds"
                                             value={group.id}
                                             defaultChecked={assignedIds.has(group.id)}
-                                            className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-600/20"
+                                            className="h-4 w-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-600/20"
                                         />
-                                        <span className="text-sm text-slate-300">{group.name}</span>
+                                        <span className="text-sm text-slate-700">{group.name}</span>
                                         {group.collectionOfficerId && !assignedIds.has(group.id) ? (
                                             <span className="text-xs text-slate-500">(Already assigned)</span>
                                         ) : null}
@@ -216,7 +216,7 @@ export default async function EmployeeDetailsPage({
                         </p>
                     </div>
 
-                    <div className="flex justify-end pt-4 border-t border-slate-800">
+                    <div className="flex justify-end pt-4 border-t border-slate-200">
                         <SubmitButton loadingText="Saving Changes...">
                             Save Changes
                         </SubmitButton>

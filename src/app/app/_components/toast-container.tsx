@@ -92,10 +92,10 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     };
 
     const styles = {
-        success: "bg-green-900/90 border-green-700 text-green-100",
-        error: "bg-red-900/90 border-red-700 text-red-100",
-        warning: "bg-yellow-900/90 border-yellow-700 text-yellow-100",
-        info: "bg-blue-900/90 border-blue-700 text-blue-100",
+        success: "bg-green-50 border-green-200 text-green-800",
+        error: "bg-red-50 border-red-200 text-red-800",
+        warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
+        info: "bg-blue-50 border-blue-200 text-blue-800",
     };
 
     const icons = {
@@ -135,7 +135,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
             <div className="flex-1 text-sm font-medium">{toast.message}</div>
             <button
                 onClick={handleClose}
-                className="flex-shrink-0 rounded-lg p-1 hover:bg-white/10 transition-colors"
+                className="flex-shrink-0 rounded-lg p-1 hover:bg-black/5 transition-colors"
                 aria-label="Close"
             >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

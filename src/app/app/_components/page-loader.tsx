@@ -29,17 +29,17 @@ export function PageLoader() {
   if (!isLoading) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/80 backdrop-blur-sm">
       <div className="relative">
         {/* Spinner */}
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
 
         {/* Pulsing background */}
-        <div className="absolute inset-0 -z-10 h-20 w-20 -translate-x-2 -translate-y-2 animate-pulse rounded-full bg-blue-500/20 blur-xl" />
+        <div className="absolute inset-0 -z-10 h-20 w-20 -translate-x-2 -translate-y-2 animate-pulse rounded-full bg-blue-500/10 blur-xl" />
       </div>
 
       {/* Loading text */}
-      <div className="absolute mt-28 text-sm font-medium text-slate-300 animate-pulse">
+      <div className="absolute mt-28 text-sm font-medium text-slate-600 animate-pulse">
         Loading...
       </div>
     </div>

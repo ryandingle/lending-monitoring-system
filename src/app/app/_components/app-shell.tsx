@@ -60,11 +60,11 @@ export function AppShell({
         <button
           type="button"
           aria-label="Close navigation"
-          className="absolute inset-0 bg-black/60"
+          className="absolute inset-0 bg-slate-900/60"
           onClick={() => setOpen(false)}
         />
         <div className="absolute left-0 top-0 h-full w-72">
-          <div className="h-full border-r border-slate-800 bg-slate-950 shadow-2xl">
+          <div className="h-full border-r border-slate-200 bg-white shadow-2xl">
             <Sidebar user={user} mobile />
           </div>
         </div>
@@ -73,7 +73,7 @@ export function AppShell({
   }, [open, user]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <PageLoader />
       <ToastContainer />
       {overlay}

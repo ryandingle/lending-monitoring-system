@@ -771,11 +771,11 @@ export function MemberList({
 
   return (
     <div className="space-y-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    {showTitle && <h1 className="text-xl font-semibold text-slate-100">Members</h1>}
-                    <p className="mt-1 text-sm text-slate-400">
+                    {showTitle && <h1 className="text-xl font-semibold text-slate-900">Members</h1>}
+                    <p className="mt-1 text-sm text-slate-500">
                         Manage members and perform bulk updates.
                     </p>
                 </div>
@@ -793,24 +793,24 @@ export function MemberList({
 
             <div className="mt-6 grid gap-3 md:grid-cols-5">
                 <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-slate-300">Search</label>
+                    <label className="text-sm font-medium text-slate-700">Search</label>
                     <div className="relative mt-1">
-                        <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                        <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Name, phone, or group..."
-                            className="w-full rounded-md border border-slate-700 bg-slate-800 pl-9 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full rounded-md border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                     </div>
                 </div>
                 {!fixedGroupId && (
                   <div className="md:col-span-1">
-                      <label className="text-sm font-medium text-slate-300">Group</label>
+                      <label className="text-sm font-medium text-slate-700">Group</label>
                       <select
                           value={groupId}
                           onChange={(e) => setGroupId(e.target.value)}
-                          className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       >
                           <option value="">All Groups</option>
                           {initialGroups.map(g => (
@@ -820,22 +820,22 @@ export function MemberList({
                   </div>
                 )}
                 <div className="md:col-span-1">
-                    <label className="text-sm font-medium text-slate-300">Days</label>
+                    <label className="text-sm font-medium text-slate-600">Days</label>
                     <select
                         value={daysFilter}
                         onChange={(e) => setDaysFilter(e.target.value)}
-                        className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                         <option value="0">All Days</option>
                         <option value="40">40+ Days</option>
                     </select>
                 </div>
                 <div className="md:col-span-1">
-                    <label className="text-sm font-medium text-slate-300">Status</label>
+                    <label className="text-sm font-medium text-slate-600">Status</label>
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                         <option value="ACTIVE">Active</option>
                         <option value="INACTIVE">Inactive</option>
@@ -846,13 +846,13 @@ export function MemberList({
         </div>
 
         {bulkSuccess && (
-            <div className="rounded-md bg-green-900/50 p-4 text-green-200">
+            <div className="rounded-md bg-green-50 p-4 text-green-700">
                 Bulk update successful!
             </div>
         )}
 
         {bulkWarnings.length > 0 && (
-            <div className="rounded-md bg-yellow-900/50 p-4 text-yellow-200">
+            <div className="rounded-md bg-yellow-50 p-4 text-yellow-700">
                 <p className="font-bold">Warnings:</p>
                 <ul className="list-disc pl-5 text-sm">
                     {bulkWarnings.map((w, i) => (
@@ -863,7 +863,7 @@ export function MemberList({
         )}
         
         {bulkErrors.length > 0 && (
-            <div className="rounded-md bg-red-900/50 p-4 text-red-200">
+            <div className="rounded-md bg-red-50 p-4 text-red-700">
                 <p className="font-bold">Errors occurred during bulk update:</p>
                 <ul className="list-disc pl-5 text-sm">
                     {bulkErrors.map((e, i) => (
@@ -897,7 +897,7 @@ export function MemberList({
                             }
                         }}
                         disabled={isBulkSaving}
-                        className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/50 hover:text-red-300 disabled:opacity-50"
+                        className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                     >
                         Discard Draft
                     </button>
@@ -912,12 +912,12 @@ export function MemberList({
             )}
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/50">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-400">
-                    <thead className="bg-slate-950 text-slate-200">
+                <table className="w-full text-left text-sm text-slate-500">
+                    <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
                         <tr>
-                            <th className="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-900" onClick={handleSortToggle}>
+                            <th className="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={handleSortToggle}>
                                 <div className="flex items-center gap-1">
                                     Member
                                     {sort === "asc" ? <IconChevronUp className="h-3 w-3" /> : <IconChevronDown className="h-3 w-3" />}
@@ -939,7 +939,7 @@ export function MemberList({
                             <th className="px-4 py-3 font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-200">
                         {isLoading ? (
                             <tr>
                                 <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
@@ -960,16 +960,16 @@ export function MemberList({
                                   (member.todaySavings ?? 0) > 0;
                                 const hasZeroBalance = Number(member.balance) === 0;
                                 const rowClass = hasZeroBalance
-                                  ? "bg-red-950/40 hover:bg-red-900/50"
+                                  ? "bg-red-50 hover:bg-red-100"
                                   : hasTodayUpdate
-                                    ? "bg-emerald-950/40 hover:bg-emerald-900/50"
-                                    : "hover:bg-slate-800/50";
+                                    ? "bg-emerald-50 hover:bg-emerald-100"
+                                    : "hover:bg-slate-50";
 
                                 return (
                                 <tr key={member.id} className={rowClass}>
-                                    <td className="px-4 py-3 font-medium text-slate-200">{member.lastName}, {member.firstName}</td>
-                                    {!fixedGroupId && <td className="px-4 py-3 text-slate-300">{member.group?.name || "-"}</td>}
-                                    <td className="px-4 py-3 text-right font-mono text-slate-300">
+                                    <td className="px-4 py-3 font-medium text-slate-900">{member.lastName}, {member.firstName}</td>
+                                    {!fixedGroupId && <td className="px-4 py-3 text-slate-600">{member.group?.name || "-"}</td>}
+                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
                                         {Number(member.balance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
                                     <td className="px-4 py-3">
@@ -977,23 +977,23 @@ export function MemberList({
                                             <input
                                                 type="text"
                                                 placeholder={member.latestActiveReleaseAmount != null ? String(member.latestActiveReleaseAmount) : "0"}
-                                                className="w-full min-w-[90px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                                                className="w-full min-w-[90px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
                                                 value={updates[member.id]?.activeReleaseAmount ?? (member.latestActiveReleaseAmount != null ? String(member.latestActiveReleaseAmount) : "")}
                                                 onChange={(e) => handleBulkChange(member.id, "activeReleaseAmount", e.target.value)}
                                             />
                                         ) : (
-                                            <span className="font-mono text-slate-300">
+                                            <span className="font-mono text-slate-600">
                                                 {member.latestActiveReleaseAmount != null
                                                     ? Number(member.latestActiveReleaseAmount).toLocaleString('en-US', { minimumFractionDigits: 0 })
                                                     : "-"}
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right font-mono text-slate-300">
+                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
                                         {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                     </td>
-                                    <td className="px-4 py-3 text-center text-slate-300">{member.daysCount}</td>
-                                    <td className="px-4 py-3 text-center text-slate-300">
+                                    <td className="px-4 py-3 text-center text-slate-600">{member.daysCount}</td>
+                                    <td className="px-4 py-3 text-center text-slate-600">
                                         {member.latestCycle ? `#${member.latestCycle.cycleNumber}` : "-"}
                                     </td>
                                     
@@ -1007,7 +1007,7 @@ export function MemberList({
                                                             ? String(member.todayPayment)
                                                             : "0"
                                                     }
-                                                    className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-red-500 focus:outline-none"
+                                                    className="w-full min-w-[80px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-red-500 focus:outline-none"
                                                     value={updates[member.id]?.balanceDeduct ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "balanceDeduct", e.target.value)}
                                                     ref={(el) => {
@@ -1024,7 +1024,7 @@ export function MemberList({
                                                             ? String(member.todaySavings)
                                                             : "0"
                                                     }
-                                                    className="w-full min-w-[80px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                                                    className="w-full min-w-[80px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
                                                     value={updates[member.id]?.savingsIncrease ?? ""}
                                                     onChange={(e) => handleBulkChange(member.id, "savingsIncrease", e.target.value)}
                                                     onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
@@ -1034,7 +1034,7 @@ export function MemberList({
                                                 <input
                                                     type="text"
                                                     placeholder={String(member.daysCount)}
-                                                    className="w-full min-w-[60px] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-center text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
+                                                    className="w-full min-w-[60px] rounded border border-slate-200 bg-white px-2 py-1 text-center text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                                                     value={updates[member.id]?.daysCount ?? String(member.daysCount)}
                                                     onChange={(e) => handleBulkChange(member.id, "daysCount", e.target.value)}
                                                     onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
@@ -1047,7 +1047,7 @@ export function MemberList({
                                         <div className="flex items-center justify-end gap-2">
                                             <button 
                                                 onClick={() => handleViewMember(member.id)}
-                                                className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-blue-400"
+                                                className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-blue-600"
                                                 title="View Details"
                                             >
                                                 <IconEye className="h-4 w-4" />
@@ -1055,7 +1055,7 @@ export function MemberList({
                                             {(userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER) && (
                                               <button 
                                                   onClick={() => handleOpenModal(member)}
-                                                  className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-emerald-400"
+                                                  className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
                                                   title="Edit"
                                               >
                                                   <IconPencil className="h-4 w-4" />
@@ -1064,7 +1064,7 @@ export function MemberList({
                                             {canDelete && (
                                                 <button 
                                                     onClick={() => handleDelete(member.id)}
-                                                    className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-red-400"
+                                                    className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
                                                     title="Delete"
                                                 >
                                                     <IconTrash className="h-4 w-4" />
@@ -1075,27 +1075,27 @@ export function MemberList({
                                 </tr>
                                 );
                             })}
-                            <tr className="bg-slate-950/80 font-semibold">
-                                <td className="px-4 py-3 text-right text-slate-200" colSpan={fixedGroupId ? 1 : 2}>
+                            <tr className="bg-slate-100 font-semibold">
+                                <td className="px-4 py-3 text-right text-slate-900" colSpan={fixedGroupId ? 1 : 2}>
                                     Totals
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                <td className="px-4 py-3 text-right font-mono text-slate-900">
                                     {totals.balance.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                <td className="px-4 py-3 text-right font-mono text-slate-900">
                                     {totals.activeRelease.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                <td className="px-4 py-3 text-right font-mono text-slate-900">
                                     {totals.savings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                 </td>
                                 <td className="px-4 py-3" />
                                 <td className="px-4 py-3" />
                                 {canBulkUpdate && (
                                     <>
-                                        <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                        <td className="px-4 py-3 text-right font-mono text-slate-900">
                                             {totals.payment.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono text-slate-200">
+                                        <td className="px-4 py-3 text-right font-mono text-slate-900">
                                             {totals.paymentSavings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                         </td>
                                         <td className="px-4 py-3" />
@@ -1112,8 +1112,8 @@ export function MemberList({
 
         {/* Bottom Actions */}
         {hasChanges && (
-            <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-2xl backdrop-blur-sm md:static md:mt-4 md:justify-end md:bg-transparent md:p-0 md:shadow-none md:border-0">
-                <div className="hidden md:block text-sm text-slate-400 mr-2">
+            <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 p-4 shadow-2xl backdrop-blur-sm md:static md:mt-4 md:justify-end md:bg-transparent md:p-0 md:shadow-none md:border-0">
+                <div className="hidden md:block text-sm text-slate-500 mr-2">
                     You have unsaved changes
                 </div>
                 <button
@@ -1123,7 +1123,7 @@ export function MemberList({
                         }
                     }}
                     disabled={isBulkSaving}
-                    className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/50 hover:text-red-300 disabled:opacity-50"
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                 >
                     Discard Draft
                 </button>
@@ -1139,52 +1139,52 @@ export function MemberList({
 
         {/* View Modal */}
         {isViewModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                <div className="w-full max-w-7xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                <div className="w-full max-w-7xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
                     <div className="mb-6 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-slate-100">Member Details</h2>
-                        <button onClick={() => setIsViewModalOpen(false)} className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900">Member Details</h2>
+                        <button onClick={() => setIsViewModalOpen(false)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
                             <IconX className="h-5 w-5" />
                         </button>
                     </div>
 
                     {viewLoading ? (
-                        <div className="py-12 text-center text-slate-400">Loading details...</div>
+                        <div className="py-12 text-center text-slate-500">Loading details...</div>
                     ) : viewMember ? (
                         <div className="space-y-8">
                             <div className="grid gap-6 md:grid-cols-2">
-                                <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                    <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Personal Info</h3>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Personal Info</h3>
                                     <div className="space-y-3">
                                         <div>
                                             <div className="text-xs text-slate-500">Full Name</div>
-                                            <div className="text-lg font-medium text-slate-200">{viewMember.lastName}, {viewMember.firstName}</div>
+                                            <div className="text-lg font-medium text-slate-900">{viewMember.lastName}, {viewMember.firstName}</div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <div className="text-xs text-slate-500">Group</div>
-                                                <div className="text-slate-300">{viewMember.group?.name || "-"}</div>
+                                                <div className="text-slate-700">{viewMember.group?.name || "-"}</div>
                                             </div>
                                             <div>
                                                 <div className="text-xs text-slate-500">Days in System</div>
-                                                <div className="text-slate-300">{viewMember.daysCount}</div>
+                                                <div className="text-slate-700">{viewMember.daysCount}</div>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <div className="text-xs text-slate-500">Current Cycle</div>
-                                                <div className="text-slate-300">
+                                                <div className="text-slate-700">
                                                     {viewMember.latestCycle ? `#${viewMember.latestCycle.cycleNumber}` : "-"}
                                                 </div>
                                             </div>
                                             <div>
                                                 <div className="text-xs text-slate-500">Status</div>
-                                                <div className="text-slate-300">
+                                                <div className="text-slate-700">
                                                     {viewMember.latestCycle ? (
                                                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                                                             viewMember.latestCycle.endDate 
-                                                                ? "bg-slate-800 text-slate-400" 
-                                                                : "bg-emerald-950/30 text-emerald-400"
+                                                                ? "bg-slate-200 text-slate-600" 
+                                                                : "bg-emerald-100 text-emerald-700"
                                                         }`}>
                                                             {viewMember.latestCycle.endDate ? "Completed" : "Active"}
                                                         </span>
@@ -1195,36 +1195,36 @@ export function MemberList({
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <div className="text-xs text-slate-500">Age</div>
-                                                <div className="text-slate-300">{viewMember.age || "-"}</div>
+                                                <div className="text-slate-700">{viewMember.age || "-"}</div>
                                             </div>
                                             <div>
                                                 <div className="text-xs text-slate-500">Phone</div>
-                                                <div className="text-slate-300">{viewMember.phoneNumber || "-"}</div>
+                                                <div className="text-slate-700">{viewMember.phoneNumber || "-"}</div>
                                             </div>
                                         </div>
                                         <div>
                                             <div className="text-xs text-slate-500">Address</div>
-                                            <div className="text-slate-300">{viewMember.address || "-"}</div>
+                                            <div className="text-slate-700">{viewMember.address || "-"}</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                    <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Cycle History</h3>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Cycle History</h3>
                                     {viewMember.cycles && viewMember.cycles.length > 0 ? (
-                                        <div className="overflow-hidden rounded-lg border border-slate-800">
-                                            <table className="w-full text-left text-sm text-slate-400">
-                                                <thead className="bg-slate-900 text-xs uppercase text-slate-500">
+                                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                                            <table className="w-full text-left text-sm text-slate-500">
+                                                <thead className="bg-slate-50 text-xs uppercase text-slate-700">
                                                     <tr>
                                                         <th className="px-3 py-2 font-medium">Cycle</th>
                                                         <th className="px-3 py-2 font-medium">Start</th>
                                                         <th className="px-3 py-2 font-medium">End</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-800 bg-slate-950/30">
+                                                <tbody className="divide-y divide-slate-200 bg-white">
                                                     {viewMember.cycles.map((cycle, index) => (
                                                         <tr key={cycle.id || index}>
-                                                            <td className="px-3 py-2 text-slate-300">#{cycle.cycleNumber}</td>
+                                                            <td className="px-3 py-2 text-slate-900">#{cycle.cycleNumber}</td>
                                                             <td className="px-3 py-2">{cycle.startDate ? new Date(cycle.startDate).toLocaleDateString() : "-"}</td>
                                                             <td className="px-3 py-2">{cycle.endDate ? new Date(cycle.endDate).toLocaleDateString() : "-"}</td>
                                                         </tr>
@@ -1238,35 +1238,35 @@ export function MemberList({
                                 </div>
 
                                 <div className="space-y-6">
-                                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                        <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Financials</h3>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Financials</h3>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="rounded-lg bg-indigo-950/20 p-3 border border-indigo-900/30">
-                                                <div className="text-xs text-indigo-400">Balance</div>
-                                                <div className="text-xl font-bold text-indigo-200">
+                                            <div className="rounded-lg bg-indigo-50 p-3 border border-indigo-100">
+                                                <div className="text-xs text-indigo-600">Balance</div>
+                                                <div className="text-xl font-bold text-indigo-700">
                                                     {Number(viewMember.balance).toLocaleString('en-US', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })}
                                                 </div>
                                             </div>
-                                            <div className="rounded-lg bg-emerald-950/20 p-3 border border-emerald-900/30">
-                                                <div className="text-xs text-emerald-400">Savings</div>
-                                                <div className="text-xl font-bold text-emerald-200">
+                                            <div className="rounded-lg bg-emerald-50 p-3 border border-emerald-100">
+                                                <div className="text-xs text-emerald-600">Savings</div>
+                                                <div className="text-xl font-bold text-emerald-700">
                                                     {Number(viewMember.savings).toLocaleString('en-US', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                        <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">Active Release History</h3>
-                                        <div className="rounded-lg border border-slate-800 overflow-hidden">
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Active Release History</h3>
+                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
                                             {viewMember.activeReleases && viewMember.activeReleases.length > 0 ? (
-                                                <table className="w-full text-sm text-left text-slate-400">
-                                                    <thead className="bg-slate-900 text-slate-300">
+                                                <table className="w-full text-sm text-left text-slate-500">
+                                                    <thead className="bg-slate-50 text-slate-700">
                                                         <tr>
                                                             <th className="px-3 py-2">Release Date</th>
                                                             <th className="px-3 py-2 text-right">Amount</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-slate-800">
+                                                    <tbody className="divide-y divide-slate-200">
                                                         {viewMember.activeReleases.map((r) => (
                                                             <tr key={r.id}>
                                                                 <td className="px-3 py-2">
@@ -1293,12 +1293,12 @@ export function MemberList({
                                 </div>
 
                                 {(userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER) && (
-                                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                        <h3 className="mb-4 text-sm font-medium text-slate-400 uppercase tracking-wider">New Adjustment</h3>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">New Adjustment</h3>
                                         <div className="space-y-3">
                                             <div className="grid grid-cols-2 gap-2">
                                                 <select 
-                                                    className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+                                                    className="rounded bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
                                                     value={adjustmentForm.type || ""}
                                                     onChange={e => setAdjustmentForm({...adjustmentForm, type: e.target.value as any, action: null})}
                                                 >
@@ -1308,7 +1308,7 @@ export function MemberList({
                                                     <option value="activeRelease">Active Release</option>
                                                 </select>
                                                 <select 
-                                                    className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+                                                    className="rounded bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
                                                     value={adjustmentForm.action || ""}
                                                     onChange={e => setAdjustmentForm({...adjustmentForm, action: e.target.value as any})}
                                                     disabled={!adjustmentForm.type || adjustmentForm.type === 'activeRelease'}
@@ -1331,7 +1331,7 @@ export function MemberList({
                                                 <input 
                                                     type="number" 
                                                     placeholder={adjustmentForm.type === 'activeRelease' ? "Active release amount" : "Amount"}
-                                                    className="flex-1 rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+                                                    className="flex-1 rounded bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
                                                     value={adjustmentForm.type === 'activeRelease' ? activeReleaseAmount : adjustmentForm.amount}
                                                     onChange={e => {
                                                         if (adjustmentForm.type === 'activeRelease') {
@@ -1363,10 +1363,10 @@ export function MemberList({
                             {/* History Tables */}
                             <div className="grid gap-6 md:grid-cols-2">
                                 <div>
-                                    <h3 className="mb-3 text-sm font-medium text-slate-300">Balance History</h3>
-                                    <div className="rounded-lg border border-slate-800 overflow-hidden">
-                                        <table className="w-full text-sm text-left text-slate-400">
-                                            <thead className="bg-slate-900 text-slate-300">
+                                    <h3 className="mb-3 text-sm font-medium text-slate-700">Balance History</h3>
+                                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                        <table className="w-full text-sm text-left text-slate-500">
+                                            <thead className="bg-slate-50 text-slate-700">
                                                 <tr>
                                                     <th className="px-3 py-2">Date</th>
                                                     <th className="px-3 py-2">Type</th>
@@ -1374,7 +1374,7 @@ export function MemberList({
                                                     <th className="px-3 py-2"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-800">
+                                            <tbody className="divide-y divide-slate-200">
                                                 {balanceLoading ? (
                                                     <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr>
                                                 ) : balanceAdjustments.length === 0 ? (
@@ -1384,14 +1384,14 @@ export function MemberList({
                                                         <tr key={adj.id}>
                                                             <td className="px-3 py-2">{new Date(adj.createdAt).toLocaleDateString()}</td>
                                                             <td className="px-3 py-2">
-                                                                <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'DEDUCT' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'DEDUCT' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                                     {adj.type}
                                                                 </span>
                                                             </td>
                                                             <td className="px-3 py-2 text-right">{adj.amount.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right">
                                                                 {canDelete && (
-                                                                    <button onClick={() => handleRevertBalanceAdjustment(adj.id)} className="text-xs font-medium text-slate-500 hover:text-red-400 hover:underline" title="Revert Transaction">
+                                                                    <button onClick={() => handleRevertBalanceAdjustment(adj.id)} className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline" title="Revert Transaction">
                                                                         REVERT
                                                                     </button>
                                                                 )}
@@ -1406,7 +1406,7 @@ export function MemberList({
                                             totalItems={balanceTotal}
                                             pageSize={balanceLimit}
                                             onPageChange={(p) => fetchBalanceAdjustments(viewMember.id, p)}
-                                            className="p-2 bg-slate-900"
+                                            className="p-2 bg-slate-50"
                                             pageSizeOptions={[5, 10, 20]}
                                             onPageSizeChange={(s) => {
                                                 setBalanceLimit(s);
@@ -1416,10 +1416,10 @@ export function MemberList({
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 className="mb-3 text-sm font-medium text-slate-300">Savings History</h3>
-                                    <div className="rounded-lg border border-slate-800 overflow-hidden">
-                                        <table className="w-full text-sm text-left text-slate-400">
-                                            <thead className="bg-slate-900 text-slate-300">
+                                    <h3 className="mb-3 text-sm font-medium text-slate-500">Savings History</h3>
+                                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                        <table className="w-full text-sm text-left text-slate-500">
+                                            <thead className="bg-slate-50 text-slate-700">
                                                 <tr>
                                                     <th className="px-3 py-2">Date</th>
                                                     <th className="px-3 py-2">Type</th>
@@ -1427,7 +1427,7 @@ export function MemberList({
                                                     <th className="px-3 py-2"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-800">
+                                            <tbody className="divide-y divide-slate-200">
                                                 {savingsLoading ? (
                                                     <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr>
                                                 ) : savingsAdjustments.length === 0 ? (
@@ -1437,14 +1437,14 @@ export function MemberList({
                                                         <tr key={adj.id}>
                                                             <td className="px-3 py-2">{new Date(adj.createdAt).toLocaleDateString()}</td>
                                                             <td className="px-3 py-2">
-                                                                <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'INCREASE' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'INCREASE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                                     {adj.type}
                                                                 </span>
                                                             </td>
                                                             <td className="px-3 py-2 text-right">{adj.amount.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right">
                                                                 {canDelete && (
-                                                                    <button onClick={() => handleRevertSavingsAdjustment(adj.id)} className="text-xs font-medium text-slate-500 hover:text-red-400 hover:underline" title="Revert Transaction">
+                                                                    <button onClick={() => handleRevertSavingsAdjustment(adj.id)} className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline" title="Revert Transaction">
                                                                         REVERT
                                                                     </button>
                                                                 )}
@@ -1459,7 +1459,7 @@ export function MemberList({
                                             totalItems={savingsTotal}
                                             pageSize={savingsLimit}
                                             onPageChange={(p) => fetchSavingsAdjustments(viewMember.id, p)}
-                                            className="p-2 bg-slate-900"
+                                            className="p-2 bg-white"
                                             pageSizeOptions={[5, 10, 20]}
                                             onPageSizeChange={(s) => {
                                                 setSavingsLimit(s);
@@ -1479,22 +1479,22 @@ export function MemberList({
 
         {/* Add/Edit Modal */}
         {isModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                <div className="w-full max-w-4xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
                     <div className="mb-6 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-slate-100">
+                        <h2 className="text-lg font-semibold text-slate-900">
                             {editingMember ? "Edit Member" : "Add New Member"}
                         </h2>
                         <button
                             onClick={handleCloseModal}
-                            className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                            className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                         >
                             <IconX className="h-5 w-5" />
                         </button>
                     </div>
 
                     {modalError && (
-                        <div className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
                             {modalError}
                         </div>
                     )}
@@ -1502,38 +1502,38 @@ export function MemberList({
                     <form onSubmit={handleFormSubmit} className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    Last Name <span className="text-red-400">*</span>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    Last Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.lastName}
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    First Name <span className="text-red-400">*</span>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    First Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.firstName}
                                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    Group <span className="text-red-400">*</span>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    Group <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     required
                                     value={formData.groupId}
                                     onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 >
                                     <option value="">Select Group</option>
                                     {initialGroups.map((g) => (
@@ -1544,7 +1544,7 @@ export function MemberList({
                                 </select>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Age (optional)
                                 </label>
                                 <input
@@ -1552,34 +1552,34 @@ export function MemberList({
                                     min="0"
                                     value={formData.age}
                                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Phone Number (optional)
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.phoneNumber}
                                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Address (optional)
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    Balance <span className="text-red-400">*</span>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    Balance <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="number"
@@ -1588,14 +1588,14 @@ export function MemberList({
                                     value={formData.balance}
                                     onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
                                     disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                                 {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-500">Cannot be edited due to member already has balance and savings adjustment records</p>
+                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
                                 )}
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Savings
                                 </label>
                                 <input
@@ -1604,14 +1604,14 @@ export function MemberList({
                                     value={formData.savings}
                                     onChange={(e) => setFormData({ ...formData, savings: e.target.value })}
                                     disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                                 {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-500">Cannot be edited due to member already has balance and savings adjustment records</p>
+                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
                                 )}
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Active Release (optional)
                                 </label>
                                 <input
@@ -1619,25 +1619,25 @@ export function MemberList({
                                     step="0.01"
                                     value={formData.activeReleaseAmount}
                                     onChange={(e) => setFormData({ ...formData, activeReleaseAmount: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
-                                    Status <span className="text-red-400">*</span>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    Status <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     required
                                     value={formData.status}
                                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 >
                                     <option value="ACTIVE">Active</option>
                                     <option value="INACTIVE">Inactive</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-slate-300">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">
                                     Days in System
                                 </label>
                                 <input
@@ -1646,17 +1646,17 @@ export function MemberList({
                                     value={formData.daysCount}
                                     onChange={(e) => setFormData({ ...formData, daysCount: e.target.value })}
                                     disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                                 {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-500">Cannot be edited due to member already has balance and savings adjustment records</p>
+                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-800 pt-4">
+                        <div className="border-t border-slate-200 pt-4">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-medium text-slate-100">Cycle Information</h3>
+                                <h3 className="text-sm font-medium text-slate-900">Cycle Information</h3>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1676,7 +1676,7 @@ export function MemberList({
                                             ]
                                         });
                                     }}
-                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
                                 >
                                     <IconPlus className="h-3 w-3" /> Add Cycle
                                 </button>
@@ -1685,7 +1685,7 @@ export function MemberList({
                                 {formData.cycles.map((cycle, index) => (
                                     <div key={index} className="grid gap-4 md:grid-cols-[minmax(0,120px)_minmax(0,1fr)_minmax(0,1fr)] relative group items-start">
                                         <div className="max-w-[120px]">
-                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                            <label className="mb-1 block text-sm font-medium text-slate-700">
                                                 Cycle Number
                                             </label>
                                             <input
@@ -1697,11 +1697,11 @@ export function MemberList({
                                                     newCycles[index].cycleNumber = e.target.value;
                                                     setFormData({ ...formData, cycles: newCycles });
                                                 }}
-                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
                                         </div>
                                         <div className="min-w-[140px]">
-                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                            <label className="mb-1 block text-sm font-medium text-slate-700">
                                                 Start Date
                                             </label>
                                             <input
@@ -1712,11 +1712,11 @@ export function MemberList({
                                                     newCycles[index].startDate = e.target.value;
                                                     setFormData({ ...formData, cycles: newCycles });
                                                 }}
-                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
                                         </div>
                                         <div className="relative min-w-[140px] pr-6">
-                                            <label className="mb-1 block text-sm font-medium text-slate-300">
+                                            <label className="mb-1 block text-sm font-medium text-slate-700">
                                                 End Date
                                             </label>
                                             <input
@@ -1727,7 +1727,7 @@ export function MemberList({
                                                     newCycles[index].endDate = e.target.value;
                                                     setFormData({ ...formData, cycles: newCycles });
                                                 }}
-                                                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
+                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                             />
                                             <button 
                                                 type="button" 
@@ -1735,7 +1735,7 @@ export function MemberList({
                                                     const newCycles = formData.cycles.filter((_, i) => i !== index);
                                                     setFormData({ ...formData, cycles: newCycles });
                                                 }} 
-                                                className="absolute right-0 top-8 text-slate-500 hover:text-red-400"
+                                                className="absolute right-0 top-8 text-slate-500 hover:text-red-600"
                                                 title="Remove cycle"
                                             >
                                                 <IconTrash className="h-4 w-4" />
@@ -1747,11 +1747,11 @@ export function MemberList({
                         </div>
 
 
-                        <div className="mt-6 flex justify-end gap-3 pt-2 border-t border-slate-800">
+                        <div className="mt-6 flex justify-end gap-3 pt-2 border-t border-slate-200">
                             <button
                                 type="button"
                                 onClick={handleCloseModal}
-                                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                                 disabled={modalLoading}
                             >
                                 Cancel
@@ -1759,7 +1759,7 @@ export function MemberList({
                             <button
                                 type="submit"
                                 disabled={modalLoading}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
                             >
                                 {modalLoading ? "Saving..." : (editingMember ? "Save Changes" : "Add Member")}
                             </button>
@@ -1771,19 +1771,19 @@ export function MemberList({
 
         {/* Confirmation Modal */}
         {confirmation.isOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
                     <div className="mb-6 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-slate-100">{confirmation.title}</h2>
+                        <h2 className="text-lg font-semibold text-slate-900">{confirmation.title}</h2>
                         <button
                             onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                            className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                            className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                         >
                             <IconX className="h-5 w-5" />
                         </button>
                     </div>
 
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-slate-600">
                         {confirmation.message}
                     </p>
 
@@ -1791,7 +1791,7 @@ export function MemberList({
                         <button
                             type="button"
                             onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                             disabled={isConfirming}
                         >
                             Cancel

@@ -23,7 +23,7 @@ export function SubmitButton({
 
     const variantStyles = {
         primary: "bg-blue-600 text-white hover:bg-blue-700",
-        secondary: "border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60",
+        secondary: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
         danger: "bg-red-600 text-white hover:bg-red-700",
     };
 
