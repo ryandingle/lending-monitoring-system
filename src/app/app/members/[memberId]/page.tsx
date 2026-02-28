@@ -423,10 +423,10 @@ export default async function MemberDetailPage({
 
   if (!member) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="text-sm text-slate-300">Member not found.</div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-sm text-slate-500">Member not found.</div>
         <div className="mt-4">
-          <Link href="/app/members" className="text-sm font-medium text-slate-200 hover:underline">
+          <Link href="/app/members" className="text-sm font-medium text-slate-700 hover:underline">
             Back to Members
           </Link>
         </div>
@@ -521,23 +521,23 @@ export default async function MemberDetailPage({
     safeSavingsPage > 1
       ? buildUrl({ savingsPage: safeSavingsPage - 1, savingsPageSize })
       : undefined;
-  const nextSavingsHref =
-    safeSavingsPage < totalSavingsPages
-      ? buildUrl({ savingsPage: safeSavingsPage + 1, savingsPageSize })
-      : undefined;
+
+  const nextSavingsHref = (safeSavingsPage < totalSavingsPages)
+    ? buildUrl({ savingsPage: safeSavingsPage + 1, savingsPageSize })
+    : undefined;
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Link href="/app/members" className="text-sm text-slate-400 hover:underline">
+            <Link href="/app/members" className="text-sm text-slate-500 hover:underline">
               ← Back to Members
             </Link>
-            <h1 className="mt-2 text-xl font-semibold text-slate-100">
+            <h1 className="mt-2 text-xl font-semibold text-slate-900">
               {member.lastName}, {member.firstName}
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               {totalBalanceUpdates} days in system
               {" · "}
               {latestCycle ? (
@@ -551,91 +551,91 @@ export default async function MemberDetailPage({
                 currentUser.role === Role.SUPER_ADMIN ? (
                   <Link
                     href={`/app/groups/${member.group.id}`}
-                    className="font-medium text-slate-200 hover:underline"
+                    className="font-medium text-slate-700 hover:underline"
                   >
                     {member.group.name}
                   </Link>
                 ) : (
-                  <span className="font-medium text-slate-200">{member.group.name}</span>
+                  <span className="font-medium text-slate-700">{member.group.name}</span>
                 )
               ) : (
-                <span className="font-medium text-slate-500">—</span>
+                <span className="font-medium text-slate-400">—</span>
               )}
             </p>
           </div>
         </div>
 
         {sp.status === "reverted" && (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             Adjustment has been reverted and member record recalculated.
           </div>
         )}
 
         {sp.error === "revert_failed" && (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             Failed to revert adjustment.
           </div>
         )}
 
         {sp.balanceUpdated === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             Balance updated.
             {sp.warning === "days_count" && (
-              <div className="mt-1 font-medium text-yellow-200">
+              <div className="mt-1 font-medium text-yellow-700">
                 Warning: Member has reached 40 days.
               </div>
             )}
           </div>
         ) : sp.balanceUpdated === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             Could not update balance (check inputs / insufficient balance for deduction).
           </div>
         ) : sp.balanceUpdated === "2" ? (
-          <div className="mt-4 rounded-lg border border-yellow-900/40 bg-yellow-950/40 px-3 py-2 text-sm text-yellow-200">
+          <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-700">
             Balance has already been adjusted for this member today. Access blocked to prevent duplicates.
           </div>
         ) : null}
 
         {sp.savingsUpdated === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             Savings updated.
           </div>
         ) : sp.savingsUpdated === "0" ? (
-          <div className="mt-4 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             Could not update savings (check inputs / insufficient savings / payment exceeds balance).
           </div>
         ) : sp.savingsUpdated === "2" ? (
-          <div className="mt-4 rounded-lg border border-yellow-900/40 bg-yellow-950/40 px-3 py-2 text-sm text-yellow-200">
+          <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-700">
             Savings have already been adjusted for this member today. Access blocked to prevent duplicates.
           </div>
         ) : null}
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-xs uppercase text-slate-400">Balance</div>
-            <div className="mt-1 text-2xl font-semibold text-slate-100">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="text-xs uppercase text-slate-500">Balance</div>
+            <div className="mt-1 text-2xl font-semibold text-slate-900">
               {member.balance.toFixed(2)}
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-xs uppercase text-slate-400">Savings (stored)</div>
-            <div className="mt-1 text-2xl font-semibold text-slate-100">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="text-xs uppercase text-slate-500">Savings (stored)</div>
+            <div className="mt-1 text-2xl font-semibold text-slate-900">
               {member.savings.toFixed(2)}
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-xs uppercase text-slate-400">Savings (ledger total)</div>
-            <div className="mt-1 text-2xl font-semibold text-slate-100">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="text-xs uppercase text-slate-500">Savings (ledger total)</div>
+            <div className="mt-1 text-2xl font-semibold text-slate-900">
               {typeof accruedTotal === "number" ? accruedTotal.toFixed(2) : String(accruedTotal)}
             </div>
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-slate-100">Update Balance</div>
-              <div className="mt-1 text-sm text-slate-400">
+              <div className="text-sm font-medium text-slate-900">Update Balance</div>
+              <div className="mt-1 text-sm text-slate-500">
                 Record a weekly collection/payment and automatically update the balance.
               </div>
             </div>
@@ -651,7 +651,7 @@ export default async function MemberDetailPage({
                 <select
                   name="type"
                   defaultValue="DEDUCT"
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="INCREASE">Increase (+)</option>
                   <option value="DEDUCT">Deduct (-)</option>
@@ -664,7 +664,7 @@ export default async function MemberDetailPage({
                   type="number"
                   step="0.01"
                   required
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div className="md:col-span-2 flex items-end">
@@ -674,17 +674,17 @@ export default async function MemberDetailPage({
               </div>
             </form>
           ) : (
-            <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-300">
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
               You don’t have permission to update balances.
             </div>
           )}
         </div>
 
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-slate-100">Update Savings</div>
-              <div className="mt-1 text-sm text-slate-400">
+              <div className="text-sm font-medium text-slate-900">Update Savings</div>
+              <div className="mt-1 text-sm text-slate-500">
                 Withdraw savings, increase savings, or apply savings to cover the balance.
               </div>
             </div>
@@ -700,7 +700,7 @@ export default async function MemberDetailPage({
                 <select
                   name="type"
                   defaultValue="INCREASE"
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="INCREASE">Increase (+)</option>
                   <option value="WITHDRAW">Withdraw (-)</option>
@@ -713,7 +713,7 @@ export default async function MemberDetailPage({
                   type="number"
                   step="0.01"
                   required
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div className="md:col-span-2 flex items-end">
@@ -723,16 +723,16 @@ export default async function MemberDetailPage({
               </div>
             </form>
           ) : (
-            <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-300">
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
               You don’t have permission to update savings.
             </div>
           )}
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-sm font-medium text-slate-100">Contact</div>
-            <div className="mt-2 text-sm text-slate-300">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="text-sm font-medium text-slate-900">Contact</div>
+            <div className="mt-2 text-sm text-slate-600">
               <div>
                 <span className="text-slate-500">Phone:</span> {member.phoneNumber ?? "-"}
               </div>
@@ -744,9 +744,9 @@ export default async function MemberDetailPage({
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <div className="text-sm font-medium text-slate-100">Meta</div>
-            <div className="mt-2 text-sm text-slate-300">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="text-sm font-medium text-slate-900">Meta</div>
+            <div className="mt-2 text-sm text-slate-600">
               <div>
                 <span className="text-slate-500">Created:</span>{" "}
                 {member.createdAt.toISOString().slice(0, 10)}
@@ -759,45 +759,45 @@ export default async function MemberDetailPage({
               </div>
             </div>
           </div>
-        </div>
+
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
-        <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 p-4 bg-white">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Cycle History</h2>
+            <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Cycle History</h2>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
               {memberCycles.length} cycle{memberCycles.length === 1 ? "" : "s"}
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-slate-950 border-t border-slate-800">
+        <div className="overflow-x-auto bg-white border-t border-slate-200">
           <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
-              <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Cycle #</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Start Date</th>
-                <th className="border-b border-slate-800 px-3 py-2 font-semibold">Recorded At</th>
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+              <tr className="text-[10px] uppercase tracking-widest text-slate-500">
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Cycle #</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Start Date</th>
+                <th className="border-b border-slate-200 px-3 py-2 font-semibold">Recorded At</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-200">
               {memberCycles.map((cycle: any) => (
-                <tr key={cycle.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
+                <tr key={cycle.id} className="group hover:bg-blue-50 odd:bg-white even:bg-slate-50">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-700 transition-colors group-hover:border-blue-200">
                     {cycle.cycleNumber}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-700 transition-colors group-hover:border-blue-200">
                     {cycle.startDate ? cycle.startDate.toLocaleDateString() : "-"}
                   </td>
-                  <td className="border-b border-slate-800 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-slate-200 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-200">
                     {formatDateTimeManila(cycle.createdAt)}
                   </td>
                 </tr>
               ))}
               {memberCycles.length === 0 ? (
                 <tr>
-                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-800" colSpan={3}>
+                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-200" colSpan={3}>
                     No cycles recorded.
                   </td>
                 </tr>
@@ -807,10 +807,10 @@ export default async function MemberDetailPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
-        <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 p-4 bg-white">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Savings Updates</h2>
+            <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Savings Updates</h2>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
               {totalSavingsUpdates} entry{totalSavingsUpdates === 1 ? "" : "ies"} · page{" "}
               {safeSavingsPage} of {totalSavingsPages}
@@ -820,8 +820,8 @@ export default async function MemberDetailPage({
             <Link
               href={prevSavingsHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${prevSavingsHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Prev
@@ -829,8 +829,8 @@ export default async function MemberDetailPage({
             <Link
               href={nextSavingsHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${nextSavingsHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Next
@@ -838,49 +838,49 @@ export default async function MemberDetailPage({
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-slate-950 border-t border-slate-800">
+        <div className="overflow-x-auto bg-white border-t border-slate-200">
           <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
-              <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Date</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Type</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">Amount</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">Before</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">After</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Encoded By</th>
-                {isAdmin && <th className="border-b border-slate-800 px-3 py-2 font-semibold text-center w-20">Actions</th>}
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+              <tr className="text-[10px] uppercase tracking-widest text-slate-500">
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Date</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Type</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">Amount</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">Before</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">After</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Encoded By</th>
+                {isAdmin && <th className="border-b border-slate-200 px-3 py-2 font-semibold text-center w-20">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-200">
               {savingsUpdates.map((s: any) => (
-                <tr key={s.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
+                <tr key={s.id} className="group hover:bg-blue-50 odd:bg-white even:bg-slate-50">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-500 transition-colors group-hover:border-blue-200">
                     {formatDateTimeManila(s.createdAt)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${s.type === 'INCREASE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 transition-colors group-hover:border-blue-200">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${s.type === 'INCREASE' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                       }`}>
                       {s.type}
                     </span>
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono font-medium text-slate-700 transition-colors group-hover:border-blue-200">
                     {s.amount.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-200">
                     {s.savingsBefore.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono text-emerald-500/70 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono text-emerald-600 transition-colors group-hover:border-blue-200">
                     {s.savingsAfter.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-slate-400 transition-colors group-hover:border-blue-500/30 text-[10px] font-medium">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-200 text-[10px] font-medium">
                     {s.encodedBy.name}
                   </td>
                   {isAdmin && (
-                    <td className="border-b border-slate-800 px-3 py-1 text-center transition-colors group-hover:border-blue-500/30">
+                    <td className="border-b border-slate-200 px-3 py-1 text-center transition-colors group-hover:border-blue-200">
                       <form action={revertSavingsAdjustmentAction.bind(null, s.id, memberId)}>
                         <ConfirmSubmitButton
                           confirmMessage={`Revert this savings adjustment of ${s.amount.toFixed(2)}? This will recalculate the member's current savings.`}
-                          className="text-[10px] font-bold text-red-500 hover:text-red-400 hover:underline px-2 py-1 rounded transition-colors uppercase tracking-tight"
+                          className="text-[10px] font-bold text-red-600 hover:text-red-700 hover:underline px-2 py-1 rounded transition-colors uppercase tracking-tight"
                         >
                           Revert
                         </ConfirmSubmitButton>
@@ -891,7 +891,7 @@ export default async function MemberDetailPage({
               ))}
               {savingsUpdates.length === 0 ? (
                 <tr>
-                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-800" colSpan={isAdmin ? 7 : 6}>
+                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-200" colSpan={isAdmin ? 7 : 6}>
                     No savings updates yet.
                   </td>
                 </tr>
@@ -901,10 +901,10 @@ export default async function MemberDetailPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
-        <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 p-4 bg-white">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Balance Updates</h2>
+            <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Balance Updates</h2>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
               {totalBalanceUpdates} entry{totalBalanceUpdates === 1 ? "" : "ies"} · page{" "}
               {safeBalancePage} of {totalBalancePages}
@@ -914,8 +914,8 @@ export default async function MemberDetailPage({
             <Link
               href={prevBalanceHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${prevBalanceHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Prev
@@ -923,8 +923,8 @@ export default async function MemberDetailPage({
             <Link
               href={nextBalanceHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${nextBalanceHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Next
@@ -932,49 +932,49 @@ export default async function MemberDetailPage({
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-slate-950 border-t border-slate-800">
+        <div className="overflow-x-auto bg-white border-t border-slate-200">
           <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
-              <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Date</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Type</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">Amount</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">Before</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">After</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Encoded By</th>
-                {isAdmin && <th className="border-b border-slate-800 px-3 py-2 font-semibold text-center w-20">Actions</th>}
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+              <tr className="text-[10px] uppercase tracking-widest text-slate-500">
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Date</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Type</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">Amount</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">Before</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">After</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Encoded By</th>
+                {isAdmin && <th className="border-b border-slate-200 px-3 py-2 font-semibold text-center w-20">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-200">
               {balanceUpdates.map((b: any) => (
-                <tr key={b.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-400 transition-colors group-hover:border-blue-500/30">
+                <tr key={b.id} className="group hover:bg-blue-50 odd:bg-white even:bg-slate-50">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-500 transition-colors group-hover:border-blue-200">
                     {formatDateTimeManila(b.createdAt)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${b.type === 'DEDUCT' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-medium text-slate-700 transition-colors group-hover:border-blue-200">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${b.type === 'DEDUCT' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
                       }`}>
                       {b.type}
                     </span>
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono font-medium text-slate-700 transition-colors group-hover:border-blue-200">
                     {b.amount.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-200">
                     {b.balanceBefore.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono text-blue-400 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono text-blue-600 transition-colors group-hover:border-blue-200">
                     {b.balanceAfter.toFixed(2)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-slate-400 transition-colors group-hover:border-blue-500/30 text-[10px] font-medium">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-200 text-[10px] font-medium">
                     {b.encodedBy.name}
                   </td>
                   {isAdmin && (
-                    <td className="border-b border-slate-800 px-3 py-1 text-center transition-colors group-hover:border-blue-500/30">
+                    <td className="border-b border-slate-200 px-3 py-1 text-center transition-colors group-hover:border-blue-200">
                       <form action={revertBalanceAdjustmentAction.bind(null, b.id, memberId)}>
                         <ConfirmSubmitButton
                           confirmMessage={`Revert this balance adjustment of ${b.amount.toFixed(2)}? This will recalculate the member's current balance.`}
-                          className="text-[10px] font-bold text-red-500 hover:text-red-400 hover:underline px-2 py-1 rounded transition-colors uppercase tracking-tight"
+                          className="text-[10px] font-bold text-red-600 hover:text-red-700 hover:underline px-2 py-1 rounded transition-colors uppercase tracking-tight"
                         >
                           Revert
                         </ConfirmSubmitButton>
@@ -985,7 +985,7 @@ export default async function MemberDetailPage({
               ))}
               {balanceUpdates.length === 0 ? (
                 <tr>
-                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-800" colSpan={isAdmin ? 7 : 6}>
+                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-200" colSpan={isAdmin ? 7 : 6}>
                     No balance updates yet.
                   </td>
                 </tr>
@@ -995,10 +995,10 @@ export default async function MemberDetailPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
-        <div className="flex items-center justify-between gap-3 p-4 bg-slate-900/20">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 p-4 bg-white">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">Savings Accrual History</h2>
+            <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Savings Accrual History</h2>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-tighter text-slate-500">
               {totalAccrualCount} entry{totalAccrualCount === 1 ? "" : "ies"} · page {safePage} of{" "}
               {totalPages}
@@ -1008,8 +1008,8 @@ export default async function MemberDetailPage({
             <Link
               href={prevHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${prevHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Prev
@@ -1017,8 +1017,8 @@ export default async function MemberDetailPage({
             <Link
               href={nextHref ?? "#"}
               className={`rounded border px-3 py-1 text-[10px] font-bold uppercase transition-colors ${nextHref
-                ? "border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800"
-                : "cursor-not-allowed border-slate-800 bg-slate-950 text-slate-600"
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
                 }`}
             >
               Next
@@ -1026,32 +1026,32 @@ export default async function MemberDetailPage({
           </div>
         </div>
 
-        <div className="overflow-x-auto bg-slate-950 border-t border-slate-800">
+        <div className="overflow-x-auto bg-white border-t border-slate-200">
           <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
-              <tr className="text-[10px] uppercase tracking-widest text-slate-400">
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold">Date</th>
-                <th className="border-b border-r border-slate-800 px-3 py-2 font-semibold text-right">Amount</th>
-                <th className="border-b border-slate-800 px-3 py-2 font-semibold text-right">Recorded At</th>
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
+              <tr className="text-[10px] uppercase tracking-widest text-slate-500">
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold">Date</th>
+                <th className="border-b border-r border-slate-200 px-3 py-2 font-semibold text-right">Amount</th>
+                <th className="border-b border-slate-200 px-3 py-2 font-semibold text-right">Recorded At</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-200">
               {accruals.map((a: any) => (
-                <tr key={a.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 font-mono text-slate-300 transition-colors group-hover:border-blue-500/30">
+                <tr key={a.id} className="group hover:bg-blue-50 odd:bg-white even:bg-slate-50">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-500 transition-colors group-hover:border-blue-200">
                     {a.accruedForDate.toISOString().slice(0, 10)}
                   </td>
-                  <td className="border-b border-r border-slate-800 px-3 py-1.5 text-right font-mono font-medium text-emerald-400 transition-colors group-hover:border-blue-500/30">
+                  <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right font-mono font-medium text-emerald-600 transition-colors group-hover:border-blue-200">
                     {a.amount.toFixed(2)}
                   </td>
-                  <td className="border-b border-slate-800 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-500/30 text-[10px]">
+                  <td className="border-b border-slate-200 px-3 py-1.5 text-right font-mono text-slate-500 transition-colors group-hover:border-blue-200 text-[10px]">
                     {formatDateTimeManila(a.createdAt)}
                   </td>
                 </tr>
               ))}
               {accruals.length === 0 ? (
                 <tr>
-                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-800" colSpan={3}>
+                  <td className="py-12 text-center text-slate-500 italic border-b border-slate-200" colSpan={3}>
                     No accrual entries yet.
                   </td>
                 </tr>
@@ -1061,6 +1061,7 @@ export default async function MemberDetailPage({
         </div>
       </div>
     </div>
+  </div>
   );
 }
 

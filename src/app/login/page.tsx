@@ -52,7 +52,7 @@ export default async function LoginPage({
   const showError = sp.error === "invalid";
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
       <LoginToast />
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* Left: Sign-in form */}
@@ -62,30 +62,30 @@ export default async function LoginPage({
             className="pointer-events-none absolute inset-0 opacity-60"
             style={{
               background:
-                "radial-gradient(900px circle at 20% 20%, rgba(37,99,235,0.18), transparent 60%), radial-gradient(800px circle at 80% 60%, rgba(59,130,246,0.10), transparent 55%)",
+                "radial-gradient(900px circle at 20% 20%, rgba(37,99,235,0.05), transparent 60%), radial-gradient(800px circle at 80% 60%, rgba(59,130,246,0.05), transparent 55%)",
             }}
           />
 
           <div className="relative w-full max-w-md">
             <a
               href="/"
-              className="inline-flex items-center text-sm text-slate-400 hover:text-slate-200"
+              className="inline-flex items-center text-sm text-slate-500 hover:text-slate-900"
             >
               <span className="mr-2">←</span> Back to dashboard
             </a>
 
-            <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900/40 p-8 shadow-sm backdrop-blur">
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
                 Sign In
               </h1>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-slate-500">
                 Enter your username and password to sign in.
               </p>
 
 
               <form action={loginAction} className="mt-6 space-y-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-200">
+                  <label className="text-sm font-medium text-slate-700">
                     Username
                   </label>
                   <input
@@ -94,11 +94,11 @@ export default async function LoginPage({
                     autoComplete="username"
                     placeholder="Enter username"
                     required
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-slate-200">
+                  <label className="text-sm font-medium text-slate-700">
                     Password
                   </label>
                   <input
@@ -107,7 +107,7 @@ export default async function LoginPage({
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     required
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
 
@@ -118,13 +118,13 @@ export default async function LoginPage({
         </div>
 
         {/* Right: Brand panel */}
-        <div className="relative hidden overflow-hidden border-l border-slate-800 bg-slate-950 lg:block">
+        <div className="relative hidden overflow-hidden border-l border-slate-200 bg-slate-50 lg:block">
           <div
             aria-hidden="true"
             className="absolute inset-0 opacity-70"
             style={{
               background:
-                "linear-gradient(to bottom right, rgba(15,23,42,0.85), rgba(2,6,23,0.92)), radial-gradient(1000px circle at 40% 55%, rgba(37,99,235,0.20), transparent 55%)",
+                "linear-gradient(to bottom right, rgba(255,255,255,0.85), rgba(241,245,249,0.92)), radial-gradient(1000px circle at 40% 55%, rgba(37,99,235,0.10), transparent 55%)",
             }}
           />
           <div
@@ -132,7 +132,7 @@ export default async function LoginPage({
             className="absolute inset-0 opacity-25"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(148,163,184,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.18) 1px, transparent 1px)",
+                "linear-gradient(rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.2) 1px, transparent 1px)",
               backgroundSize: "48px 48px",
               backgroundPosition: "center",
             }}
@@ -143,14 +143,14 @@ export default async function LoginPage({
               <div className="mx-auto flex w-fit items-center gap-3">
                 <img src="/logo.jpg" alt="Logo" className="h-14 w-14 rounded-xl object-contain shadow-sm bg-white p-1" />
                 <div className="text-left">
-                  <div className="text-lg font-semibold text-slate-100">
+                  <div className="text-lg font-semibold text-slate-900">
                     {process.env.NEXT_PUBLIC_APP_NAME || "TRIPLE E microfinance inc."}
                   </div>
-                  <div className="text-sm text-slate-400">Admin dashboard</div>
+                  <div className="text-sm text-slate-500">Admin dashboard</div>
                 </div>
               </div>
 
-              <div className="mt-6 text-sm text-slate-400">
+              <div className="mt-6 text-sm text-slate-500">
                 Secure access for managing groups, members, and collections.
               </div>
             </div>

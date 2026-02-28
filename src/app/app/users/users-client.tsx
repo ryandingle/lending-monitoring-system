@@ -236,11 +236,11 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Users</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <h1 className="text-xl font-semibold text-slate-900">Users</h1>
+            <p className="mt-1 text-sm text-slate-500">
               Manage system users, roles, and access.
             </p>
           </div>
@@ -250,7 +250,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name/user…"
-                className="w-64 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <button
@@ -265,7 +265,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
 
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
+            <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Username</th>
@@ -276,14 +276,14 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <th className="py-2 pr-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium text-slate-100">{u.name}</td>
-                  <td className="py-2 pr-4 text-slate-300">{u.username}</td>
-                  <td className="py-2 pr-4 text-slate-300">{u.email ?? "-"}</td>
-                  <td className="py-2 pr-4 text-slate-300">
-                    <span className="text-xs font-medium text-slate-300">{u.role}</span>
+                <tr key={u.id} className="hover:bg-slate-50">
+                  <td className="py-2 pr-4 font-medium text-slate-900">{u.name}</td>
+                  <td className="py-2 pr-4 text-slate-600">{u.username}</td>
+                  <td className="py-2 pr-4 text-slate-600">{u.email ?? "-"}</td>
+                  <td className="py-2 pr-4 text-slate-600">
+                    <span className="text-xs font-medium text-slate-600">{u.role}</span>
                   </td>
                   <td className="py-2 pr-4">
                     <button
@@ -291,28 +291,28 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                       disabled={u.id === currentUserId}
                       className={`rounded-full border px-2 py-1 text-xs font-medium ${
                         u.isActive
-                          ? "border-emerald-900/40 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/60"
-                          : "border-red-900/40 bg-red-950/40 text-red-200 hover:bg-red-900/60"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                       } ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       {u.isActive ? "ACTIVE" : "INACTIVE"}
                     </button>
                   </td>
-                  <td className="py-2 pr-4 text-slate-400">
+                  <td className="py-2 pr-4 text-slate-500">
                     {new Date(u.createdAt).toISOString().split('T')[0]}
                   </td>
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenEditModal(u)}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-blue-400"
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-blue-600"
                         title="Edit User"
                       >
                         <IconPencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setResettingPasswordUser(u)}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                         title="Reset Password"
                       >
                         <span className="text-xs font-bold">PW</span>
@@ -320,7 +320,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                        <button
                         onClick={() => handleDeleteUser(u)}
                         disabled={u.id === currentUserId}
-                        className={`rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-red-400 ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                         title="Delete User"
                       >
                         <IconTrash className="h-4 w-4" />
@@ -331,7 +331,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td className="py-4 text-center text-slate-400" colSpan={7}>
+                  <td className="py-4 text-center text-slate-500" colSpan={7}>
                     No users found.
                   </td>
                 </tr>
@@ -343,55 +343,55 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
 
       {/* Create User Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Add New User</h2>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Add New User</h2>
+              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
             
             {modalError && (
-              <div className="mt-4 rounded-lg bg-red-950/50 p-3 text-sm text-red-200 border border-red-900/50">
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-200">Username</label>
+                <label className="text-sm font-medium text-slate-700">Username</label>
                 <input
                   required
                   value={formData.username}
                   onChange={e => setFormData({...formData, username: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Email (Optional)</label>
+                <label className="text-sm font-medium text-slate-700">Email (Optional)</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Name</label>
+                <label className="text-sm font-medium text-slate-700">Name</label>
                 <input
                   required
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Role</label>
+                <label className="text-sm font-medium text-slate-700">Role</label>
                 <select
                   value={formData.role}
                   onChange={e => setFormData({...formData, role: e.target.value as Role})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -399,13 +399,13 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Password</label>
+                <label className="text-sm font-medium text-slate-700">Password</label>
                 <input
                   type="password"
                   required
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
 
@@ -413,7 +413,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
@@ -432,55 +432,55 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Edit User</h2>
-              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Edit User</h2>
+              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
             
             {modalError && (
-              <div className="mt-4 rounded-lg bg-red-950/50 p-3 text-sm text-red-200 border border-red-900/50">
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleUpdateSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-200">Username</label>
+                <label className="text-sm font-medium text-slate-700">Username</label>
                 <input
                   required
                   value={formData.username}
                   onChange={e => setFormData({...formData, username: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Email (Optional)</label>
+                <label className="text-sm font-medium text-slate-700">Email (Optional)</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Name</label>
+                <label className="text-sm font-medium text-slate-700">Name</label>
                 <input
                   required
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Role</label>
+                <label className="text-sm font-medium text-slate-700">Role</label>
                 <select
                   value={formData.role}
                   onChange={e => setFormData({...formData, role: e.target.value as Role})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -492,7 +492,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
@@ -511,34 +511,34 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
 
       {/* Reset Password Modal */}
       {resettingPasswordUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Reset Password</h2>
-              <button onClick={() => setResettingPasswordUser(null)} className="text-slate-400 hover:text-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Reset Password</h2>
+              <button onClick={() => setResettingPasswordUser(null)} className="text-slate-400 hover:text-slate-600">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
             
-            <p className="mt-2 text-sm text-slate-400">
-              Resetting password for <strong>{resettingPasswordUser.name}</strong>.
-            </p>
-
             {modalError && (
-              <div className="mt-4 rounded-lg bg-red-950/50 p-3 text-sm text-red-200 border border-red-900/50">
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
                 {modalError}
               </div>
             )}
 
-            <form onSubmit={handleResetPassword} className="mt-4 space-y-4">
+            <div className="mt-2 mb-4 text-sm text-slate-600">
+              Reset password for <strong>{resettingPasswordUser.name}</strong> ({resettingPasswordUser.username}).
+            </div>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-200">New Password</label>
+                <label className="text-sm font-medium text-slate-700">New Password</label>
                 <input
                   type="password"
                   required
                   value={passwordResetValue}
                   onChange={e => setPasswordResetValue(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   placeholder="Enter new password"
                 />
               </div>
@@ -547,14 +547,14 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <button
                   type="button"
                   onClick={() => setResettingPasswordUser(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
                 >
                   {modalLoading ? "Resetting..." : "Reset Password"}
                 </button>
@@ -564,45 +564,37 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
         </div>
       )}
 
-      {/* Delete User Modal */}
+      {/* Delete Confirmation Modal */}
       {deletingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Delete User</h2>
-              <button onClick={() => setDeletingUser(null)} className="text-slate-400 hover:text-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Delete User</h2>
+              <button onClick={() => setDeletingUser(null)} className="text-slate-400 hover:text-slate-600">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
             
-            <div className="mt-4">
-              <div className="mb-4 flex justify-center">
-                 <div className="rounded-full bg-red-900/20 p-3">
-                    <IconTrash className="h-8 w-8 text-red-500" />
-                 </div>
-              </div>
-              <p className="text-center text-slate-300">
-                Are you sure you want to delete user <strong>{deletingUser.name}</strong>?
-              </p>
-              <p className="mt-2 text-center text-sm text-slate-400">
-                This action cannot be undone.
-              </p>
-            </div>
-
             {modalError && (
-              <div className="mt-4 rounded-lg bg-red-950/50 p-3 text-sm text-red-200 border border-red-900/50">
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
                 {modalError}
               </div>
             )}
 
+            <p className="mt-4 text-sm text-slate-600">
+              Are you sure you want to delete user <strong>{deletingUser.name}</strong>? This action cannot be undone.
+            </p>
+
             <div className="flex justify-end gap-3 pt-6">
               <button
+                type="button"
                 onClick={() => setDeletingUser(null)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmDelete}
                 disabled={modalLoading}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"

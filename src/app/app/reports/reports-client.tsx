@@ -40,7 +40,7 @@ function PaginationControls({
 
   return (
     <div className={`flex items-center justify-between ${className}`}>
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-slate-500">
         Page {currentPage} of {totalPages}
       </div>
       <div className="flex gap-2">
@@ -49,8 +49,8 @@ function PaginationControls({
           disabled={currentPage <= 1 || isLoading}
           className={`rounded px-2 py-1 text-xs font-medium ${
             currentPage > 1 && !isLoading
-              ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-              : "pointer-events-none bg-slate-900 text-slate-600"
+              ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              : "pointer-events-none bg-slate-50 text-slate-400"
           }`}
         >
           Previous
@@ -60,8 +60,8 @@ function PaginationControls({
           disabled={currentPage >= totalPages || isLoading}
           className={`rounded px-2 py-1 text-xs font-medium ${
             currentPage < totalPages && !isLoading
-              ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-              : "pointer-events-none bg-slate-900 text-slate-600"
+              ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              : "pointer-events-none bg-slate-50 text-slate-400"
           }`}
         >
           Next
@@ -175,11 +175,11 @@ export function ReportsClient({
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">Export group data</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="text-sm font-semibold text-slate-900">Export group data</h2>
+            <p className="mt-1 text-sm text-slate-500">
               Download a report for a group (members, balances, savings, adjustments).
             </p>
           </div>
@@ -190,7 +190,7 @@ export function ReportsClient({
             <input
               type="text"
               placeholder="Search groups..."
-              className="w-full sm:w-64 rounded-lg border border-slate-800 bg-slate-950 pl-10 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+              className="w-full sm:w-64 rounded-lg border border-slate-200 bg-white pl-10 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
               value={groupSearch}
               onChange={(e) => setGroupSearch(e.target.value)}
             />
@@ -206,31 +206,31 @@ export function ReportsClient({
         />
 
         <div className="overflow-x-auto relative">
-          {isGroupsLoading && <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center text-slate-300 text-sm">Loading...</div>}
+          {isGroupsLoading && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center text-slate-500 text-sm">Loading...</div>}
           <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
+            <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="py-2 pr-4">Group</th>
                 <th className="py-2 pr-4 text-center">Members</th>
                 <th className="py-2 pr-0 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {groups.map((g) => (
-                <tr key={g.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium text-slate-100">
+                <tr key={g.id} className="hover:bg-slate-50">
+                  <td className="py-2 pr-4 font-medium text-slate-900">
                     <Link href={`/app/groups/${g.id}`} className="hover:underline">
                       {g.name}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4 text-center text-slate-300">
+                  <td className="py-2 pr-4 text-center text-slate-600">
                     {g._count?.members || 0}
                   </td>
                   <td className="py-2 pr-0 text-right">
                     <a
                       href={`/api/groups/${g.id}/export?${query}`}
                       title="Download group report (PDF)"
-                      className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+                      className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       Download
                     </a>
@@ -239,7 +239,7 @@ export function ReportsClient({
               ))}
               {groups.length === 0 && !isGroupsLoading ? (
                 <tr>
-                  <td className="py-4 text-slate-400" colSpan={2}>
+                  <td className="py-4 text-slate-500" colSpan={2}>
                     No groups found.
                   </td>
                 </tr>
@@ -253,27 +253,27 @@ export function ReportsClient({
           totalPages={totalGroupPages}
           onPageChange={setGroupPage}
           isLoading={isGroupsLoading}
-          className="mt-4 border-t border-slate-800 pt-4"
+          className="mt-4 border-t border-slate-200 pt-4"
         />
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-slate-100">
+              <h2 className="text-sm font-semibold text-slate-900">
                 Daily collection report (per officer)
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-slate-500">
                 Download a daily collection summary per collection officer and their groups.
               </p>
             </div>
-            <div className="flex flex-col items-start gap-1 text-sm text-slate-300">
+            <div className="flex flex-col items-start gap-1 text-sm text-slate-600">
               <span className="text-xs uppercase tracking-wide text-slate-500">
                 Report date
               </span>
               <input
                 type="date"
-                className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
                 value={officerDate}
                 onChange={(e) => setOfficerDate(e.target.value)}
               />
@@ -282,33 +282,33 @@ export function ReportsClient({
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase text-slate-400">
+              <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="py-2 pr-4">Collection officer</th>
                   <th className="py-2 pr-0 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-200">
                 {initialOfficers.map((o) => (
-                  <tr key={o.id} className="hover:bg-slate-900/40">
-                    <td className="py-2 pr-4 font-medium text-slate-100">
+                  <tr key={o.id} className="hover:bg-slate-50">
+                    <td className="py-2 pr-4 font-medium text-slate-900">
                       <div>
                         <div>
                           {o.lastName}, {o.firstName}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-400">
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
                           <span className="text-slate-500">Groups:</span>
                           {o.groupsAsCollectionOfficer.length > 0 ? (
                             o.groupsAsCollectionOfficer.map((g) => (
                               <span
                                 key={g.id}
-                                className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] text-slate-200"
+                                className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600"
                               >
                                 {g.name}
                               </span>
                             ))
                           ) : (
-                            <span className="text-slate-600">None</span>
+                            <span className="text-slate-500">None</span>
                           )}
                         </div>
                       </div>
@@ -317,7 +317,7 @@ export function ReportsClient({
                       <a
                         href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
                         title="Download daily collection report (PDF)"
-                        className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+                        className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                       >
                         Download
                       </a>
@@ -326,7 +326,7 @@ export function ReportsClient({
                 ))}
                 {initialOfficers.length === 0 ? (
                   <tr>
-                    <td className="py-4 text-slate-400" colSpan={2}>
+                    <td className="py-4 text-slate-500" colSpan={2}>
                       No collection officers found.
                     </td>
                   </tr>
@@ -337,11 +337,11 @@ export function ReportsClient({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">Export member data</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="text-sm font-semibold text-slate-900">Export member data</h2>
+            <p className="mt-1 text-sm text-slate-500">
               Download a report for a member (balance history, savings accruals, adjustments).
             </p>
           </div>
@@ -352,7 +352,7 @@ export function ReportsClient({
             <input
               type="text"
               placeholder="Search members..."
-              className="w-full sm:w-64 rounded-lg border border-slate-800 bg-slate-950 pl-10 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+              className="w-full sm:w-64 rounded-lg border border-slate-200 bg-white pl-10 pr-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
             />
@@ -368,17 +368,17 @@ export function ReportsClient({
         />
 
         <div className="overflow-x-auto relative">
-          {isMembersLoading && <div className="absolute inset-0 bg-slate-900/50 z-10 flex items-center justify-center text-slate-300 text-sm">Loading...</div>}
+          {isMembersLoading && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center text-slate-500 text-sm">Loading...</div>}
           <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
+            <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="py-2 pr-4">
                   <button
                     onClick={() => setMemberSort(s => s === "asc" ? "desc" : "asc")}
-                    className="flex items-center gap-1 hover:text-slate-200 group"
+                    className="flex items-center gap-1 hover:text-slate-700 group"
                   >
                     Member
-                    <span className="text-slate-600 group-hover:text-slate-400">
+                    <span className="text-slate-500 group-hover:text-slate-600">
                       {memberSort === "asc" ? <IconChevronUp className="h-3 w-3" /> : <IconChevronDown className="h-3 w-3" />}
                     </span>
                   </button>
@@ -386,10 +386,10 @@ export function ReportsClient({
                 <th className="py-2 pr-0 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {members.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium text-slate-100">
+                <tr key={m.id} className="hover:bg-slate-50">
+                  <td className="py-2 pr-4 font-medium text-slate-900">
                     <Link href={`/app/members/${m.id}`} className="hover:underline">
                       {m.lastName}, {m.firstName}
                     </Link>
@@ -398,7 +398,7 @@ export function ReportsClient({
                     <a
                       href={`/api/members/${m.id}/export?${query}`}
                       title="Download member report (PDF)"
-                      className="inline-flex rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+                      className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
                       Download
                     </a>
@@ -407,7 +407,7 @@ export function ReportsClient({
               ))}
               {members.length === 0 && !isMembersLoading ? (
                 <tr>
-                  <td className="py-4 text-slate-400" colSpan={2}>
+                  <td className="py-4 text-slate-500" colSpan={2}>
                     No members found.
                   </td>
                 </tr>
@@ -421,7 +421,7 @@ export function ReportsClient({
           totalPages={totalMemberPages}
           onPageChange={setMemberPage}
           isLoading={isMembersLoading}
-          className="mt-4 border-t border-slate-800 pt-4"
+          className="mt-4 border-t border-slate-200 pt-4"
         />
       </div>
     </div>

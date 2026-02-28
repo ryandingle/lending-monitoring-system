@@ -30,7 +30,7 @@ export function PaginationControls({
   const end = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className={`flex flex-wrap items-center justify-end gap-4 text-sm text-slate-400 ${className}`}>
+    <div className={`flex flex-wrap items-center justify-end gap-4 text-sm text-slate-500 ${className}`}>
       {onPageSizeChange && (
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
@@ -40,7 +40,7 @@ export function PaginationControls({
               onPageSizeChange(Number(e.target.value));
               onPageChange(1);
             }}
-            className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-slate-200 focus:border-indigo-500 focus:outline-none"
+            className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-700 focus:border-indigo-500 focus:outline-none"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -61,8 +61,8 @@ export function PaginationControls({
           disabled={currentPage <= 1 || isLoading}
           className={`rounded p-1 ${
             currentPage > 1 && !isLoading
-              ? "text-slate-200 hover:bg-slate-800"
-              : "pointer-events-none text-slate-600"
+              ? "text-slate-700 hover:bg-slate-100"
+              : "pointer-events-none text-slate-400"
           }`}
           title="Previous Page"
         >
@@ -73,8 +73,8 @@ export function PaginationControls({
           disabled={currentPage >= totalPages || isLoading}
           className={`rounded p-1 ${
             currentPage < totalPages && !isLoading
-              ? "text-slate-200 hover:bg-slate-800"
-              : "pointer-events-none text-slate-600"
+              ? "text-slate-700 hover:bg-slate-100"
+              : "pointer-events-none text-slate-400"
           }`}
           title="Next Page"
         >

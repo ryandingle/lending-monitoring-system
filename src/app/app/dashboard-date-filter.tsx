@@ -62,7 +62,7 @@ export function DashboardDateFilter({ from, to }: DashboardDateFilterProps) {
                 <select
                     value={selectedPreset}
                     onChange={(e) => setSelectedPreset(e.target.value)}
-                    className="h-9 rounded-lg border border-slate-800 bg-slate-950 px-3 text-xs font-medium text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                    className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
                 >
                     <option value="1week">1 Week (Mon-Fri)</option>
                     <option value="2weeks">2 Weeks (Prev Mon-Fri)</option>
@@ -76,7 +76,7 @@ export function DashboardDateFilter({ from, to }: DashboardDateFilterProps) {
                             type="date"
                             value={customRange.from}
                             onChange={(e) => setCustomRange({ ...customRange, from: e.target.value })}
-                            className="h-9 rounded-lg border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-blue-400 transition-all"
+                            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500 transition-all"
                             required
                         />
                         <span className="text-slate-500 text-xs">to</span>
@@ -84,7 +84,7 @@ export function DashboardDateFilter({ from, to }: DashboardDateFilterProps) {
                             type="date"
                             value={customRange.to}
                             onChange={(e) => setCustomRange({ ...customRange, to: e.target.value })}
-                            className="h-9 rounded-lg border border-slate-800 bg-slate-950 px-3 text-xs text-slate-100 outline-none focus:border-blue-400 transition-all"
+                            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500 transition-all"
                             required
                         />
                     </div>

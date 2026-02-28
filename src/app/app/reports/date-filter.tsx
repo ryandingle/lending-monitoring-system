@@ -56,19 +56,19 @@ export function DateRangeFilter({ from, to }: DateRangeFilterProps) {
     };
 
     return (
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-4">
-            <h2 className="text-sm font-semibold text-slate-100">Date range</h2>
-            <p className="mt-1 text-xs text-slate-400">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-sm font-semibold text-slate-900">Date range</h2>
+            <p className="mt-1 text-xs text-slate-500">
                 Exports will include data within the selected from and to dates.
             </p>
 
             <form onSubmit={handleApply} className="mt-4 grid gap-3 sm:grid-cols-4 items-end">
                 <div className="sm:col-span-1">
-                    <label className="text-sm font-medium text-slate-200">Range</label>
+                    <label className="text-sm font-medium text-slate-700">Range</label>
                     <select
                         value={selectedPreset}
                         onChange={(e) => setSelectedPreset(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     >
                         <option value="1week">1 Week (Mon-Fri)</option>
                         <option value="2weeks">2 Weeks (Prev Mon-Fri)</option>
@@ -80,22 +80,22 @@ export function DateRangeFilter({ from, to }: DateRangeFilterProps) {
                 {selectedPreset === "custom" && (
                     <>
                         <div>
-                            <label className="text-sm font-medium text-slate-200">From</label>
+                            <label className="text-sm font-medium text-slate-700">From</label>
                             <input
                                 type="date"
                                 value={customRange.from}
                                 onChange={(e) => setCustomRange({ ...customRange, from: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                 required
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-slate-200">To</label>
+                            <label className="text-sm font-medium text-slate-700">To</label>
                             <input
                                 type="date"
                                 value={customRange.to}
                                 onChange={(e) => setCustomRange({ ...customRange, to: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                 required
                             />
                         </div>

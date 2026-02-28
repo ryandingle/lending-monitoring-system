@@ -194,11 +194,11 @@ export function EmployeesClient({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Employees</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <h1 className="text-xl font-semibold text-slate-900">Employees</h1>
+            <p className="mt-1 text-sm text-slate-500">
               List and manage employees (name and position).
             </p>
           </div>
@@ -208,7 +208,7 @@ export function EmployeesClient({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name…"
-                className="w-64 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             {canManage && (
@@ -225,7 +225,7 @@ export function EmployeesClient({
 
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-400">
+            <thead className="text-xs uppercase text-slate-500">
               <tr>
                 <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Position</th>
@@ -234,13 +234,13 @@ export function EmployeesClient({
                 {canManage && <th className="py-2 pr-0 text-right">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {employees.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-900/40">
-                  <td className="py-2 pr-4 font-medium text-slate-100">
+                <tr key={e.id} className="hover:bg-slate-50">
+                  <td className="py-2 pr-4 font-medium text-slate-900">
                     {e.firstName} {e.lastName}
                   </td>
-                  <td className="py-2 pr-4 text-slate-300">
+                  <td className="py-2 pr-4 text-slate-600">
                     {POSITION_LABELS[e.position]}
                   </td>
                   <td className="py-2 pr-4">
@@ -249,17 +249,17 @@ export function EmployeesClient({
                         e.groupsAsCollectionOfficer.map((g) => (
                           <span
                             key={g.id}
-                            className="inline-flex items-center rounded-md bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-blue-300 ring-1 ring-inset ring-blue-700/50"
+                            className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
                           >
                             {g.name}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-slate-500">—</span>
+                        <span className="text-xs text-slate-400">—</span>
                       )}
                     </div>
                   </td>
-                  <td className="py-2 pr-4 text-slate-400">
+                  <td className="py-2 pr-4 text-slate-500">
                     {new Date(e.createdAt).toLocaleDateString()}
                   </td>
                   {canManage && (
@@ -267,13 +267,13 @@ export function EmployeesClient({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(e)}
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           <IconPencil className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(e)}
-                          className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-950/50"
+                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
                         >
                           <IconTrash className="h-4 w-4" />
                         </button>
@@ -284,7 +284,7 @@ export function EmployeesClient({
               ))}
               {employees.length === 0 && (
                 <tr>
-                  <td className="py-4 text-center text-slate-400" colSpan={canManage ? 5 : 4}>
+                  <td className="py-4 text-center text-slate-500" colSpan={canManage ? 5 : 4}>
                     No employees found.
                   </td>
                 </tr>
@@ -296,49 +296,49 @@ export function EmployeesClient({
 
       {/* Create/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">
+              <h2 className="text-lg font-semibold text-slate-900">
                 {editingEmployee ? "Edit Employee" : "Add Employee"}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
 
             {modalError && (
-              <div className="mt-4 rounded-lg bg-red-950/50 p-3 text-sm text-red-200 border border-red-900/50">
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleFormSubmit} className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-slate-200">First Name</label>
+                <label className="text-sm font-medium text-slate-700">First Name</label>
                 <input
                   required
                   value={formData.firstName}
                   onChange={e => setFormData({...formData, firstName: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-200">Last Name</label>
+                <label className="text-sm font-medium text-slate-700">Last Name</label>
                 <input
                   required
                   value={formData.lastName}
                   onChange={e => setFormData({...formData, lastName: e.target.value})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm font-medium text-slate-200">Position</label>
+                <label className="text-sm font-medium text-slate-700">Position</label>
                 <select
                   required
                   value={formData.position}
                   onChange={e => setFormData({...formData, position: e.target.value as EmployeePosition})}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400"
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="" disabled>Select position...</option>
                   {Object.entries(POSITION_LABELS).map(([value, label]) => (
@@ -348,8 +348,8 @@ export function EmployeesClient({
               </div>
               
               <div className="md:col-span-2">
-                <label className="text-sm font-medium text-slate-200">Assign Groups</label>
-                <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
+                <label className="text-sm font-medium text-slate-700">Assign Groups</label>
+                <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <div className="space-y-2">
                     {initialGroups.map((group) => (
                       <label key={group.id} className="flex items-center gap-2">
@@ -357,9 +357,9 @@ export function EmployeesClient({
                           type="checkbox"
                           checked={formData.assignedGroupIds.includes(group.id)}
                           onChange={() => handleGroupToggle(group.id)}
-                          className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-600/20"
+                          className="h-4 w-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-600/20"
                         />
-                        <span className="text-sm text-slate-300">{group.name}</span>
+                        <span className="text-sm text-slate-700">{group.name}</span>
                         {group.collectionOfficerId && 
                          (!editingEmployee || !editingEmployee.groupsAsCollectionOfficer.some(g => g.id === group.id)) ? (
                           <span className="text-xs text-slate-500">(Has officer)</span>
@@ -380,7 +380,7 @@ export function EmployeesClient({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
@@ -399,19 +399,19 @@ export function EmployeesClient({
       
       {/* Confirmation Modal */}
       {confirmation.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">{confirmation.title}</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{confirmation.title}</h2>
               <button
                 onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <IconX className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600">
               {confirmation.message}
             </p>
 
@@ -419,7 +419,7 @@ export function EmployeesClient({
               <button
                 type="button"
                 onClick={() => setConfirmation({ ...confirmation, isOpen: false })}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 disabled={isConfirming}
               >
                 Cancel

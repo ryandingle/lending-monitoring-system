@@ -89,10 +89,10 @@ export default async function EditGroupPage({
 
   if (!group) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="text-sm text-slate-300">Group not found.</div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-sm text-slate-500">Group not found.</div>
         <div className="mt-4">
-          <Link href="/app/groups" className="text-sm font-medium text-slate-200 hover:underline">
+          <Link href="/app/groups" className="text-sm font-medium text-slate-700 hover:underline">
             Back to Groups
           </Link>
         </div>
@@ -102,42 +102,42 @@ export default async function EditGroupPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Link href={`/app/groups/${groupId}`} className="text-sm text-slate-400 hover:underline">
+            <Link href={`/app/groups/${groupId}`} className="text-sm text-slate-500 hover:underline">
               ← Back to Group
             </Link>
-            <h1 className="mt-2 text-xl font-semibold text-slate-100">Edit Group</h1>
-            <p className="mt-1 text-sm text-slate-400">Update group details.</p>
+            <h1 className="mt-2 text-xl font-semibold text-slate-900">Edit Group</h1>
+            <p className="mt-1 text-sm text-slate-500">Update group details.</p>
           </div>
         </div>
 
 
         <form action={updateGroupAction.bind(null, groupId)} className="mt-6 grid gap-3 md:grid-cols-3">
           <div className="md:col-span-1">
-            <label className="text-sm font-medium">Group Name</label>
+            <label className="text-sm font-medium text-slate-900">Group Name</label>
             <input
               name="name"
               defaultValue={group.name}
               required
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="text-sm font-medium">Description</label>
+            <label className="text-sm font-medium text-slate-900">Description</label>
             <input
               name="description"
               defaultValue={group.description ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="text-sm font-medium">Collection Officer (optional)</label>
+            <label className="text-sm font-medium text-slate-900">Collection Officer (optional)</label>
             <select
               name="collectionOfficerId"
               defaultValue={group.collectionOfficerId ?? ""}
-              className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="">None</option>
               {collectionOfficers.map((co) => (
@@ -154,7 +154,7 @@ export default async function EditGroupPage({
             </SubmitButton>
             <Link
               href={`/app/groups/${groupId}`}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-900/60"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Cancel
             </Link>
