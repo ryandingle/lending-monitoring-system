@@ -15,7 +15,7 @@ export function Topbar({
   collapsed?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
       <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
           {/* Mobile Menu */}
@@ -24,7 +24,7 @@ export function Topbar({
               type="button"
               onClick={onMenuClick}
               aria-label="Open navigation"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -43,7 +43,7 @@ export function Topbar({
               alt="Logo"
               width={36}
               height={36}
-              className="h-9 w-9 rounded-lg object-contain bg-white p-0.5"
+              className="h-9 w-9 rounded-lg object-contain bg-slate-50 p-0.5"
             />
           </div>
 
@@ -52,7 +52,7 @@ export function Topbar({
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="group grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-900/60 hover:text-slate-100 transition-colors"
+              className="group grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <svg
@@ -66,7 +66,7 @@ export function Topbar({
               </svg>
             </button>
             <div className="flex flex-col">
-              <div className="text-sm font-semibold text-slate-100">Triple E Microfinance</div>
+              <div className="text-sm font-semibold text-slate-900">Triple E Microfinance</div>
               <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Admin Portal</div>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function Topbar({
           <NotificationsBell user={user} />
 
           <div className="hidden text-right lg:block">
-            <div className="text-sm font-medium text-slate-100">{user.name}</div>
+            <div className="text-sm font-medium text-slate-900">{user.name}</div>
             <div className="text-[10px] uppercase font-bold text-slate-500">{user.role}</div>
           </div>
 

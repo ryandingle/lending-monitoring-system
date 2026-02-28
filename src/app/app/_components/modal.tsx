@@ -51,7 +51,7 @@ export function Modal({
         <button
           type="button"
           aria-label="Close dialog"
-          className="absolute inset-0 cursor-default bg-slate-950/70"
+          className="absolute inset-0 cursor-default bg-slate-900/50 backdrop-blur-sm"
           onClick={onClose}
         />
         <div className="absolute inset-0 grid place-items-center p-4">
@@ -59,20 +59,20 @@ export function Modal({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
               <div className="min-w-0">
-                <div className="text-base font-semibold text-slate-100">{title}</div>
+                <div className="text-base font-semibold text-slate-900">{title}</div>
                 {description ? (
-                  <div className="mt-1 text-sm text-slate-400">{description}</div>
+                  <div className="mt-1 text-sm text-slate-500">{description}</div>
                 ) : null}
               </div>
               <button
                 ref={closeBtnRef}
                 type="button"
                 onClick={onClose}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-200 hover:bg-slate-900/60"
+                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               >
                 <span className="sr-only">Close</span>
                 <svg
@@ -91,7 +91,7 @@ export function Modal({
             {hasBody ? <div className="px-5 py-4">{children}</div> : null}
 
             {footer ? (
-              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-800 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
                 {footer}
               </div>
             ) : null}

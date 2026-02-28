@@ -138,8 +138,8 @@ export function MemberBulkEditTable({
     return (
         <div className="space-y-4">
             {showSuccess && (
-                <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/30 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center gap-2 text-emerald-400">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 text-emerald-700">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
                             <path d="M5 13l4 4L19 7" />
                         </svg>
@@ -149,8 +149,8 @@ export function MemberBulkEditTable({
             )}
 
             {warnings.length > 0 && (
-                <div className="rounded-xl border border-yellow-900/40 bg-yellow-950/30 p-4">
-                    <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                    <div className="flex items-center gap-2 text-yellow-700 mb-2">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
                             <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
@@ -158,7 +158,7 @@ export function MemberBulkEditTable({
                     </div>
                     <ul className="space-y-1">
                         {warnings.map((w, i) => (
-                            <li key={i} className="text-xs text-yellow-200/80">
+                            <li key={i} className="text-xs text-yellow-800/80">
                                 • {w.message}
                             </li>
                         ))}
@@ -167,8 +167,8 @@ export function MemberBulkEditTable({
             )}
 
             {errors.length > 0 && (
-                <div className="rounded-xl border border-yellow-900/40 bg-yellow-950/30 p-4">
-                    <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                    <div className="flex items-center gap-2 text-yellow-700 mb-2">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
                             <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
@@ -176,7 +176,7 @@ export function MemberBulkEditTable({
                     </div>
                     <ul className="space-y-1">
                         {errors.map((err, i) => (
-                            <li key={i} className="text-xs text-yellow-200/80">
+                            <li key={i} className="text-xs text-yellow-800/80">
                                 • {err.message}
                             </li>
                         ))}
@@ -184,9 +184,9 @@ export function MemberBulkEditTable({
                 </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         {initialMembers.length} member{initialMembers.length === 1 ? "" : "s"} found
                         {groupName ? ` in ${groupName}` : ""}
                     </div>
@@ -201,90 +201,90 @@ export function MemberBulkEditTable({
                     )}
                 </div>
 
-                <div className="overflow-x-auto bg-slate-950">
+                <div className="overflow-x-auto bg-white">
                     <table className="min-w-full table-fixed border-separate border-spacing-0 text-left text-xs">
-                        <thead className="sticky top-0 z-10 bg-slate-900 shadow-sm">
+                        <thead className="sticky top-0 z-10 bg-slate-50 shadow-sm">
                             <tr>
                                 <th 
-                                    className="w-48 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 cursor-pointer hover:bg-slate-800 transition-colors select-none"
+                                    className="w-48 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                                     onClick={() => updateUrl({ sort: sort === "asc" ? "desc" : "asc", page: 1 })}
                                     title="Click to sort by Last Name"
                                 >
                                     <div className="flex items-center justify-between gap-2">
                                         <span>Member</span>
                                         {sort && (
-                                            <span className="text-[10px] text-blue-400">
+                                            <span className="text-[10px] text-blue-600">
                                                 {sort === "asc" ? "▲" : "▼"}
                                             </span>
                                         )}
                                     </div>
                                 </th>
-                                <th className="w-28 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-right">Balance</th>
-                                <th className="w-24 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-blue-400 text-right">Deduct (-)</th>
-                                <th className="w-28 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-right">Savings</th>
-                                <th className="w-24 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-emerald-400 text-right">Add (+)</th>
-                                <th className="w-20 border-b border-r border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-center">Days</th>
-                                <th className="w-32 border-b border-slate-800 px-3 py-2 font-semibold uppercase tracking-wider text-slate-300 text-right">Actions</th>
+                                <th className="w-28 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-right">Balance</th>
+                                <th className="w-24 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-blue-600 text-right">Deduct (-)</th>
+                                <th className="w-28 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-right">Savings</th>
+                                <th className="w-24 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-emerald-600 text-right">Add (+)</th>
+                                <th className="w-20 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-center">Days</th>
+                                <th className="w-32 border-b border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-200">
                             {initialMembers.map((m) => {
                                 const u = updates[m.id] || { balanceDeduct: "", savingsIncrease: "" };
                                 const memberErrors = errors.filter(e => e.memberId === m.id);
                                 const memberCreatedAt = new Date(m.createdAt);
 
                                 return (
-                                    <tr key={m.id} className="group hover:bg-blue-500/5 odd:bg-slate-950 even:bg-slate-900/30">
-                                        <td className="border-b border-r border-slate-800 px-3 py-2 font-medium transition-colors group-hover:border-blue-500/30">
-                                            <Link href={`/app/members/${m.id}`} className="block truncate hover:text-blue-400 text-slate-100">
+                                    <tr key={m.id} className="group hover:bg-blue-500/5 odd:bg-white even:bg-slate-50">
+                                        <td className="border-b border-r border-slate-200 px-3 py-2 font-medium transition-colors group-hover:border-blue-500/30">
+                                            <Link href={`/app/members/${m.id}`} className="block truncate hover:text-blue-600 text-slate-900">
                                                 {m.lastName}, {m.firstName}
                                             </Link>
                                             <div className="text-[10px] text-slate-500 uppercase tracking-tighter truncate">
                                                 {m.group?.name || "No Group"}
                                             </div>
                                         </td>
-                                        <td className="border-b border-r border-slate-800 px-3 py-2 text-right font-mono font-medium text-slate-300 transition-colors group-hover:border-blue-500/30">
+                                        <td className="border-b border-r border-slate-200 px-3 py-2 text-right font-mono font-medium text-slate-700 transition-colors group-hover:border-blue-500/30">
                                             {m.balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                         </td>
-                                        <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "balance") ? "bg-red-500/10" : "bg-blue-500/5"}`}>
+                                        <td className={`border-b border-r border-slate-200 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "balance") ? "bg-red-500/10" : "bg-blue-500/5"}`}>
                                             <input
                                                 type="text"
                                                 inputMode="decimal"
                                                 value={u.balanceDeduct}
                                                 onChange={(e) => handleChange(m.id, "balanceDeduct", e.target.value)}
                                                 placeholder="0"
-                                                className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-blue-900/50 focus:bg-blue-500/10 rounded ${memberErrors.some(e => e.type === "balance") ? "text-red-400" : "text-blue-400"}`}
+                                                className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-blue-200 focus:bg-blue-500/10 rounded ${memberErrors.some(e => e.type === "balance") ? "text-red-600" : "text-blue-600"}`}
                                             />
                                         </td>
-                                        <td className="border-b border-r border-slate-800 px-3 py-2 text-right font-mono font-medium text-emerald-500/70 transition-colors group-hover:border-blue-500/30">
+                                        <td className="border-b border-r border-slate-200 px-3 py-2 text-right font-mono font-medium text-emerald-600 transition-colors group-hover:border-blue-500/30">
                                             {m.savings.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                                         </td>
-                                        <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "savings") ? "bg-red-500/10" : "bg-emerald-500/5"}`}>
+                                        <td className={`border-b border-r border-slate-200 px-1 py-1 transition-colors group-hover:border-blue-500/30 ${memberErrors.some(e => e.type === "savings") ? "bg-red-500/10" : "bg-emerald-500/5"}`}>
                                             <input
                                                 type="text"
                                                 inputMode="decimal"
                                                 value={u.savingsIncrease}
                                                 onChange={(e) => handleChange(m.id, "savingsIncrease", e.target.value)}
                                                 placeholder="0"
-                                                className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-emerald-900/50 focus:bg-emerald-500/10 rounded ${memberErrors.some(e => e.type === "savings") ? "text-red-400" : "text-emerald-400"}`}
+                                                className={`w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-emerald-200 focus:bg-emerald-500/10 rounded ${memberErrors.some(e => e.type === "savings") ? "text-red-600" : "text-emerald-600"}`}
                                             />
                                         </td>
-                                        <td className={`border-b border-r border-slate-800 px-1 py-1 transition-colors group-hover:border-blue-500/30 bg-slate-500/5`}>
+                                        <td className={`border-b border-r border-slate-200 px-1 py-1 transition-colors group-hover:border-blue-500/30 bg-slate-100`}>
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
                                                 value={u.daysCount}
                                                 onChange={(e) => handleChange(m.id, "daysCount", e.target.value)}
                                                 placeholder={String(m.daysCount)}
-                                                className="w-full bg-transparent px-2 py-1 text-center font-mono outline-none placeholder:text-slate-600 focus:bg-slate-500/10 rounded text-slate-300"
+                                                className="w-full bg-transparent px-2 py-1 text-center font-mono outline-none placeholder:text-slate-400 focus:bg-slate-200 rounded text-slate-900"
                                             />
                                         </td>
-                                        <td className="border-b border-slate-800 px-3 py-2 transition-colors group-hover:border-blue-500/30">
+                                        <td className="border-b border-slate-200 px-3 py-2 transition-colors group-hover:border-blue-500/30">
                                             <div className="flex justify-end gap-1.5">
                                                 <Link
                                                     href={`/app/members/${m.id}`}
                                                     title="View details"
-                                                    className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                    className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                                 >
                                                     <IconEye className="h-4 w-4" />
                                                 </Link>
@@ -292,7 +292,7 @@ export function MemberBulkEditTable({
                                                     <button
                                                         onClick={() => onEditMember(m)}
                                                         title="Edit"
-                                                        className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                        className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                                     >
                                                         <IconPencil className="h-4 w-4" />
                                                     </button>
@@ -300,7 +300,7 @@ export function MemberBulkEditTable({
                                                     <Link
                                                         href={`/app/members/${m.id}/edit`}
                                                         title="Edit"
-                                                        className="rounded-md border border-slate-700 bg-slate-900 p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white"
+                                                        className="rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                                     >
                                                         <IconPencil className="h-4 w-4" />
                                                     </Link>
@@ -310,7 +310,7 @@ export function MemberBulkEditTable({
                                                         <button
                                                             onClick={() => onDeleteMember(m)}
                                                             title="Delete"
-                                                            className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
+                                                            className="rounded-md border border-red-200 bg-red-50 p-1.5 text-red-600 hover:bg-red-100 hover:text-red-700"
                                                         >
                                                             <IconTrash className="h-4 w-4" />
                                                         </button>
@@ -319,7 +319,7 @@ export function MemberBulkEditTable({
                                                             <ConfirmSubmitButton
                                                                 title="Delete"
                                                                 confirmMessage={`Delete member "${m.lastName}, ${m.firstName}"?`}
-                                                                className="rounded-md border border-red-900/40 bg-red-950/20 p-1.5 text-red-500 hover:bg-red-900/40 hover:text-red-100"
+                                                                className="rounded-md border border-red-200 bg-red-50 p-1.5 text-red-600 hover:bg-red-100 hover:text-red-700"
                                                             >
                                                                 <IconTrash className="h-4 w-4" />
                                                             </ConfirmSubmitButton>
@@ -352,7 +352,7 @@ export function MemberBulkEditTable({
                     onPageChange={(p) => updateUrl({ page: p })}
                     onPageSizeChange={(l) => updateUrl({ limit: l, page: 1 })}
                     pageSizeOptions={[50, 100, 200, 500, 1000]}
-                    className="border-t border-slate-800 bg-slate-900/40 px-4 py-3 rounded-2xl"
+                    className="border-t border-slate-200 bg-white px-4 py-3 rounded-2xl"
                 />
             )}
         </div>

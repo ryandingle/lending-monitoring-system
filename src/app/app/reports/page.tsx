@@ -71,10 +71,10 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Reports</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
+          <p className="mt-1 text-sm text-slate-500">
             Generate and download report exports (group data, member data).
           </p>
         </div>

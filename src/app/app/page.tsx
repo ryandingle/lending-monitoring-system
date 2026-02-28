@@ -208,8 +208,8 @@ export default async function DashboardPage({
           <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
             {formatDateWithDay(new Date())}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-            {getGreeting()} <span className="text-white/60 font-medium">{user.name}</span>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+            {getGreeting()} <span className="text-slate-500 font-medium">{user.name}</span>
           </h1>
         </div>
 
@@ -220,10 +220,10 @@ export default async function DashboardPage({
 
       {/* Top Stat Cards */}
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+        <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
             <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-100" />
               <circle
                 cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeDasharray="100 100"
@@ -234,19 +234,19 @@ export default async function DashboardPage({
               />
             </svg>
           </div>
-          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-emerald-500/80">Total Collections</div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-emerald-600">Total Collections</div>
           <div className="mt-4 flex items-baseline gap-2">
-            <div className="text-4xl font-black text-white">{currencyFormatter.format(periodCollections)}</div>
+            <div className="text-4xl font-black text-slate-900">{currencyFormatter.format(periodCollections)}</div>
           </div>
-          <div className="mt-2 text-xs font-medium text-emerald-500/60 uppercase tracking-tight">
+          <div className="mt-2 text-xs font-medium text-emerald-600/80 uppercase tracking-tight">
             Target: {currencyFormatter.format(collectionTarget)} ({(periodCollections / collectionTarget * 100).toFixed(0)}%)
           </div>
         </div>
 
-        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+        <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
             <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-100" />
               <circle
                 cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeDasharray="100 100"
@@ -257,19 +257,19 @@ export default async function DashboardPage({
               />
             </svg>
           </div>
-          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-blue-500/80">Total Savings Added</div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-blue-600">Total Savings Added</div>
           <div className="mt-4 flex items-baseline gap-2">
-            <div className="text-4xl font-black text-white">{currencyFormatter.format(periodSavingsAdded)}</div>
+            <div className="text-4xl font-black text-slate-900">{currencyFormatter.format(periodSavingsAdded)}</div>
           </div>
-          <div className="mt-2 text-xs font-medium text-blue-500/60 uppercase tracking-tight">
+          <div className="mt-2 text-xs font-medium text-blue-600/80 uppercase tracking-tight">
             Goal: {currencyFormatter.format(savingsTarget)} ({(periodSavingsAdded / savingsTarget * 100).toFixed(0)}%)
           </div>
         </div>
 
-        <div className="group relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl transition-all hover:bg-slate-900/60">
+        <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md">
           <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
             <svg viewBox="0 0 36 36" className="h-20 w-20 -rotate-90">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/5" />
+              <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-100" />
               <circle
                 cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2"
                 strokeDasharray="100 100"
@@ -280,11 +280,11 @@ export default async function DashboardPage({
               />
             </svg>
           </div>
-          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-amber-500/80">New Members</div>
+          <div className="text-sm font-bold uppercase tracking-widest text-slate-500 transition-colors group-hover:text-amber-600">New Members</div>
           <div className="mt-4 flex items-baseline gap-2">
-            <div className="text-5xl font-black text-white">{periodNewMembers.toString().padStart(2, '0')}</div>
+            <div className="text-5xl font-black text-slate-900">{periodNewMembers.toString().padStart(2, '0')}</div>
           </div>
-          <div className="mt-2 text-xs font-medium text-amber-500/60 uppercase tracking-tight">
+          <div className="mt-2 text-xs font-medium text-amber-600/80 uppercase tracking-tight">
             Quota: {memberTarget} ({(periodNewMembers / memberTarget * 100).toFixed(0)}%)
           </div>
         </div>
@@ -293,10 +293,10 @@ export default async function DashboardPage({
       {/* Middle Section: Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Donut Chart Component */}
-        <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl overflow-hidden relative group">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm overflow-hidden relative group">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-300">Transaction Mix</h3>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-950/50 px-2 py-1 rounded">Adjustments only</div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Transaction Mix</h3>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-1 rounded">Adjustments only</div>
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
@@ -306,7 +306,7 @@ export default async function DashboardPage({
                 <circle
                   cx="50" cy="50" r="40"
                   fill="transparent"
-                  stroke="rgba(255,255,255,0.05)"
+                  stroke="rgba(0,0,0,0.05)"
                   strokeWidth="10"
                 />
                 <circle
@@ -328,7 +328,7 @@ export default async function DashboardPage({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-white">{memberCount}</span>
+                <span className="text-3xl font-black text-slate-900">{memberCount}</span>
                 <span className="text-[10px] font-bold text-slate-500 uppercase">Members</span>
               </div>
             </div>
@@ -337,26 +337,26 @@ export default async function DashboardPage({
               <div className="flex items-center justify-between group/item">
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-blue-500 shadow-lg shadow-blue-500/20"></div>
-                  <span className="text-xs font-bold text-slate-400 group-hover/item:text-slate-200 transition-colors uppercase tracking-tight">Collections</span>
+                  <span className="text-xs font-bold text-slate-500 group-hover/item:text-slate-700 transition-colors uppercase tracking-tight">Collections</span>
                 </div>
-                <span className="text-xs font-black text-white">{(collectionPct).toFixed(0)}%</span>
+                <span className="text-xs font-black text-slate-700">{(collectionPct).toFixed(0)}%</span>
               </div>
               <div className="flex items-center justify-between group/item">
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-pink-500 shadow-lg shadow-pink-500/20"></div>
-                  <span className="text-xs font-bold text-slate-400 group-hover/item:text-slate-200 transition-colors uppercase tracking-tight">Savings</span>
+                  <span className="text-xs font-bold text-slate-500 group-hover/item:text-slate-700 transition-colors uppercase tracking-tight">Savings</span>
                 </div>
-                <span className="text-xs font-black text-white">{(savingsPct).toFixed(0)}%</span>
+                <span className="text-xs font-black text-slate-700">{(savingsPct).toFixed(0)}%</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bar Chart Section */}
-        <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-8 shadow-2xl relative group">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm relative group">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-300">Daily Revenue</h3>
-            <div className="text-lg font-black text-blue-500">{smallCurrencyFormatter.format(totalPeriodCollections)}</div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Daily Revenue</h3>
+            <div className="text-lg font-black text-blue-600">{smallCurrencyFormatter.format(totalPeriodCollections)}</div>
           </div>
 
           <div className="flex justify-between gap-2 h-48 py-4 px-2">
@@ -371,9 +371,9 @@ export default async function DashboardPage({
                     title={`${collect.fullDate}: ${smallCurrencyFormatter.format(collect.total)}`}
                   >
                     {collect.total > 0 && (
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-slate-950/90 px-2 py-1 rounded border border-white/10 shadow-xl z-20">
-                        <span className="text-[8px] font-medium text-slate-400 whitespace-nowrap">{collect.fullDate}</span>
-                        <span className="text-[10px] font-black text-white whitespace-nowrap">{smallCurrencyFormatter.format(collect.total)}</span>
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-white px-2 py-1 rounded border border-slate-200 shadow-xl z-20">
+                        <span className="text-[8px] font-medium text-slate-500 whitespace-nowrap">{collect.fullDate}</span>
+                        <span className="text-[10px] font-black text-slate-900 whitespace-nowrap">{smallCurrencyFormatter.format(collect.total)}</span>
                       </div>
                     )}
                   </div>
@@ -386,27 +386,27 @@ export default async function DashboardPage({
       </div>
 
       {/* Global Metrics Section */}
-      <div className="rounded-3xl border border-white/5 bg-slate-900/40 p-10 shadow-3xl relative overflow-hidden">
+      <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm relative overflow-hidden">
         <div className="grid gap-12 md:grid-cols-2">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Live Global Stats</span>
             </div>
-            <h3 className="text-5xl font-black text-white tracking-tighter">
+            <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
               {smallCurrencyFormatter.format(Number(globalBalance))}
             </h3>
             <p className="mt-2 text-sm font-medium text-slate-500 uppercase tracking-widest">Total Outstanding Portfolio</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 items-center border-l border-white/5 pl-12">
+          <div className="grid grid-cols-2 gap-8 items-center border-l border-slate-200 pl-12">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Savings</div>
-              <div className="text-3xl font-black text-white">{smallCurrencyFormatter.format(Number(globalSavings))}</div>
+              <div className="text-3xl font-black text-slate-900">{smallCurrencyFormatter.format(Number(globalSavings))}</div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Members</div>
-              <div className="text-3xl font-black text-white">{memberCount}</div>
+              <div className="text-3xl font-black text-slate-900">{memberCount}</div>
             </div>
           </div>
         </div>
@@ -424,9 +424,9 @@ export default async function DashboardPage({
                     title={`${acc.fullDate}: ${smallCurrencyFormatter.format(acc.total)}`}
                   >
                     {acc.total > 0 && (
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-slate-950/90 px-2 py-1 rounded border border-white/10 shadow-xl z-20">
-                        <span className="text-[8px] font-medium text-slate-400 whitespace-nowrap">{acc.fullDate}</span>
-                        <span className="text-[10px] font-black text-white whitespace-nowrap">{smallCurrencyFormatter.format(acc.total)}</span>
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center bg-white px-2 py-1 rounded border border-slate-200 shadow-xl z-20">
+                        <span className="text-[8px] font-medium text-slate-500 whitespace-nowrap">{acc.fullDate}</span>
+                        <span className="text-[10px] font-black text-slate-900 whitespace-nowrap">{smallCurrencyFormatter.format(acc.total)}</span>
                       </div>
                     )}
                   </div>
@@ -437,14 +437,14 @@ export default async function DashboardPage({
           </div>
           {/* Background Grid */}
           <div className="absolute inset-0 grid grid-rows-4 -z-10 opacity-30 pointer-events-none">
-            <div className="border-b border-white/5"></div>
-            <div className="border-b border-white/5"></div>
-            <div className="border-b border-white/5"></div>
-            <div className="border-b border-white/5"></div>
+            <div className="border-b border-slate-200"></div>
+            <div className="border-b border-slate-200"></div>
+            <div className="border-b border-slate-200"></div>
+            <div className="border-b border-slate-200"></div>
           </div>
         </div>
 
-        <div className="mt-4 flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 border-t border-white/5 pt-4">
+        <div className="mt-4 flex justify-between text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 border-t border-slate-200 pt-4">
           <span>Savings Growth (Deposits)</span>
           <span>{from} → {to}</span>
         </div>

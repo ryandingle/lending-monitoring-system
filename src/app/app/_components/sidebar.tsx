@@ -11,7 +11,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
   return (
     <aside
       className={clsx(
-        "shrink-0 border-r border-slate-800 bg-slate-950 transition-all duration-300",
+        "shrink-0 border-r border-slate-200 bg-white transition-all duration-300",
         mobile ? "block h-full w-full" : "hidden md:block",
         isCollapsed ? "w-20" : "w-72"
       )}
@@ -24,12 +24,12 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               alt="Logo"
               width={40}
               height={40}
-              className="h-10 w-10 rounded-lg object-contain bg-white p-0.5 shrink-0"
+              className="h-10 w-10 rounded-lg object-contain bg-slate-50 p-0.5 shrink-0"
             />
             {!isCollapsed && (
               <div className="transition-opacity duration-300">
-                <div className="text-base font-semibold text-slate-100 line-clamp-1">Triple E</div>
-                <div className="text-xs text-slate-400 line-clamp-1 truncate">Microfinance Inc.</div>
+                <div className="text-base font-semibold text-slate-900 line-clamp-1">Triple E</div>
+                <div className="text-xs text-slate-500 line-clamp-1 truncate">Microfinance Inc.</div>
               </div>
             )}
           </div>
@@ -37,7 +37,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
 
         <div className="px-3">
           {!isCollapsed && (
-            <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 transition-opacity">
+            <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 transition-opacity">
               Menu
             </div>
           )}
@@ -67,15 +67,15 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
           </div>
         </div>
 
-        <div className="mt-auto border-t border-slate-800 p-4">
-          <div className={clsx("rounded-xl bg-slate-900/60 p-3 overflow-hidden", isCollapsed ? "p-1 flex justify-center" : "p-3")}>
+        <div className="mt-auto border-t border-slate-200 p-4">
+          <div className={clsx("rounded-xl bg-slate-50 p-3 overflow-hidden", isCollapsed ? "p-1 flex justify-center" : "p-3")}>
             {isCollapsed ? (
               <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
             ) : (
               <>
-                <div className="text-xs font-semibold text-slate-300">Signed in as</div>
-                <div className="mt-1 text-sm font-medium text-slate-100 truncate">{user.name}</div>
-                <div className="text-xs text-slate-400 truncate">
+                <div className="text-xs font-semibold text-slate-500">Signed in as</div>
+                <div className="mt-1 text-sm font-medium text-slate-900 truncate">{user.name}</div>
+                <div className="text-xs text-slate-500 truncate">
                   {user.role} · {user.username}
                 </div>
               </>

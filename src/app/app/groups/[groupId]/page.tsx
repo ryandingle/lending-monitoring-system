@@ -258,10 +258,10 @@ export default async function GroupDetailsPage({
 
   if (!group) {
     return (
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
-        <div className="text-sm text-slate-300">Group not found.</div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="text-sm text-slate-500">Group not found.</div>
         <div className="mt-4">
-          <Link href="/app/groups" className="text-sm font-medium text-slate-200 hover:underline">
+          <Link href="/app/groups" className="text-sm font-medium text-slate-700 hover:underline">
             Back to Groups
           </Link>
         </div>

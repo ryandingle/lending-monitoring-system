@@ -39,16 +39,16 @@ export function GroupDetailsClient({
 }: GroupDetailsClientProps) {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Link href="/app/groups" className="text-sm text-slate-400 hover:underline">
+            <Link href="/app/groups" className="text-sm text-slate-500 hover:underline">
               ← Back to Groups
             </Link>
-            <h1 className="mt-2 text-xl font-semibold text-slate-100">{group.name}</h1>
-            <p className="mt-1 text-sm text-slate-400">{group.description ?? "-"}</p>
+            <h1 className="mt-2 text-xl font-semibold text-slate-900">{group.name}</h1>
+            <p className="mt-1 text-sm text-slate-500">{group.description ?? "-"}</p>
             {group.collectionOfficer ? (
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-slate-500">
                 Collection officer: {group.collectionOfficer.firstName}{" "}
                 {group.collectionOfficer.lastName}
               </p>

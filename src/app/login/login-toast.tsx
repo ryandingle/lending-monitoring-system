@@ -21,8 +21,8 @@ export function LoginToast() {
 
     return (
         <div className="fixed top-4 right-4 z-[10000] max-w-md animate-in slide-in-from-right">
-            <div className="flex items-start gap-3 rounded-lg border border-red-700 bg-red-900/90 p-4 text-red-100 shadow-lg backdrop-blur-sm">
-                <div className="flex-shrink-0 mt-0.5">
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-white p-4 text-red-800 shadow-lg">
+                <div className="flex-shrink-0 mt-0.5 text-red-600">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -32,7 +32,7 @@ export function LoginToast() {
                 </div>
                 <button
                     onClick={() => setShow(false)}
-                    className="flex-shrink-0 rounded-lg p-1 hover:bg-white/10 transition-colors"
+                    className="flex-shrink-0 rounded-lg p-1 text-red-500 hover:bg-red-50 transition-colors"
                     aria-label="Close"
                 >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

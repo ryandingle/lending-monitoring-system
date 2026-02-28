@@ -179,7 +179,7 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-900/60"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
         aria-label="Notifications"
       >
         {badge}
@@ -196,11 +196,11 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-11 z-50 w-[22rem] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-2xl">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+        <div className="absolute right-0 top-11 z-50 w-[22rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
             <div>
-              <div className="text-sm font-semibold text-slate-100">Notifications</div>
-              <div className="text-xs text-slate-400">
+              <div className="text-sm font-semibold text-slate-900">Notifications</div>
+              <div className="text-xs text-slate-500">
                 Encoder activity (audited actions)
               </div>
             </div>
@@ -208,7 +208,7 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
               type="button"
               onClick={markAllRead}
               disabled={loading}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900/60 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Mark read
             </button>
@@ -216,11 +216,11 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
 
           <div className="max-h-[22rem] overflow-auto">
             {error ? (
-              <div className="px-4 py-3 text-sm text-red-200">{error}</div>
+              <div className="px-4 py-3 text-sm text-red-600">{error}</div>
             ) : null}
 
             {loading && items.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-slate-400">Loading…</div>
+              <div className="px-4 py-3 text-sm text-slate-500">Loading…</div>
             ) : null}
 
             {items.map((n) => {
@@ -231,7 +231,7 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
               return (
                 <div
                   key={n.id}
-                  className="border-b border-slate-800 px-4 py-3 hover:bg-slate-900/40"
+                  className="border-b border-slate-200 px-4 py-3 hover:bg-slate-50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button
@@ -244,17 +244,17 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
                         router.push(href);
                       }}
                     >
-                      <div className="truncate text-sm text-slate-100">{formatTitle(n)}</div>
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="truncate text-sm text-slate-900">{formatTitle(n)}</div>
+                      <div className="mt-1 text-xs text-slate-500">
                         {n.entityType ? `${n.entityType}${n.entityId ? ` · ${n.entityId}` : ""}` : "—"}
                       </div>
                     </button>
 
                     <div className="shrink-0 text-right">
-                      <div className="text-[11px] text-slate-400">{formatWhen(n.createdAt)}</div>
+                      <div className="text-[11px] text-slate-500">{formatWhen(n.createdAt)}</div>
                       <div className="mt-1 flex items-center justify-end gap-2">
                         {n.isUnread ? (
-                          <div className="inline-flex items-center rounded-full bg-blue-600/20 px-2 py-0.5 text-[10px] font-semibold text-blue-200">
+                          <div className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                             New
                           </div>
                         ) : null}
@@ -268,10 +268,10 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
                             if (!n.isUnread) return;
                             markOneRead(n.id);
                           }}
-                          className={`grid h-7 w-7 place-items-center rounded-lg border text-slate-200 ${
+                          className={`grid h-7 w-7 place-items-center rounded-lg border ${
                             n.isUnread
-                              ? "border-slate-800 bg-slate-950 hover:bg-slate-900/60"
-                              : "border-slate-900 bg-slate-950/40 text-slate-500"
+                              ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
                           }`}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
@@ -286,7 +286,7 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
             })}
 
             {items.length === 0 && !loading && !error ? (
-              <div className="px-4 py-6 text-sm text-slate-400">
+              <div className="px-4 py-6 text-sm text-slate-500">
                 No encoder activity yet.
               </div>
             ) : null}
