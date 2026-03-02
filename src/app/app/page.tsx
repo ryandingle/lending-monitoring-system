@@ -145,7 +145,7 @@ export default async function DashboardPage({
     d.setDate(d.getDate() + 1);
   }
 
-  // -- Fill Daily Accruals (All days in period) --
+  // -- Fill Daily Accruals (Weekdays only) --
   const accrualsMap = new Map(dailyAccruals.map(r => [r.day, r.total]));
   const accrualChartData: { day: string; total: number; fullDate: string }[] = [];
   const curr = new Date(startDate);
@@ -157,14 +157,20 @@ export default async function DashboardPage({
     d.setDate(d.getDate() + i);
     if (d > end) break;
     
-    const dayKey = formatManilaDateKey(d); // Uses Manila Time
-    const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
-    
-    accrualChartData.push({
-      day: dayKey,
-      total: accrualsMap.get(dayKey) ?? 0,
-      fullDate
-    });
+    // Check for weekend in Manila time
+    const manilaDay = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Manila" });
+    const isWeekend = manilaDay === "Sat" || manilaDay === "Sun";
+
+    if (!isWeekend) {
+      const dayKey = formatManilaDateKey(d); // Uses Manila Time
+      const fullDate = d.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
+      
+      accrualChartData.push({
+        day: dayKey,
+        total: accrualsMap.get(dayKey) ?? 0,
+        fullDate
+      });
+    }
   }
 
   const currencyFormatter = new Intl.NumberFormat("en-PH", {
