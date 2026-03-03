@@ -146,7 +146,9 @@ export default async function AuditTrailPage({
               {logs.map((l) => (
                 <tr key={l.id} className="hover:bg-slate-50 align-top">
                   <td className="py-2 pr-4 pl-2 text-slate-600">
-                    {l.createdAt.toISOString().slice(0, 19).replace("T", " ")}
+                    {new Date(l.createdAt).toLocaleString("sv-SE", {
+                      timeZone: "Asia/Manila",
+                    })}
                   </td>
                   <td className="py-2 pr-4 text-slate-600">
                     {l.actorType === "SYSTEM" ? (
