@@ -6,7 +6,7 @@ import type { Role, User } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "lms_session";
-const SESSION_DAYS = 30;
+const SESSION_HOURS = 8;
 
 export type AuthUser = Pick<User, "id" | "username" | "email" | "name" | "role">;
 
@@ -24,7 +24,8 @@ export async function createSession(userId: string) {
   const token = randomToken(32);
   const tokenHash = hashToken(token);
 
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  // Set session expiration to 8 hours
+  const expiresAt = new Date(Date.now() + SESSION_HOURS * 60 * 60 * 1000);
 
   const request = await tryGetAuditRequestContext();
 
