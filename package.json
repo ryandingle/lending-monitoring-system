@@ -15,7 +15,6 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "job:accrue-savings": "tsx scripts/accrue-savings.ts",
     "prepare": "husky || true"
   },
   "dependencies": {
