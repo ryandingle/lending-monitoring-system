@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { countBusinessDays, formatDateTimeManila } from "@/lib/date";
+import { countBusinessDays, formatDateTimeManila, formatDateManila } from "@/lib/date";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
@@ -542,7 +542,7 @@ export default async function MemberDetailPage({
               {" · "}
               {latestCycle ? (
                 <>
-                  Cycle {latestCycle.cycleNumber} ({latestCycle.startDate.toLocaleDateString()})
+                  Cycle {latestCycle.cycleNumber} ({formatDateManila(latestCycle.startDate)})
                   {" · "}
                 </>
               ) : null}
@@ -788,7 +788,7 @@ export default async function MemberDetailPage({
                     {cycle.cycleNumber}
                   </td>
                   <td className="border-b border-r border-slate-200 px-3 py-1.5 font-mono text-slate-700 transition-colors group-hover:border-blue-200">
-                    {cycle.startDate ? cycle.startDate.toLocaleDateString() : "-"}
+                    {cycle.startDate ? formatDateManila(cycle.startDate) : "-"}
                   </td>
                   <td className="border-b border-slate-200 px-3 py-1.5 text-slate-500 transition-colors group-hover:border-blue-200">
                     {formatDateTimeManila(cycle.createdAt)}

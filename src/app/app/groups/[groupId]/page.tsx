@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { GroupDetailsClient } from "./group-details-client";
+import { getManilaBusinessDate, getManilaDateRange, formatDateYMD } from "@/lib/date";
 
 async function deleteMemberAction(groupId: string, memberId: string) {
   "use server";
@@ -45,9 +46,9 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
   requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const request = await tryGetAuditRequestContext();
-  const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
 
   const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
   const warnings: { memberId: string; message: string }[] = [];
@@ -68,7 +69,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
         const alreadyUpdated = await tx.balanceAdjustment.findFirst({
           where: {
             memberId: member.id,
-            createdAt: { gte: startOfToday },
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
           },
         });
 
@@ -109,6 +110,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
               amount: balanceDeduct,
               balanceBefore,
               balanceAfter,
+              createdAt: businessDate,
             },
           });
 
@@ -138,7 +140,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
         const alreadyUpdated = await tx.savingsAdjustment.findFirst({
           where: {
             memberId: member.id,
-            createdAt: { gte: startOfToday },
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
           },
         });
 
@@ -173,6 +175,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
               amount: savingsIncrease,
               savingsBefore,
               savingsAfter,
+              createdAt: businessDate,
             },
           });
         }
