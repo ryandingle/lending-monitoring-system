@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { IconSearch, IconPencil, IconTrash, IconChevronUp, IconChevronDown, IconPlus, IconX, IconEye } from "./icons";
 import { PaginationControls } from "./pagination-controls";
 import { Role } from "@prisma/client";
+import { formatDateManila } from "@/lib/date";
 
 export type Member = {
   id: string;
@@ -1225,8 +1226,8 @@ export function MemberList({
                                                     {viewMember.cycles.map((cycle, index) => (
                                                         <tr key={cycle.id || index}>
                                                             <td className="px-3 py-2 text-slate-900">#{cycle.cycleNumber}</td>
-                                                            <td className="px-3 py-2">{cycle.startDate ? new Date(cycle.startDate).toLocaleDateString() : "-"}</td>
-                                                            <td className="px-3 py-2">{cycle.endDate ? new Date(cycle.endDate).toLocaleDateString() : "-"}</td>
+                                                            <td className="px-3 py-2">{cycle.startDate ? formatDateManila(cycle.startDate) : "-"}</td>
+                                                            <td className="px-3 py-2">{cycle.endDate ? formatDateManila(cycle.endDate) : "-"}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -1270,7 +1271,7 @@ export function MemberList({
                                                         {viewMember.activeReleases.map((r) => (
                                                             <tr key={r.id}>
                                                                 <td className="px-3 py-2">
-                                                                    {new Date(r.releaseDate).toLocaleDateString()}
+                                                                    {formatDateManila(r.releaseDate)}
                                                                 </td>
                                                                 <td className="px-3 py-2 text-right">
                                                                     {Number(r.amount).toLocaleString('en-US', {
@@ -1382,7 +1383,7 @@ export function MemberList({
                                                 ) : (
                                                     balanceAdjustments.map(adj => (
                                                         <tr key={adj.id}>
-                                                            <td className="px-3 py-2">{new Date(adj.createdAt).toLocaleDateString()}</td>
+                                                            <td className="px-3 py-2">{formatDateManila(adj.createdAt)}</td>
                                                             <td className="px-3 py-2">
                                                                 <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'DEDUCT' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                                     {adj.type}
@@ -1435,7 +1436,7 @@ export function MemberList({
                                                 ) : (
                                                     savingsAdjustments.map(adj => (
                                                         <tr key={adj.id}>
-                                                            <td className="px-3 py-2">{new Date(adj.createdAt).toLocaleDateString()}</td>
+                                                            <td className="px-3 py-2">{formatDateManila(adj.createdAt)}</td>
                                                             <td className="px-3 py-2">
                                                                 <span className={`text-xs px-2 py-0.5 rounded ${adj.type === 'INCREASE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                                     {adj.type}

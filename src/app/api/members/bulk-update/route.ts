@@ -4,7 +4,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
-import { getManilaBusinessDate } from "@/lib/date";
+import { getManilaBusinessDate, getManilaStartOfDay } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
   }
 
   const request = await tryGetAuditRequestContext();
-  const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  
+  // Use Manila time for "start of today" to ensure we check against the correct day boundary
+  const startOfToday = getManilaStartOfDay();
 
   const adjustmentDate = getManilaBusinessDate();
 

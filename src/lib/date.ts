@@ -40,6 +40,12 @@ export function getManilaBusinessDate(): Date {
   return new Date(`${ymd}T12:00:00.000+08:00`);
 }
 
+/** Returns the start of the current day in Manila time (00:00:00+08:00) as a UTC Date object. */
+export function getManilaStartOfDay(): Date {
+  const ymd = formatDateYMD(getManilaToday());
+  return new Date(`${ymd}T00:00:00.000+08:00`);
+}
+
 /** YYYY-MM-DD */
 export function formatDateYMD(d: Date): string {
   const year = d.getFullYear();
@@ -182,4 +188,17 @@ export function formatDateTimeManila(d: Date): string {
   const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
 
   return `${getPart("year")}-${getPart("month")}-${getPart("day")} ${getPart("hour")}:${getPart("minute")}:${getPart("second")} ${getPart("dayPeriod")}`;
+}
+
+/**
+ * Returns "MM/DD/YYYY" in Manila timezone
+ */
+export function formatDateManila(d: Date | string): string {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: MANILA_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dateObj);
 }
