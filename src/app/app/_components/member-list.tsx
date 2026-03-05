@@ -133,11 +133,15 @@ export function MemberList({
   // Save draft on change
   useEffect(() => {
     if (isDraftLoaded) {
-      const draft = {
-        date: formatDateManila(new Date()),
-        updates: updates
-      };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      if (Object.keys(updates).length === 0) {
+        localStorage.removeItem(DRAFT_KEY);
+      } else {
+        const draft = {
+          date: formatDateManila(new Date()),
+          updates: updates
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }
     }
   }, [updates, isDraftLoaded]);
 
@@ -407,6 +411,7 @@ export function MemberList({
       if (result.success) {
         setBulkSuccess(true);
         setUpdates({});
+        localStorage.removeItem(DRAFT_KEY);
         setBulkWarnings(result.warnings || []);
         fetchMembers(); // Refresh data
       } else {
@@ -912,6 +917,7 @@ export function MemberList({
                         onClick={() => {
                             if (confirm("Are you sure you want to discard all pending changes?")) {
                                 setUpdates({});
+                                localStorage.removeItem(DRAFT_KEY);
                             }
                         }}
                         disabled={isBulkSaving}
