@@ -109,7 +109,20 @@ export function MemberList({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setUpdates(parsed);
+        // Check for new format with date validation
+        if (parsed.date && parsed.updates) {
+          const today = formatDateManila(new Date());
+          if (parsed.date === today) {
+            setUpdates(parsed.updates);
+          } else {
+            // Draft is stale (different day), ignore it
+            console.log("Draft is stale, ignoring.");
+          }
+        } else {
+          // Legacy format - treat as stale to fix the reported bug
+          // (User reported yesterday's data appearing today)
+          console.log("Legacy draft format detected, ignoring to prevent stale data.");
+        }
       } catch (e) {
         console.error("Failed to parse draft", e);
       }
@@ -120,7 +133,15 @@ export function MemberList({
   // Save draft on change
   useEffect(() => {
     if (isDraftLoaded) {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(updates));
+      if (Object.keys(updates).length === 0) {
+        localStorage.removeItem(DRAFT_KEY);
+      } else {
+        const draft = {
+          date: formatDateManila(new Date()),
+          updates: updates
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }
     }
   }, [updates, isDraftLoaded]);
 
@@ -390,6 +411,7 @@ export function MemberList({
       if (result.success) {
         setBulkSuccess(true);
         setUpdates({});
+        localStorage.removeItem(DRAFT_KEY);
         setBulkWarnings(result.warnings || []);
         fetchMembers(); // Refresh data
       } else {
@@ -895,6 +917,7 @@ export function MemberList({
                         onClick={() => {
                             if (confirm("Are you sure you want to discard all pending changes?")) {
                                 setUpdates({});
+                                localStorage.removeItem(DRAFT_KEY);
                             }
                         }}
                         disabled={isBulkSaving}
