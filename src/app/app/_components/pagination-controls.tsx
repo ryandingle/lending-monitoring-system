@@ -37,8 +37,12 @@ export function PaginationControls({
           <select
             value={pageSize}
             onChange={(e) => {
-              onPageSizeChange(Number(e.target.value));
-              onPageChange(1);
+              const newSize = Number(e.target.value);
+              if (onPageSizeChange) {
+                onPageSizeChange(newSize);
+              } else {
+                onPageChange(1);
+              }
             }}
             className="rounded border border-slate-300 bg-white px-2 py-1 text-slate-700 focus:border-indigo-500 focus:outline-none"
           >

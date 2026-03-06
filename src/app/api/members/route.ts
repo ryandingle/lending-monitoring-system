@@ -36,11 +36,33 @@ export async function GET(req: NextRequest) {
   const sort = (searchParams.get("sort") === "desc" ? "desc" : "asc") as "asc" | "desc";
   const days = parseInt(searchParams.get("days") ?? "0") || 0;
   const status = searchParams.get("status");
+  const newMember = searchParams.get("newMember") === "true";
 
   const where: any = {};
   if (groupId) where.groupId = groupId;
   if (days > 0) where.daysCount = { gte: days };
   if (status && status !== "ALL") where.status = status;
+
+  if (newMember) {
+    // Definition: balance > 0 AND balance == latest active release amount
+    // We'll use a subquery via Prisma's `where` with a raw condition if possible,
+    // but Prisma's `where` is limited. Instead, we can use a raw query to get IDs
+    // or use a clever where if we can assume some things.
+    // For now, let's use a subquery approach by getting the IDs first if filter is on.
+    const matchingMembers = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT m.id 
+      FROM members m
+      JOIN (
+        SELECT DISTINCT ON ("memberId") "memberId", amount
+        FROM active_releases
+        ORDER BY "memberId", "releaseDate" DESC, "createdAt" DESC
+      ) ar ON m.id = ar."memberId"
+      WHERE m.balance > 0 AND m.balance = ar.amount
+    `;
+    const ids = matchingMembers.map(m => m.id);
+    where.id = { in: ids };
+  }
+
   if (q) {
     where.OR = [
       { firstName: { contains: q, mode: "insensitive" } },
