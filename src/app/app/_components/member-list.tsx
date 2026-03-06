@@ -95,6 +95,7 @@ export function MemberList({
   const [groupId, setGroupId] = useState(fixedGroupId || initialGroupId || "");
   const [daysFilter, setDaysFilter] = useState(initialDays?.toString() || "0");
   const [statusFilter, setStatusFilter] = useState(initialStatus || "ACTIVE");
+  const [newMemberFilter, setNewMemberFilter] = useState(false);
   const [sort, setSort] = useState<"asc" | "desc">("asc");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -247,7 +248,7 @@ export function MemberList({
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
-  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter) => {
+  const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter, nm = newMemberFilter) => {
     // If fixedGroupId is set, always use it
     const effectiveGroupId = fixedGroupId || g;
 
@@ -261,6 +262,7 @@ export function MemberList({
       if (s) params.set("sort", s);
       if (d && d !== "0") params.set("days", d);
       if (stat && stat !== "ALL") params.set("status", stat);
+      if (nm) params.set("newMember", "true");
 
       const res = await fetch(`/api/members?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch members");
@@ -284,7 +286,7 @@ export function MemberList({
   useEffect(() => {
     const timer = setTimeout(() => {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
@@ -293,7 +295,7 @@ export function MemberList({
   useEffect(() => {
     if (isMounted.current && !fixedGroupId) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
     } else {
         isMounted.current = true;
     }
@@ -302,16 +304,23 @@ export function MemberList({
   useEffect(() => {
     if (isMounted.current) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
     }
   }, [daysFilter]);
 
   useEffect(() => {
     if (isMounted.current) {
         setPage(1);
-        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
     }
   }, [statusFilter]);
+
+  useEffect(() => {
+    if (isMounted.current) {
+        setPage(1);
+        fetchMembers(1, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
+    }
+  }, [newMemberFilter]);
 
   useEffect(() => {
       // If fixedGroupId changes (unlikely) or on mount
@@ -323,13 +332,13 @@ export function MemberList({
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    fetchMembers(newPage, search, groupId, sort, limit, daysFilter, statusFilter);
+    fetchMembers(newPage, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
   };
 
   const handleSortToggle = () => {
     const newSort = sort === "asc" ? "desc" : "asc";
     setSort(newSort);
-    fetchMembers(1, search, groupId, newSort, limit, daysFilter, statusFilter);
+    fetchMembers(1, search, groupId, newSort, limit, daysFilter, statusFilter, newMemberFilter);
   };
 
   // Bulk Update Handlers
@@ -409,17 +418,17 @@ export function MemberList({
       if (!res.ok) throw new Error(result.error || "Failed to update");
 
       if (result.success) {
-        setBulkSuccess(true);
-        setUpdates({});
-        localStorage.removeItem(DRAFT_KEY);
-        setBulkWarnings(result.warnings || []);
-        fetchMembers(); // Refresh data
-      } else {
-        setBulkErrors(result.errors || []);
-        setBulkWarnings(result.warnings || []);
-        // Refresh data to show partial updates if any
-        fetchMembers();
-      }
+          setBulkSuccess(true);
+          setUpdates({});
+          localStorage.removeItem(DRAFT_KEY);
+          setBulkWarnings(result.warnings || []);
+          fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh data
+        } else {
+          setBulkErrors(result.errors || []);
+          setBulkWarnings(result.warnings || []);
+          // Refresh data to show partial updates if any
+          fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
+        }
     } catch (error: any) {
         console.error(error);
         alert("An error occurred during bulk update.");
@@ -490,7 +499,7 @@ export function MemberList({
         if (confirmation.type === 'DELETE_MEMBER') {
             const res = await fetch(`/api/members/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete");
-            fetchMembers();
+            fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
             if (isViewModalOpen) setIsViewModalOpen(false);
         } else if (confirmation.type === 'REVERT_BALANCE') {
             const res = await fetch(`/api/adjustments/balance/${confirmation.id}`, { method: "DELETE" });
@@ -507,7 +516,7 @@ export function MemberList({
                 }
                 fetchBalanceAdjustments(viewMember.id, balancePage);
             }
-            fetchMembers();
+            fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         } else if (confirmation.type === 'REVERT_SAVINGS') {
             const res = await fetch(`/api/adjustments/savings/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) {
@@ -523,7 +532,7 @@ export function MemberList({
                 }
                 fetchSavingsAdjustments(viewMember.id, savingsPage);
             }
-            fetchMembers();
+            fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         }
         
         setConfirmation({ ...confirmation, isOpen: false });
@@ -596,7 +605,7 @@ export function MemberList({
             });
 
             setActiveReleaseAmount("");
-            fetchMembers();
+            fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         } catch (error: any) {
             alert(error.message || "Failed to create active release");
         } finally {
@@ -644,7 +653,7 @@ export function MemberList({
             fetchSavingsAdjustments(viewMember.id, 1);
         }
         
-        fetchMembers(); // Refresh main list in background
+        fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh main list in background
         setAdjustmentForm({ type: null, action: null, amount: "" });
     } catch (error: any) {
         alert(error.message);
@@ -766,7 +775,7 @@ export function MemberList({
         }
 
         handleCloseModal();
-        fetchMembers(); // Refresh list
+        fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh list
     } catch (error: any) {
         setModalError(error.message);
     } finally {
@@ -814,7 +823,7 @@ export function MemberList({
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-5">
+            <div className="mt-6 grid gap-3 md:grid-cols-6">
                 <div className="md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Search</label>
                     <div className="relative mt-1">
@@ -865,6 +874,17 @@ export function MemberList({
                         <option value="ALL">All</option>
                     </select>
                 </div>
+                <div className="md:col-span-1">
+                    <label className="text-sm font-medium text-slate-600">New Member</label>
+                    <select
+                        value={newMemberFilter ? "TRUE" : "FALSE"}
+                        onChange={(e) => setNewMemberFilter(e.target.value === "TRUE")}
+                        className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                        <option value="FALSE">No</option>
+                        <option value="TRUE">Yes</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -906,6 +926,7 @@ export function MemberList({
                     onPageSizeChange={(l) => {
                         setLimit(l);
                         setPage(1);
+                        fetchMembers(1, search, groupId, sort, l, daysFilter, statusFilter, newMemberFilter);
                     }}
                     pageSizeOptions={[50, 100, 200, 500, 1000]}
                 />
@@ -941,6 +962,7 @@ export function MemberList({
                 <table className="w-full text-left text-sm text-slate-500">
                     <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
                         <tr>
+                            <th className="px-4 py-3 font-semibold text-center w-12">No.</th>
                             <th className="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={handleSortToggle}>
                                 <div className="flex items-center gap-1">
                                     Member
@@ -966,31 +988,41 @@ export function MemberList({
                     <tbody className="divide-y divide-slate-200">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
                                     Loading members...
                                 </td>
                             </tr>
                         ) : members.length === 0 ? (
                             <tr>
-                                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
                                     No members found.
                                 </td>
                             </tr>
                         ) : (
                             <>
-                            {members.map((member) => {
+                            {members.map((member, index) => {
                                 const hasTodayUpdate =
                                   (member.todayPayment ?? 0) > 0 ||
                                   (member.todaySavings ?? 0) > 0;
                                 const hasZeroBalance = Number(member.balance) === 0;
+                                const isNewMember = 
+                                  Number(member.balance) > 0 && 
+                                  member.latestActiveReleaseAmount != null &&
+                                  Number(member.balance) === Number(member.latestActiveReleaseAmount);
+
                                 const rowClass = hasZeroBalance
                                   ? "bg-red-50 hover:bg-red-100"
-                                  : hasTodayUpdate
-                                    ? "bg-emerald-50 hover:bg-emerald-100"
-                                    : "hover:bg-slate-50";
+                                  : isNewMember
+                                    ? "bg-blue-50 hover:bg-blue-100"
+                                    : hasTodayUpdate
+                                      ? "bg-emerald-50 hover:bg-emerald-100"
+                                      : "hover:bg-slate-50";
 
                                 return (
                                 <tr key={member.id} className={rowClass}>
+                                    <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">
+                                        {(page - 1) * limit + index + 1}
+                                    </td>
                                     <td className="px-4 py-3 font-medium text-slate-900">{member.lastName}, {member.firstName}</td>
                                     {!fixedGroupId && <td className="px-4 py-3 text-slate-600">{member.group?.name || "-"}</td>}
                                     <td className="px-4 py-3 text-right font-mono text-slate-600">
@@ -1099,7 +1131,10 @@ export function MemberList({
                                 </tr>
                                 );
                             })}
-                            <tr className="bg-slate-100 font-semibold">
+                            <tr className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs italic">
+                                    {members.length}
+                                </td>
                                 <td className="px-4 py-3 text-right text-slate-900" colSpan={fixedGroupId ? 1 : 2}>
                                     Totals
                                 </td>
