@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
           select: { amount: true },
         },
         cycles: {
-          orderBy: { cycleNumber: "desc" },
+          orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
           take: 1,
         },
         activeReleases: {
