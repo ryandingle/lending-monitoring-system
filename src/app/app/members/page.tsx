@@ -68,7 +68,7 @@ export default async function MembersPage({
           },
         },
         cycles: {
-          orderBy: { cycleNumber: "desc" },
+          orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
           take: 1,
         },
       } as any,

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
             include: { encodedBy: { select: { name: true } } }
         },
         cycles: {
-            orderBy: [{ cycleNumber: "desc" }, { startDate: "desc" }],
+            orderBy: [{ startDate: "asc" }, { cycleNumber: "asc" }],
         },
         activeReleases: {
           orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
