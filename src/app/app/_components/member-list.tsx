@@ -718,7 +718,14 @@ export function MemberList({
                         cycleNumber: c.cycleNumber.toString(),
                         startDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : "",
                         endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : ""
-                    })).sort((a: any, b: any) => parseInt(a.cycleNumber) - parseInt(b.cycleNumber));
+                    })).sort((a: any, b: any) => {
+                        // Sort by start date ascending
+                        if (a.startDate && b.startDate) {
+                            return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+                        }
+                        // Fallback to cycle number ascending
+                        return parseInt(a.cycleNumber) - parseInt(b.cycleNumber);
+                    });
                     
                     setFormData(prev => ({
                         ...prev,
