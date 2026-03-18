@@ -40,7 +40,7 @@ async function deleteMemberAction(groupId: string, memberId: string) {
   redirect(`/app/groups/${groupId}?deleted=1`);
 }
 
-async function onBulkUpdate(groupId: string, updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string }[]) {
+async function onBulkUpdate(groupId: string, updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string; notes?: string }[]) {
   "use server";
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
@@ -64,6 +64,17 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
       const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
       const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
       const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
+      const noteContent = update.notes?.trim() || "";
+
+      if (noteContent !== "") {
+        await (tx as any).memberNote.create({
+          data: {
+            memberId: member.id,
+            content: noteContent,
+            createdAt: businessDate,
+          },
+        });
+      }
 
       if (balanceDeduct > 0) {
         const alreadyUpdated = await tx.balanceAdjustment.findFirst({
@@ -188,13 +199,13 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
         });
       }
 
-      if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null) && !errors.some(e => e.memberId === member.id)) {
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
         await createAuditLog(tx, {
           actorUserId: actor.id,
           action: "MEMBER_BULK_UPDATE",
           entityType: "Member",
           entityId: member.id,
-          metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount },
+          metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount, hasNotes: noteContent !== "" },
           request,
         });
       }
@@ -247,10 +258,15 @@ export default async function GroupDetailsPage({
         select: {
           balanceAdjustments: true,
           savingsAdjustments: true,
+          notes: true,
         },
       },
       cycles: {
         orderBy: { cycleNumber: "desc" },
+        take: 1,
+      },
+      notes: {
+        orderBy: { createdAt: "desc" },
         take: 1,
       },
     } as any,
@@ -281,7 +297,7 @@ export default async function GroupDetailsPage({
     lastName: m.lastName,
     balance: Number(m.balance),
     savings: Number(m.savings),
-    createdAt: m.createdAt.toISOString(),
+    createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : m.createdAt,
     groupId: m.groupId,
     group: { id: group.id, name: group.name },
     daysCount: m.daysCount,
@@ -289,14 +305,16 @@ export default async function GroupDetailsPage({
     address: m.address,
     phoneNumber: m.phoneNumber,
     _count: {
-      balanceAdjustments: m._count.balanceAdjustments,
-      savingsAdjustments: m._count.savingsAdjustments,
+      balanceAdjustments: m._count?.balanceAdjustments ?? 0,
+      savingsAdjustments: m._count?.savingsAdjustments ?? 0,
+      notes: m._count?.notes ?? 0,
     },
     latestCycle: m.cycles[0] ? {
       cycleNumber: m.cycles[0].cycleNumber,
-      startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
-      endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
+      startDate: m.cycles[0].startDate instanceof Date ? m.cycles[0].startDate.toISOString() : (m.cycles[0].startDate || null),
+      endDate: m.cycles[0].endDate instanceof Date ? m.cycles[0].endDate.toISOString() : (m.cycles[0].endDate || null),
     } : null,
+    latestNote: m.notes?.[0]?.content || "",
   }));
 
   return (

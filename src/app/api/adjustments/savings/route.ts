@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { z } from "zod";
 import { getManilaBusinessDate } from "@/lib/date";
+import { SavingsAdjustment } from "@prisma/client";
 
 const SavingsAdjustmentSchema = z.object({
   memberId: z.string().uuid(),
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
             prisma.savingsAdjustment.count({ where: { memberId } }),
         ]);
 
-        const serializedAdjustments = adjustments.map(adj => ({
+        const serializedAdjustments = (adjustments as SavingsAdjustment[]).map((adj: SavingsAdjustment) => ({
             ...adj,
             amount: Number(adj.amount),
             savingsBefore: Number(adj.savingsBefore),

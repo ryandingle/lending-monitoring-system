@@ -129,6 +129,7 @@ model Member {
   savingsAdjustments SavingsAdjustment[]
   cycles MemberCycle[]
   activeReleases ActiveRelease[]
+  notes MemberNote[]
 
   @@index([groupId])
   @@index([savingsLastAccruedAt])
@@ -232,6 +233,18 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+model MemberNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
+  @@map("member_notes")
 }
 
 model NotificationRead {
