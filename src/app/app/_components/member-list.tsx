@@ -235,7 +235,7 @@ export function MemberList({
   // Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{
     isOpen: boolean;
-    type: 'DELETE_MEMBER' | 'REVERT_BALANCE' | 'REVERT_SAVINGS' | null;
+    type: 'DELETE_MEMBER' | 'REVERT_BALANCE' | 'REVERT_SAVINGS' | 'DELETE_NOTE' | null;
     id: string | null;
     title: string;
     message: string;
@@ -566,6 +566,17 @@ export function MemberList({
                 fetchSavingsAdjustments(viewMember.id, savingsPage);
             }
             fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
+        } else if (confirmation.type === 'DELETE_NOTE') {
+            const res = await fetch(`/api/members/notes/${confirmation.id}`, { method: "DELETE" });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to delete note");
+            }
+            if (viewMember) {
+                fetchNotes(viewMember.id, notesPage);
+                // Also update the note count in the main list
+                fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
+            }
         }
         
         setConfirmation({ ...confirmation, isOpen: false });
@@ -593,6 +604,16 @@ export function MemberList({
         id: adjId,
         title: "Revert Savings Adjustment",
         message: "Are you sure you want to revert this adjustment? This will reverse the transaction."
+    });
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    setConfirmation({
+        isOpen: true,
+        type: 'DELETE_NOTE',
+        id: noteId,
+        title: "Delete Note",
+        message: "Are you sure you want to permanently delete this note?"
     });
   };
 
@@ -1377,6 +1398,15 @@ export function MemberList({
                                                             <span className="text-[10px] font-bold uppercase text-slate-400">
                                                                 {formatDateManila(note.createdAt)}
                                                             </span>
+                                                            {(userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER) && (
+                                                                <button 
+                                                                    onClick={() => handleDeleteNote(note.id)}
+                                                                    className="text-slate-400 hover:text-red-500 transition-colors"
+                                                                    title="Delete Note"
+                                                                >
+                                                                    <IconTrash className="h-3 w-3" />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                         <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
                                                     </div>
