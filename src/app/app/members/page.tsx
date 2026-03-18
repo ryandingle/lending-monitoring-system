@@ -65,10 +65,15 @@ export default async function MembersPage({
           select: {
             balanceAdjustments: true,
             savingsAdjustments: true,
+            notes: true,
           },
         },
         cycles: {
           orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
+          take: 1,
+        },
+        notes: {
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
       } as any,
@@ -95,12 +100,14 @@ export default async function MembersPage({
     _count: {
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
+      notes: m._count.notes,
     },
     latestCycle: m.cycles[0] ? {
       cycleNumber: m.cycles[0].cycleNumber,
       startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
       endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
     } : null,
+    latestNote: m.notes?.[0]?.content || "",
   }));
 
   return (

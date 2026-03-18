@@ -34,6 +34,7 @@ export type Member = {
   _count?: {
     balanceAdjustments: number;
     savingsAdjustments: number;
+    notes: number;
   };
   latestCycle?: {
     cycleNumber: number;
@@ -53,6 +54,12 @@ export type Member = {
     releaseDate: string;
     createdAt: string;
   }[];
+  notes?: {
+    id: string;
+    content: string;
+    createdAt: string;
+  }[];
+  latestNote?: string | null;
   status?: string;
 };
 
@@ -100,7 +107,7 @@ export function MemberList({
   const [isLoading, setIsLoading] = useState(false);
   
   // Bulk Edit State
-  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; activeReleaseAmount: string }>>({});
+  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; activeReleaseAmount: string; notes: string }>>({});
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const DRAFT_KEY = "member_list_bulk_draft";
 
@@ -183,6 +190,12 @@ export function MemberList({
   const [savingsPage, setSavingsPage] = useState(1);
   const [savingsLimit, setSavingsLimit] = useState(5);
   const [savingsLoading, setSavingsLoading] = useState(false);
+
+  const [notesList, setNotesList] = useState<any[]>([]);
+  const [notesTotal, setNotesTotal] = useState(0);
+  const [notesPage, setNotesPage] = useState(1);
+  const [notesLimit, setNotesLimit] = useState(5);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   const paymentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -342,9 +355,11 @@ export function MemberList({
   };
 
   // Bulk Update Handlers
-  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount" | "activeReleaseAmount", value: string) => {
+  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount" | "activeReleaseAmount" | "notes", value: string) => {
     if (field === "daysCount") {
         if (value !== "" && !/^\d*$/.test(value)) return;
+    } else if (field === "notes") {
+        // No restrictions
     } else {
         if (value !== "" && !/^\d*\.?\d*$/.test(value)) return;
     }
@@ -352,7 +367,7 @@ export function MemberList({
     setUpdates((prev) => ({
       ...prev,
       [memberId]: {
-        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", activeReleaseAmount: "" }),
+        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", activeReleaseAmount: "", notes: "" }),
         [field]: value,
       },
     }));
@@ -394,7 +409,8 @@ export function MemberList({
             u.balanceDeduct ||
             u.savingsIncrease ||
             u.daysCount ||
-            u.activeReleaseAmount,
+            u.activeReleaseAmount ||
+            u.notes,
         );
 
       if (payload.length === 0) {
@@ -469,6 +485,22 @@ export function MemberList({
     }
   };
 
+  const fetchNotes = async (memberId: string, page = 1, limit = notesLimit) => {
+    setNotesLoading(true);
+    try {
+        const res = await fetch(`/api/members/${memberId}/notes?page=${page}&limit=${limit}`);
+        if (!res.ok) throw new Error("Failed to fetch notes");
+        const data = await res.json();
+        setNotesList(data.items);
+        setNotesTotal(data.total);
+        setNotesPage(data.page);
+    } catch (error) {
+        console.error(error);
+    } finally {
+        setNotesLoading(false);
+    }
+  };
+
   const handleViewMember = async (id: string) => {
     setIsViewModalOpen(true);
     setViewLoading(true);
@@ -482,6 +514,7 @@ export function MemberList({
         // Fetch adjustments separately
         fetchBalanceAdjustments(id, 1);
         fetchSavingsAdjustments(id, 1);
+        fetchNotes(id, 1);
     } catch (error) {
         console.error(error);
         alert("Failed to load member details");
@@ -805,7 +838,8 @@ export function MemberList({
       u.balanceDeduct !== "" ||
       u.savingsIncrease !== "" ||
       u.daysCount !== "" ||
-      u.activeReleaseAmount !== "",
+      u.activeReleaseAmount !== "" ||
+      u.notes !== "",
   );
 
   return (
@@ -980,6 +1014,7 @@ export function MemberList({
                             <th className="px-4 py-3 font-semibold text-right">Balance Amount</th>
                             <th className="px-4 py-3 font-semibold text-right">Active Release</th>
                             <th className="px-4 py-3 font-semibold text-right">Savings Amount</th>
+                            <th className="px-4 py-3 font-semibold text-left w-40">Notes</th>
                             <th className="px-4 py-3 font-semibold text-center"># of Days</th>
                             <th className="px-4 py-3 font-semibold text-center">Cycle</th>
                             {canBulkUpdate && (
@@ -1019,10 +1054,10 @@ export function MemberList({
 
                                 const rowClass = hasZeroBalance
                                   ? "bg-red-50 hover:bg-red-100"
-                                  : isNewMember
-                                    ? "bg-blue-50 hover:bg-blue-100"
-                                    : hasTodayUpdate
-                                      ? "bg-emerald-50 hover:bg-emerald-100"
+                                  : hasTodayUpdate
+                                    ? "bg-emerald-50 hover:bg-emerald-100"
+                                    : isNewMember
+                                      ? "bg-blue-50 hover:bg-blue-100"
                                       : "hover:bg-slate-50";
 
                                 return (
@@ -1030,7 +1065,19 @@ export function MemberList({
                                     <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">
                                         {(page - 1) * limit + index + 1}
                                     </td>
-                                    <td className="px-4 py-3 font-medium text-slate-900">{member.lastName}, {member.firstName}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-900">
+                                        <div className="flex items-center gap-2">
+                                            {member.lastName}, {member.firstName}
+                                            {member._count && member._count.notes > 0 && (
+                                                <span 
+                                                    title={`${member._count.notes} notes available`}
+                                                    className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-600"
+                                                >
+                                                    {member._count.notes}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     {!fixedGroupId && <td className="px-4 py-3 text-slate-600">{member.group?.name || "-"}</td>}
                                     <td className="px-4 py-3 text-right font-mono text-slate-600">
                                         {Number(member.balance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
@@ -1054,6 +1101,19 @@ export function MemberList({
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono text-slate-600">
                                         {Number(member.savings).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {canBulkUpdate ? (
+                                            <input
+                                                type="text"
+                                                placeholder="Notes..."
+                                                className="w-full min-w-[120px] rounded border border-slate-200 bg-white px-2 py-1 text-left text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
+                                                value={updates[member.id]?.notes ?? (member.latestNote || "")}
+                                                onChange={(e) => handleBulkChange(member.id, "notes", e.target.value)}
+                                            />
+                                        ) : (
+                                            <span className="text-slate-400 text-xs">{member.latestNote || "-"}</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 text-center text-slate-600">{member.daysCount}</td>
                                     <td className="px-4 py-3 text-center text-slate-600">
@@ -1154,6 +1214,7 @@ export function MemberList({
                                 <td className="px-4 py-3 text-right font-mono text-slate-900">
                                     {totals.savings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                 </td>
+                                <td className="px-4 py-3" />
                                 <td className="px-4 py-3" />
                                 <td className="px-4 py-3" />
                                 {canBulkUpdate && (
@@ -1300,6 +1361,42 @@ export function MemberList({
                                         </div>
                                     ) : (
                                         <div className="text-center py-4 text-sm text-slate-500">No cycle history available</div>
+                                    )}
+                                </div>
+
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Notes History</h3>
+                                    {notesLoading ? (
+                                        <div className="py-4 text-center text-sm text-slate-500">Loading notes...</div>
+                                    ) : notesList && notesList.length > 0 ? (
+                                        <div className="space-y-3">
+                                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                                                {notesList.map((note) => (
+                                                    <div key={note.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[10px] font-bold uppercase text-slate-400">
+                                                                {formatDateManila(note.createdAt)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <PaginationControls
+                                                currentPage={notesPage}
+                                                totalItems={notesTotal}
+                                                pageSize={notesLimit}
+                                                onPageChange={(p) => fetchNotes(viewMember.id, p)}
+                                                className="mt-2"
+                                                pageSizeOptions={[5, 10, 20]}
+                                                onPageSizeChange={(s) => {
+                                                    setNotesLimit(s);
+                                                    fetchNotes(viewMember.id, 1, s);
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 text-sm text-slate-500 italic">No notes recorded yet.</div>
                                     )}
                                 </div>
 

@@ -59,33 +59,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
       ...member,
       balance: Number((member as any).balance),
       savings: Number((member as any).savings),
-      createdAt: (member as any).createdAt.toISOString(),
+      createdAt: (member as any).createdAt instanceof Date ? (member as any).createdAt.toISOString() : (member as any).createdAt,
       balanceAdjustments: (member as any).balanceAdjustments.map((adj: any) => ({
         ...adj,
         amount: Number(adj.amount),
         balanceBefore: Number(adj.balanceBefore),
         balanceAfter: Number(adj.balanceAfter),
-        createdAt: adj.createdAt.toISOString(),
+        createdAt: adj.createdAt instanceof Date ? adj.createdAt.toISOString() : adj.createdAt,
       })),
       savingsAdjustments: (member as any).savingsAdjustments.map((adj: any) => ({
         ...adj,
         amount: Number(adj.amount),
         savingsBefore: Number(adj.savingsBefore),
         savingsAfter: Number(adj.savingsAfter),
-        createdAt: adj.createdAt.toISOString(),
+        createdAt: adj.createdAt instanceof Date ? adj.createdAt.toISOString() : adj.createdAt,
       })),
       activeReleases: (member as any).activeReleases.map((r: any) => ({
         ...r,
         amount: Number(r.amount),
-        releaseDate: r.releaseDate.toISOString(),
-        createdAt: r.createdAt.toISOString(),
+        releaseDate: r.releaseDate instanceof Date ? r.releaseDate.toISOString() : r.releaseDate,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
       })),
       latestCycle: (member as any).cycles[0] || null,
       cycles: (member as any).cycles.map((c: any) => ({
         id: c.id,
         cycleNumber: c.cycleNumber,
-        startDate: c.startDate ? c.startDate.toISOString() : null,
-        endDate: c.endDate ? c.endDate.toISOString() : null,
+        startDate: c.startDate instanceof Date ? c.startDate.toISOString() : (c.startDate || null),
+        endDate: c.endDate instanceof Date ? c.endDate.toISOString() : (c.endDate || null),
       })),
     };
 
@@ -211,7 +211,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
       }
 
       if (parsed.data.activeReleaseAmount && parsed.data.activeReleaseAmount > 0) {
-        await (tx as any).activeRelease.create({
+        await tx.activeRelease.create({
           data: {
             memberId,
             amount: parsed.data.activeReleaseAmount,
