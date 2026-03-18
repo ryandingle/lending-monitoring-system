@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       balanceDeduct: string;
       savingsIncrease: string;
       daysCount: string;
+      notes?: string;
       activeReleaseAmount?: string;
     }[];
   };
@@ -37,26 +38,42 @@ export async function POST(req: NextRequest) {
 
   try {
     for (const update of updates) {
-      await prisma.$transaction(async (tx) => {
-        const member = await tx.member.findUnique({
-          where: { id: update.memberId },
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            balance: true,
-            savings: true,
-            daysCount: true,
-          },
-        });
-        if (!member) {
-          return;
-        }
+      const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
+      const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+      const activeReleaseAmount = parseFloat(update.activeReleaseAmount ?? "") || 0;
+      const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
+      const noteContent = update.notes?.trim() || "";
 
-        const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
-        const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
-        const activeReleaseAmount = parseFloat(update.activeReleaseAmount ?? "") || 0;
-        const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
+      // Skip if absolutely no data provided for this member
+      if (balanceDeduct === 0 && savingsIncrease === 0 && activeReleaseAmount === 0 && newDaysCount === null && noteContent === "") {
+        continue;
+      }
+
+      await prisma.$transaction(async (tx) => {
+         const member = await tx.member.findUnique({
+           where: { id: update.memberId },
+           select: {
+             id: true,
+             firstName: true,
+             lastName: true,
+             balance: true,
+             savings: true,
+             daysCount: true,
+           },
+         });
+         if (!member) {
+           return;
+         }
+
+         if (noteContent !== "") {
+          await (tx as any).memberNote.create({
+            data: {
+              memberId: member.id,
+              content: noteContent,
+              createdAt: adjustmentDate,
+            },
+          });
+        }
 
         if (balanceDeduct > 0) {
           const alreadyUpdated = await tx.balanceAdjustment.findFirst({
@@ -175,7 +192,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (activeReleaseAmount > 0) {
-          await (tx as any).activeRelease.create({
+          await tx.activeRelease.create({
             data: {
               memberId: member.id,
               amount: activeReleaseAmount,
@@ -204,7 +221,8 @@ export async function POST(req: NextRequest) {
           (balanceDeduct > 0 ||
             savingsIncrease > 0 ||
             newDaysCount !== null ||
-            activeReleaseAmount > 0) &&
+            activeReleaseAmount > 0 ||
+            noteContent !== "") &&
           !errors.some((e) => e.memberId === member.id)
         ) {
           await createAuditLog(tx, {
@@ -212,7 +230,7 @@ export async function POST(req: NextRequest) {
             action: "MEMBER_BULK_UPDATE",
             entityType: "Member",
             entityId: member.id,
-            metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount },
+            metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount, hasNotes: noteContent !== "" },
             request,
           });
         }

@@ -25,157 +25,166 @@ const CreateMemberSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
+  try {
+    const user = await requireUser();
+    requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
 
-  const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") ?? "").trim();
-  const groupId = (searchParams.get("groupId") ?? "").trim() || undefined;
-  const page = parseInt(searchParams.get("page") ?? "1") || 1;
-  const limit = parseInt(searchParams.get("limit") ?? "50") || 50;
-  const sort = (searchParams.get("sort") === "desc" ? "desc" : "asc") as "asc" | "desc";
-  const days = parseInt(searchParams.get("days") ?? "0") || 0;
-  const status = searchParams.get("status");
-  const newMember = searchParams.get("newMember") === "true";
+    const { searchParams } = new URL(req.url);
+    const q = (searchParams.get("q") ?? "").trim();
+    const groupId = (searchParams.get("groupId") ?? "").trim() || undefined;
+    const page = parseInt(searchParams.get("page") ?? "1") || 1;
+    const limit = parseInt(searchParams.get("limit") ?? "50") || 50;
+    const sort = (searchParams.get("sort") === "desc" ? "desc" : "asc") as "asc" | "desc";
+    const days = parseInt(searchParams.get("days") ?? "0") || 0;
+    const status = searchParams.get("status");
+    const newMember = searchParams.get("newMember") === "true";
 
-  const where: any = {};
-  if (groupId) where.groupId = groupId;
-  if (days > 0) where.daysCount = { gte: days };
-  if (status && status !== "ALL") where.status = status;
+    const where: any = {};
+    if (groupId) where.groupId = groupId;
+    if (days > 0) where.daysCount = { gte: days };
+    if (status && status !== "ALL") where.status = status;
 
-  if (newMember) {
-    // Definition: balance > 0 AND balance == latest active release amount
-    // We'll use a subquery via Prisma's `where` with a raw condition if possible,
-    // but Prisma's `where` is limited. Instead, we can use a raw query to get IDs
-    // or use a clever where if we can assume some things.
-    // For now, let's use a subquery approach by getting the IDs first if filter is on.
-    const matchingMembers = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT m.id 
-      FROM members m
-      JOIN (
-        SELECT DISTINCT ON ("memberId") "memberId", amount
-        FROM active_releases
-        ORDER BY "memberId", "releaseDate" DESC, "createdAt" DESC
-      ) ar ON m.id = ar."memberId"
-      WHERE m.balance > 0 AND m.balance = ar.amount
-    `;
-    const ids = matchingMembers.map(m => m.id);
-    where.id = { in: ids };
-  }
+    if (newMember) {
+      const matchingMembers = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT m.id 
+        FROM members m
+        JOIN (
+          SELECT DISTINCT ON ("memberId") "memberId", amount
+          FROM active_releases
+          ORDER BY "memberId", "releaseDate" DESC, "createdAt" DESC
+        ) ar ON m.id = ar."memberId"
+        WHERE m.balance > 0 AND m.balance = ar.amount
+      `;
+      const ids = matchingMembers.map(m => m.id);
+      where.id = { in: ids };
+    }
 
-  if (q) {
-    where.OR = [
-      { firstName: { contains: q, mode: "insensitive" } },
-      { lastName: { contains: q, mode: "insensitive" } },
-      { phoneNumber: { contains: q, mode: "insensitive" } },
-      { group: { is: { name: { contains: q, mode: "insensitive" } } } },
-    ];
-  }
+    if (q) {
+      where.OR = [
+        { firstName: { contains: q, mode: "insensitive" } },
+        { lastName: { contains: q, mode: "insensitive" } },
+        { phoneNumber: { contains: q, mode: "insensitive" } },
+        { group: { name: { contains: q, mode: "insensitive" } } },
+      ];
+    }
 
-  const businessDate = getManilaBusinessDate();
-  const todayStr = formatDateYMD(businessDate);
-  const todayRange = getManilaDateRange(todayStr, todayStr);
+    const businessDate = getManilaBusinessDate();
+    const todayStr = formatDateYMD(businessDate);
+    const todayRange = getManilaDateRange(todayStr, todayStr);
 
-  const [members, total] = await Promise.all([
-    (prisma as any).member.findMany({
-      where,
-      include: {
-        group: { select: { id: true, name: true } },
+    const [members, total] = await Promise.all([
+      (prisma as any).member.findMany({
+        where,
+        include: {
+          group: { select: { id: true, name: true } },
+          _count: {
+            select: {
+              balanceAdjustments: true,
+              savingsAdjustments: true,
+              notes: true,
+            },
+          },
+          balanceAdjustments: {
+            where: {
+              type: BalanceUpdateType.DEDUCT,
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            select: { amount: true },
+          },
+          savingsAdjustments: {
+            where: {
+              type: SavingsUpdateType.INCREASE,
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            select: { amount: true },
+          },
+          cycles: {
+            orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
+            take: 1,
+          },
+          activeReleases: {
+            orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+            take: 1,
+          },
+          notes: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { lastName: sort },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      (prisma as any).member.count({ where }),
+    ]);
+
+    const serializedMembers = (members as any[]).map((m: any) => {
+      const todayPayment = Array.isArray(m.balanceAdjustments)
+        ? m.balanceAdjustments.reduce(
+            (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+            0,
+          )
+        : 0;
+
+      const todaySavings = Array.isArray(m.savingsAdjustments)
+        ? m.savingsAdjustments.reduce(
+            (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+            0,
+          )
+        : 0;
+
+      return {
+        id: m.id,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        age: m.age,
+        address: m.address,
+        phoneNumber: m.phoneNumber,
+        balance: (Number(m.balance) || 0),
+        savings: (Number(m.savings) || 0),
+        createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : (m.createdAt || new Date().toISOString()),
+        groupId: m.groupId,
+        group: m.group ? { id: m.group.id, name: m.group.name } : null,
+        daysCount: m.daysCount ?? 0,
+        todayPayment,
+        todaySavings,
         _count: {
-          select: {
-            balanceAdjustments: true,
-            savingsAdjustments: true,
-          },
+          balanceAdjustments: m._count?.balanceAdjustments ?? 0,
+          savingsAdjustments: m._count?.savingsAdjustments ?? 0,
+          notes: m._count?.notes ?? 0,
         },
-        balanceAdjustments: {
-          where: {
-            type: BalanceUpdateType.DEDUCT,
-            createdAt: {
-              gte: todayRange.from,
-              lte: todayRange.to,
-            },
-          },
-          select: { amount: true },
-        },
-        savingsAdjustments: {
-          where: {
-            type: SavingsUpdateType.INCREASE,
-            createdAt: {
-              gte: todayRange.from,
-              lte: todayRange.to,
-            },
-          },
-          select: { amount: true },
-        },
-        cycles: {
-          orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
-          take: 1,
-        },
-        activeReleases: {
-          orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
-          take: 1,
-        },
-      },
-      orderBy: { lastName: sort },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.member.count({ where }),
-  ]);
+        latestCycle: Array.isArray(m.cycles) && m.cycles.length > 0
+          ? {
+              cycleNumber: m.cycles[0].cycleNumber,
+              startDate: m.cycles[0].startDate instanceof Date ? m.cycles[0].startDate.toISOString() : (m.cycles[0].startDate || ""),
+              endDate: m.cycles[0].endDate instanceof Date ? m.cycles[0].endDate.toISOString() : (m.cycles[0].endDate || undefined),
+            }
+          : null,
+        latestActiveReleaseAmount:
+          Array.isArray(m.activeReleases) && m.activeReleases.length > 0 && m.activeReleases[0] != null 
+            ? (Number(m.activeReleases[0].amount) || 0) 
+            : null,
+        latestNote: Array.isArray(m.notes) && m.notes.length > 0 ? m.notes[0].content : "",
+      };
+    });
 
-  const serializedMembers = (members as any[]).map((m) => {
-    const todayPayment = Array.isArray(m.balanceAdjustments)
-      ? m.balanceAdjustments.reduce(
-          (sum: number, adj: any) => sum + Number(adj.amount ?? 0),
-          0,
-        )
-      : 0;
-
-    const todaySavings = Array.isArray(m.savingsAdjustments)
-      ? m.savingsAdjustments.reduce(
-          (sum: number, adj: any) => sum + Number(adj.amount ?? 0),
-          0,
-        )
-      : 0;
-
-    return {
-      id: m.id,
-      firstName: m.firstName,
-      lastName: m.lastName,
-      age: m.age,
-      address: m.address,
-      phoneNumber: m.phoneNumber,
-      balance: Number(m.balance),
-      savings: Number(m.savings),
-      createdAt: m.createdAt.toISOString(),
-      groupId: m.groupId,
-      group: m.group ? { id: m.group.id, name: m.group.name } : null,
-      daysCount: m.daysCount,
-      todayPayment,
-      todaySavings,
-      _count: {
-        balanceAdjustments: m._count.balanceAdjustments,
-        savingsAdjustments: m._count.savingsAdjustments,
-      },
-      latestCycle: m.cycles[0]
-        ? {
-            cycleNumber: m.cycles[0].cycleNumber,
-            startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : "",
-            endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : undefined,
-          }
-        : null,
-      latestActiveReleaseAmount:
-        m.activeReleases[0] != null ? Number(m.activeReleases[0].amount) : null,
-    };
-  });
-
-  return NextResponse.json({
-    items: serializedMembers,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  });
+    return NextResponse.json({
+      items: serializedMembers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -244,7 +253,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (parsed.data.activeReleaseAmount && parsed.data.activeReleaseAmount > 0) {
-        await (tx as any).activeRelease.create({
+        await tx.activeRelease.create({
           data: {
             memberId: newMember.id,
             amount: parsed.data.activeReleaseAmount,
