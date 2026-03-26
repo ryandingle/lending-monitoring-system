@@ -314,7 +314,7 @@ export function GroupsClient({
                 <th className="py-3 pr-4 font-medium">Name</th>
                 <th className="py-3 px-4 font-medium">Description</th>
                 <th className="py-3 px-4 font-medium">Officer</th>
-                <th className="py-3 px-4 font-medium text-right">Members</th>
+                <th className="py-3 px-4 font-medium text-right">Active Members</th>
                 <th className="py-3 pl-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
