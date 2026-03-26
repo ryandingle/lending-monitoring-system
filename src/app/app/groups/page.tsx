@@ -45,7 +45,13 @@ export default async function GroupsPage({
     prisma.group.findMany({
       where,
       include: {
-        _count: { select: { members: true } },
+        _count: {
+          select: {
+            members: {
+              where: { status: "ACTIVE" },
+            },
+          },
+        },
         collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       },
       orderBy: { name: "asc" },

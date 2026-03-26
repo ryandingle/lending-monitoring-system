@@ -53,8 +53,9 @@ export default async function DashboardPage({
     dailyCollections,
     dailyAccruals
   ] = await Promise.all([
-    prisma.member.count(),
+    prisma.member.count({ where: { status: "ACTIVE" } }),
     prisma.member.aggregate({
+      where: { status: "ACTIVE" },
       _sum: { balance: true, savings: true },
     }),
     // Total Collections in period (Balance Deductions)
@@ -335,7 +336,7 @@ export default async function DashboardPage({
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span className="text-3xl font-black text-slate-900">{memberCount}</span>
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Members</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">Active Members</span>
               </div>
             </div>
 
@@ -411,7 +412,7 @@ export default async function DashboardPage({
               <div className="text-3xl font-black text-slate-900">{smallCurrencyFormatter.format(Number(globalSavings))}</div>
             </div>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Members</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Active Members</div>
               <div className="text-3xl font-black text-slate-900">{memberCount}</div>
             </div>
           </div>

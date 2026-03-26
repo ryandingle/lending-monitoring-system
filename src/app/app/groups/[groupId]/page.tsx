@@ -244,7 +244,7 @@ export default async function GroupDetailsPage({
         collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       },
     }),
-    prisma.member.count({ where: { groupId } }),
+    prisma.member.count({ where: { groupId, status: "ACTIVE" } }),
     prisma.group.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -252,7 +252,7 @@ export default async function GroupDetailsPage({
   ]);
 
   const members = await prisma.member.findMany({
-    where: { groupId },
+    where: { groupId, status: "ACTIVE" },
     include: {
       _count: {
         select: {
