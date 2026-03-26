@@ -33,7 +33,13 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        _count: { select: { members: true } },
+        _count: {
+          select: {
+            members: {
+              where: { status: "ACTIVE" },
+            },
+          },
+        },
         collectionOfficer: { select: { id: true, firstName: true, lastName: true } },
       },
       skip: (page - 1) * limit,
