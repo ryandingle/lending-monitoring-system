@@ -54,12 +54,19 @@ export type Member = {
     releaseDate: string;
     createdAt: string;
   }[];
+  processingFees?: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    encodedBy: { name: string };
+  }[];
   notes?: {
     id: string;
     content: string;
     createdAt: string;
   }[];
   latestNote?: string | null;
+  latestTodayProcessingFee?: number | null;
   status?: string;
 };
 
@@ -107,7 +114,7 @@ export function MemberList({
   const [isLoading, setIsLoading] = useState(false);
   
   // Bulk Edit State
-  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; activeReleaseAmount: string; notes: string }>>({});
+  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; activeReleaseAmount: string; notes: string }>>({});
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const DRAFT_KEY = "member_list_bulk_draft";
 
@@ -227,9 +234,16 @@ export function MemberList({
           : m.todaySavings ?? 0;
       acc.paymentSavings += savingsValue;
 
+      const pfInput = updates[m.id]?.processingFee;
+      const pfValue =
+        pfInput !== undefined && pfInput !== ""
+          ? parseFloat(pfInput) || 0
+          : m.latestTodayProcessingFee ?? 0;
+      acc.pf += pfValue;
+
       return acc;
     },
-    { balance: 0, activeRelease: 0, savings: 0, payment: 0, paymentSavings: 0 },
+    { balance: 0, activeRelease: 0, savings: 0, payment: 0, paymentSavings: 0, pf: 0 },
   );
 
   // Confirmation Modal State
@@ -355,7 +369,7 @@ export function MemberList({
   };
 
   // Bulk Update Handlers
-  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount" | "activeReleaseAmount" | "notes", value: string) => {
+  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "processingFee" | "daysCount" | "activeReleaseAmount" | "notes", value: string) => {
     if (field === "daysCount") {
         if (value !== "" && !/^\d*$/.test(value)) return;
     } else if (field === "notes") {
@@ -367,7 +381,7 @@ export function MemberList({
     setUpdates((prev) => ({
       ...prev,
       [memberId]: {
-        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", activeReleaseAmount: "", notes: "" }),
+        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", processingFee: "", daysCount: "", activeReleaseAmount: "", notes: "" }),
         [field]: value,
       },
     }));
@@ -408,6 +422,7 @@ export function MemberList({
           (u) =>
             u.balanceDeduct ||
             u.savingsIncrease ||
+            u.processingFee ||
             u.daysCount ||
             u.activeReleaseAmount ||
             u.notes,
@@ -858,6 +873,7 @@ export function MemberList({
     (u) =>
       u.balanceDeduct !== "" ||
       u.savingsIncrease !== "" ||
+      u.processingFee !== "" ||
       u.daysCount !== "" ||
       u.activeReleaseAmount !== "" ||
       u.notes !== "",
@@ -1043,6 +1059,7 @@ export function MemberList({
                                     <th className="px-4 py-3 font-semibold w-24">Payment</th>
                                     <th className="px-4 py-3 font-semibold w-24">Savings</th>
                                     <th className="px-4 py-3 font-semibold w-20">Days</th>
+                                    <th className="px-4 py-3 font-semibold w-20">PF</th>
                                 </>
                             )}
                             <th className="px-4 py-3 font-semibold text-right">Actions</th>
@@ -1184,6 +1201,16 @@ export function MemberList({
                                                     onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
                                                 />
                                             </td>
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="0"
+                                                    className="w-full min-w-[60px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-amber-500 focus:outline-none"
+                                                    value={updates[member.id]?.processingFee ?? (member.latestTodayProcessingFee != null ? String(member.latestTodayProcessingFee) : "")}
+                                                    onChange={(e) => handleBulkChange(member.id, "processingFee", e.target.value)}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
+                                                />
+                                            </td>
                                         </>
                                     )}
 
@@ -1247,6 +1274,9 @@ export function MemberList({
                                             {totals.paymentSavings.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                         </td>
                                         <td className="px-4 py-3" />
+                                        <td className="px-4 py-3 text-right font-mono text-slate-900">
+                                            {totals.pf.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                        </td>
                                     </>
                                 )}
                                 <td className="px-4 py-3" />
@@ -1448,6 +1478,46 @@ export function MemberList({
                                             </div>
                                         </div>
                                     </div>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Processing Fee History</h3>
+                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                            {viewMember.processingFees && viewMember.processingFees.length > 0 ? (
+                                                <table className="w-full text-sm text-left text-slate-500">
+                                                    <thead className="bg-slate-50 text-slate-700">
+                                                        <tr>
+                                                            <th className="px-3 py-2 font-medium">Date</th>
+                                                            <th className="px-3 py-2 text-right font-medium">Amount</th>
+                                                            <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-200 bg-white">
+                                                        {viewMember.processingFees.map((pf) => (
+                                                            <tr key={pf.id}>
+                                                                <td className="px-3 py-2">
+                                                                    {formatDateManila(pf.createdAt)}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {Number(pf.amount).toLocaleString('en-US', {
+                                                                        style: 'currency',
+                                                                        currency: 'PHP',
+                                                                        minimumFractionDigits: 0,
+                                                                    })}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    {pf.encodedBy.name}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-slate-500">
+                                                    No processing fee history.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                                         <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Active Release History</h3>
                                         <div className="rounded-lg border border-slate-200 overflow-hidden">

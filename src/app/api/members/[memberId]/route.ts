@@ -48,6 +48,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         activeReleases: {
           orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
         },
+        processingFees: {
+          orderBy: { createdAt: "desc" },
+          include: { encodedBy: { select: { name: true } } }
+        },
       }
     });
 
@@ -79,6 +83,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         amount: Number(r.amount),
         releaseDate: r.releaseDate instanceof Date ? r.releaseDate.toISOString() : r.releaseDate,
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+      })),
+      processingFees: (member as any).processingFees.map((pf: any) => ({
+        ...pf,
+        amount: Number(pf.amount),
+        createdAt: pf.createdAt instanceof Date ? pf.createdAt.toISOString() : pf.createdAt,
       })),
       latestCycle: (member as any).cycles[0] || null,
       cycles: (member as any).cycles.map((c: any) => ({
