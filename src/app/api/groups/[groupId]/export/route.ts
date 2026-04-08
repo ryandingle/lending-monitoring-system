@@ -47,6 +47,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
 
   const { groupId } = await ctx.params;
   const { from: dateFromRaw, to: dateTo } = parseDateRange(req);
+  const url = new URL(req.url);
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const isPreview = url.searchParams.get("preview") === "true";
 
   if (!dateFromRaw || !dateTo) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -168,14 +171,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   }
 
   const reportData = {
+    groupId,
     groupName: group.name,
     dateRange: `${new Date(dateFrom).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })} - ${new Date(dateTo).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}`,
     dayColumns,
     members: membersData,
     totals,
     companyName: "Triple E Microfinance",
-    logoUrl: logoBinary ?? undefined,
+    logoUrl: format === "json" ? undefined : (logoBinary ?? undefined),
   };
+
+  if (format === "json") {
+    return NextResponse.json(reportData);
+  }
 
   // --- RENDER PDF ---
   const stream = await renderToStream(React.createElement(CollectionReportPdf, { data: reportData }) as any);
@@ -210,7 +218,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${isPreview ? "inline" : "attachment"}; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { IconSearch, IconChevronUp, IconChevronDown } from "../_components/icons";
+import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText } from "../_components/icons";
 
 type Group = { id: string; name: string; _count: { members: number } };
 type Member = { id: string; firstName: string; lastName: string };
@@ -94,6 +94,29 @@ export function ReportsClient({
   const [memberSort, setMemberSort] = useState<"asc" | "desc">("asc");
 
   const [officerDate, setOfficerDate] = useState(to);
+
+  // Preview Modal State
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<"group" | "officer" | "member" | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const handleView = async (type: "group" | "officer" | "member", id: string) => {
+    setPreviewType(type);
+    let url = "";
+    if (type === "group") {
+      url = `/api/groups/${id}/export?from=${from}&to=${to}&preview=true`;
+    } else if (type === "officer") {
+      url = `/api/employees/${id}/collection-report?from=${officerDate}&to=${officerDate}&preview=true`;
+    } else if (type === "member") {
+      url = `/api/members/${id}/export?from=${from}&to=${to}&preview=true`;
+    }
+    setPreviewUrl(url);
+  };
+
+  const closePreview = () => {
+    setPreviewUrl(null);
+    setPreviewType(null);
+  };
 
   const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const officerQuery = `from=${encodeURIComponent(officerDate)}&to=${encodeURIComponent(
@@ -226,7 +249,15 @@ export function ReportsClient({
                   <td className="py-2 pr-4 text-center text-slate-600">
                     {g._count?.members || 0}
                   </td>
-                  <td className="py-2 pr-0 text-right">
+                  <td className="py-2 pr-0 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => handleView("group", g.id)}
+                      disabled={isPreviewLoading}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      <IconEye className="h-4 w-4" />
+                      View
+                    </button>
                     <a
                       href={`/api/groups/${g.id}/export?${query}`}
                       title="Download group report (PDF)"
@@ -238,7 +269,7 @@ export function ReportsClient({
                 </tr>
               ))}
               {groups.length === 0 && !isGroupsLoading ? (
-                <tr>
+                <tr key="empty-groups">
                   <td className="py-4 text-slate-500" colSpan={2}>
                     No groups found.
                   </td>
@@ -313,7 +344,15 @@ export function ReportsClient({
                         </div>
                       </div>
                     </td>
-                    <td className="py-2 pr-0 text-right">
+                    <td className="py-2 pr-0 text-right flex justify-end gap-2">
+                      <button
+                        onClick={() => handleView("officer", o.id)}
+                        disabled={isPreviewLoading}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        <IconEye className="h-4 w-4" />
+                        View
+                      </button>
                       <a
                         href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
                         title="Download daily collection report (PDF)"
@@ -325,7 +364,7 @@ export function ReportsClient({
                   </tr>
                 ))}
                 {initialOfficers.length === 0 ? (
-                  <tr>
+                  <tr key="empty-officers">
                     <td className="py-4 text-slate-500" colSpan={2}>
                       No collection officers found.
                     </td>
@@ -394,7 +433,15 @@ export function ReportsClient({
                       {m.lastName}, {m.firstName}
                     </Link>
                   </td>
-                  <td className="py-2 pr-0 text-right">
+                  <td className="py-2 pr-0 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => handleView("member", m.id)}
+                      disabled={isPreviewLoading}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      <IconEye className="h-4 w-4" />
+                      View
+                    </button>
                     <a
                       href={`/api/members/${m.id}/export?${query}`}
                       title="Download member report (PDF)"
@@ -406,7 +453,7 @@ export function ReportsClient({
                 </tr>
               ))}
               {members.length === 0 && !isMembersLoading ? (
-                <tr>
+                <tr key="empty-members">
                   <td className="py-4 text-slate-500" colSpan={2}>
                     No members found.
                   </td>
@@ -424,6 +471,70 @@ export function ReportsClient({
           className="mt-4 border-t border-slate-200 pt-4"
         />
       </div>
+
+      {/* Preview Modal */}
+      {previewType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="flex h-full max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {previewType === "group" && "Group Report Preview"}
+                  {previewType === "officer" && "Daily Collection Preview"}
+                  {previewType === "member" && "Member Ledger Preview"}
+                </h3>
+                <p className="text-sm text-slate-500">
+                  {previewType === "officer" ? officerDate : `${from} - ${to}`}
+                </p>
+              </div>
+              <button
+                onClick={closePreview}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <IconX className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 bg-slate-100 p-4">
+              {previewUrl ? (
+                <iframe
+                  src={previewUrl}
+                  className="h-full w-full rounded-lg border border-slate-200 bg-white shadow-sm"
+                  title="Report Preview"
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"></div>
+                  <p className="text-sm font-medium text-slate-500">Generating preview...</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+              <button
+                onClick={closePreview}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Close
+              </button>
+              {previewUrl && (
+                <a
+                  href={previewUrl.replace("&preview=true", "")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
+                >
+                  <IconFileText className="h-4 w-4" />
+                  Download PDF
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

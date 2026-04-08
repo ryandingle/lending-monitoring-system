@@ -40,6 +40,9 @@ export async function GET(
 
   const { memberId } = await ctx.params;
   const { from: dateFromStr, to: dateToStr } = parseDateRange(req);
+  const url = new URL(req.url, "http://localhost");
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const isPreview = url.searchParams.get("preview") === "true";
 
   if (!dateFromStr || !dateToStr) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -161,7 +164,7 @@ export async function GET(
     totalPayments: totalPaymentsPeriod,
     totalSavings: totalSavingsPeriod,
     companyName: "Triple E Microfinance",
-    logoUrl: await (async () => {
+    logoUrl: format === "json" ? undefined : await (async () => {
       try {
         const logoPath = path.join(process.cwd(), "public", "logo.jpg");
         const buf = await fs.promises.readFile(logoPath);
@@ -171,6 +174,10 @@ export async function GET(
       }
     })(),
   };
+
+  if (format === "json") {
+    return NextResponse.json(reportData);
+  }
 
   // --- GENERATE PDF ---
   const stream = await renderToStream(React.createElement(MemberReportPdf, { data: reportData }) as any);
@@ -207,7 +214,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${isPreview ? "inline" : "attachment"}; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

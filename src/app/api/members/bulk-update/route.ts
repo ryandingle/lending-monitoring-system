@@ -1,245 +1,194 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole, requireUser } from "@/lib/auth/session";
-import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
+import { requireUser, requireRole } from "@/lib/auth/session";
+import { Role } from "@prisma/client";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { revalidatePath } from "next/cache";
-import { getManilaBusinessDate, getManilaStartOfDay } from "@/lib/date";
+import { getManilaBusinessDate, getManilaDateRange, formatDateYMD } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
-  const body = await req.json();
-  const { updates } = body as {
-    updates: {
-      memberId: string;
-      balanceDeduct: string;
-      savingsIncrease: string;
-      daysCount: string;
-      notes?: string;
-      activeReleaseAmount?: string;
-    }[];
-  };
-
-  if (!updates || !Array.isArray(updates)) {
-    return NextResponse.json({ error: "Invalid updates data" }, { status: 400 });
-  }
+  const { updates } = await req.json();
 
   const request = await tryGetAuditRequestContext();
-  
-  // Use Manila time for "start of today" to ensure we check against the correct day boundary
-  const startOfToday = getManilaStartOfDay();
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
 
-  const adjustmentDate = getManilaBusinessDate();
-
-  const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+  const errors: { memberId: string; message: string; type: "balance" | "savings" | "processingFee" }[] = [];
   const warnings: { memberId: string; message: string }[] = [];
 
-  try {
+  await prisma.$transaction(async (tx) => {
     for (const update of updates) {
+      const member = await tx.member.findUnique({
+        where: { id: update.memberId },
+        select: { id: true, firstName: true, lastName: true, balance: true, savings: true, daysCount: true },
+      });
+      if (!member) continue;
+
       const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
       const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
-      const activeReleaseAmount = parseFloat(update.activeReleaseAmount ?? "") || 0;
+      const processingFee = parseFloat(update.processingFee) || 0;
       const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
       const noteContent = update.notes?.trim() || "";
 
-      // Skip if absolutely no data provided for this member
-      if (balanceDeduct === 0 && savingsIncrease === 0 && activeReleaseAmount === 0 && newDaysCount === null && noteContent === "") {
-        continue;
+      if (noteContent !== "") {
+        await (tx as any).memberNote.create({
+          data: {
+            memberId: member.id,
+            content: noteContent,
+            createdAt: businessDate,
+          },
+        });
       }
 
-      await prisma.$transaction(async (tx) => {
-         const member = await tx.member.findUnique({
-           where: { id: update.memberId },
-           select: {
-             id: true,
-             firstName: true,
-             lastName: true,
-             balance: true,
-             savings: true,
-             daysCount: true,
-           },
-         });
-         if (!member) {
-           return;
-         }
+      if (processingFee > 0) {
+        await (tx as any).processingFee.create({
+          data: {
+            memberId: member.id,
+            encodedById: actor.id,
+            amount: processingFee,
+            createdAt: businessDate,
+          },
+        });
+      }
 
-         if (noteContent !== "") {
-          await (tx as any).memberNote.create({
-            data: {
-              memberId: member.id,
-              content: noteContent,
-              createdAt: adjustmentDate,
-            },
-          });
-        }
+      if (balanceDeduct > 0) {
+        const alreadyUpdated = await tx.balanceAdjustment.findFirst({
+          where: {
+            memberId: member.id,
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
+          },
+        });
 
-        if (balanceDeduct > 0) {
-          const alreadyUpdated = await tx.balanceAdjustment.findFirst({
-            where: {
-              memberId: member.id,
-              createdAt: { gte: startOfToday },
-            },
-          });
-
-          if (alreadyUpdated) {
-            await createAuditLog(tx, {
-              actorUserId: actor.id,
-              action: "ATTEMPT_MULTIPLE_BALANCE_UPDATE",
-              entityType: "Member",
-              entityId: member.id,
-              metadata: { attempt: balanceDeduct, memberName: `${member.firstName} ${member.lastName}` },
-              request,
-            });
-            errors.push({
-              memberId: member.id,
-              type: "balance",
-              message: `Balance for ${member.firstName} has already been updated today.`,
-            });
-          } else {
-            const balanceBefore = member.balance;
-            const balanceAfter = balanceBefore.minus(balanceDeduct);
-
-            const shouldIncrementDays = newDaysCount === null;
-            const finalDaysCount = shouldIncrementDays ? member.daysCount + 1 : newDaysCount;
-
-            await tx.member.update({
-              where: { id: member.id },
-              data: {
-                balance: balanceAfter,
-                daysCount: finalDaysCount,
-              },
-            });
-
-            await tx.balanceAdjustment.create({
-              data: {
-                memberId: member.id,
-                encodedById: actor.id,
-                type: BalanceUpdateType.DEDUCT,
-                amount: balanceDeduct,
-                balanceBefore,
-                balanceAfter,
-                createdAt: adjustmentDate,
-              },
-            });
-
-            if (shouldIncrementDays) {
-              update.daysCount = String(finalDaysCount);
-            }
-
-            if (finalDaysCount >= 40) {
-              warnings.push({
-                memberId: member.id,
-                message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`,
-              });
-
-              await createAuditLog(tx, {
-                actorUserId: actor.id,
-                action: "MEMBER_REACHED_40_DAYS",
-                entityType: "Member",
-                entityId: member.id,
-                metadata: { daysCount: finalDaysCount },
-                request,
-              });
-            }
-          }
-        }
-
-        if (savingsIncrease > 0) {
-          const alreadyUpdated = await tx.savingsAdjustment.findFirst({
-            where: {
-              memberId: member.id,
-              createdAt: { gte: startOfToday },
-            },
-          });
-
-          if (alreadyUpdated) {
-            await createAuditLog(tx, {
-              actorUserId: actor.id,
-              action: "ATTEMPT_MULTIPLE_SAVINGS_UPDATE",
-              entityType: "Member",
-              entityId: member.id,
-              metadata: { attempt: savingsIncrease, memberName: `${member.firstName} ${member.lastName}` },
-              request,
-            });
-            errors.push({
-              memberId: member.id,
-              type: "savings",
-              message: `Savings for ${member.firstName} has already been updated today.`,
-            });
-          } else {
-            const savingsBefore = member.savings;
-            const savingsAfter = savingsBefore.plus(savingsIncrease);
-
-            await tx.member.update({
-              where: { id: member.id },
-              data: { savings: savingsAfter },
-            });
-
-            await tx.savingsAdjustment.create({
-              data: {
-                memberId: member.id,
-                encodedById: actor.id,
-                type: SavingsUpdateType.INCREASE,
-                amount: savingsIncrease,
-                savingsBefore,
-                savingsAfter,
-                createdAt: adjustmentDate,
-              },
-            });
-          }
-        }
-
-        if (activeReleaseAmount > 0) {
-          await tx.activeRelease.create({
-            data: {
-              memberId: member.id,
-              amount: activeReleaseAmount,
-              releaseDate: adjustmentDate,
-            },
-          });
-
+        if (alreadyUpdated) {
           await createAuditLog(tx, {
             actorUserId: actor.id,
-            action: "ACTIVE_RELEASE_CREATE",
+            action: "ATTEMPT_MULTIPLE_BALANCE_UPDATE",
             entityType: "Member",
             entityId: member.id,
-            metadata: { amount: activeReleaseAmount, releaseDate: adjustmentDate.toISOString() },
+            metadata: { attempt: balanceDeduct, memberName: `${member.firstName} ${member.lastName}` },
             request,
           });
-        }
+          errors.push({
+            memberId: member.id,
+            type: "balance",
+            message: `Balance for ${member.firstName} has already been updated today.`
+          });
+        } else {
+          const balanceBefore = member.balance;
+          const balanceAfter = balanceBefore.minus(balanceDeduct);
 
-        if (newDaysCount !== null && newDaysCount !== member.daysCount) {
+          const shouldIncrementDays = newDaysCount === null;
+          const finalDaysCount = shouldIncrementDays ? member.daysCount + 1 : newDaysCount;
+
           await tx.member.update({
             where: { id: member.id },
-            data: { daysCount: newDaysCount },
+            data: {
+              balance: balanceAfter,
+              daysCount: finalDaysCount,
+            },
           });
-        }
 
-        if (
-          (balanceDeduct > 0 ||
-            savingsIncrease > 0 ||
-            newDaysCount !== null ||
-            activeReleaseAmount > 0 ||
-            noteContent !== "") &&
-          !errors.some((e) => e.memberId === member.id)
-        ) {
+          await tx.balanceAdjustment.create({
+            data: {
+              memberId: member.id,
+              encodedById: actor.id,
+              type: "DEDUCT",
+              amount: balanceDeduct,
+              balanceBefore,
+              balanceAfter,
+              createdAt: businessDate,
+            },
+          });
+
+          if (shouldIncrementDays) {
+            update.daysCount = String(finalDaysCount);
+          }
+          
+          if (finalDaysCount >= 40) {
+            warnings.push({
+              memberId: member.id,
+              message: `${member.firstName} ${member.lastName} has reached ${finalDaysCount} days.`
+            });
+            
+            await createAuditLog(tx, {
+              actorUserId: actor.id,
+              action: "MEMBER_REACHED_40_DAYS",
+              entityType: "Member",
+              entityId: member.id,
+              metadata: { daysCount: finalDaysCount },
+              request,
+            });
+          }
+        }
+      }
+
+      if (savingsIncrease > 0) {
+        const alreadyUpdated = await tx.savingsAdjustment.findFirst({
+          where: {
+            memberId: member.id,
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
+          },
+        });
+
+        if (alreadyUpdated) {
           await createAuditLog(tx, {
             actorUserId: actor.id,
-            action: "MEMBER_BULK_UPDATE",
+            action: "ATTEMPT_MULTIPLE_SAVINGS_UPDATE",
             entityType: "Member",
             entityId: member.id,
-            metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount, hasNotes: noteContent !== "" },
+            metadata: { attempt: savingsIncrease, memberName: `${member.firstName} ${member.lastName}` },
             request,
           });
-        }
-      });
-    }
+          errors.push({
+            memberId: member.id,
+            type: "savings",
+            message: `Savings for ${member.firstName} has already been updated today.`
+          });
+        } else {
+          const savingsBefore = member.savings;
+          const savingsAfter = savingsBefore.plus(savingsIncrease);
 
-    return NextResponse.json({ success: errors.length === 0, errors, warnings });
-  } catch (error) {
-    console.error("Error performing bulk update:", error);
-    return NextResponse.json({ error: "Failed to perform bulk update" }, { status: 500 });
-  }
+          await tx.member.update({
+            where: { id: member.id },
+            data: { savings: savingsAfter },
+          });
+
+          await tx.savingsAdjustment.create({
+            data: {
+              memberId: member.id,
+              encodedById: actor.id,
+              type: "INCREASE",
+              amount: savingsIncrease,
+              savingsBefore,
+              savingsAfter,
+              createdAt: businessDate,
+            },
+          });
+        }
+      }
+
+      if (newDaysCount !== null && newDaysCount !== member.daysCount) {
+        await tx.member.update({
+          where: { id: member.id },
+          data: { daysCount: newDaysCount },
+        });
+      }
+
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
+        await createAuditLog(tx, {
+          actorUserId: actor.id,
+          action: "MEMBER_BULK_UPDATE",
+          entityType: "Member",
+          entityId: member.id,
+          metadata: { balanceDeduct, savingsIncrease, processingFee, daysCount: newDaysCount, hasNotes: noteContent !== "" },
+          request,
+        });
+      }
+    }
+  });
+
+  return NextResponse.json({ success: errors.length === 0, errors, warnings });
 }

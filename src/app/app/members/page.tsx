@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import { MembersClient } from "./members-client";
+import { getManilaBusinessDate, getManilaDateRange, formatDateYMD } from "@/lib/date";
 
 export default async function MembersPage({
   searchParams,
@@ -19,6 +20,10 @@ export default async function MembersPage({
   const user = await requireUser();
   requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
   const sp = await searchParams;
+
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
 
   const q = (sp.q ?? "").trim();
   const groupId = (sp.groupId ?? "").trim() || undefined;
@@ -66,13 +71,32 @@ export default async function MembersPage({
             balanceAdjustments: true,
             savingsAdjustments: true,
             notes: true,
-          },
         },
-        cycles: {
+      },
+      balanceAdjustments: {
+        where: {
+          type: "DEDUCT",
+          createdAt: { gte: todayRange.from, lte: todayRange.to },
+        },
+        select: { amount: true },
+      },
+      savingsAdjustments: {
+        where: {
+          type: "INCREASE",
+          createdAt: { gte: todayRange.from, lte: todayRange.to },
+        },
+        select: { amount: true },
+      },
+      cycles: {
           orderBy: [{ startDate: "desc" }, { cycleNumber: "desc" }],
           take: 1,
         },
         notes: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        processingFees: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
           orderBy: { createdAt: "desc" },
           take: 1,
         },
@@ -97,6 +121,18 @@ export default async function MembersPage({
     groupId: m.groupId,
     group: m.group ? { id: m.group.id, name: m.group.name } : null,
     daysCount: m.daysCount,
+    todayPayment: Array.isArray(m.balanceAdjustments)
+      ? m.balanceAdjustments.reduce(
+          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+          0,
+        )
+      : 0,
+    todaySavings: Array.isArray(m.savingsAdjustments)
+      ? m.savingsAdjustments.reduce(
+          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+          0,
+        )
+      : 0,
     _count: {
       balanceAdjustments: m._count.balanceAdjustments,
       savingsAdjustments: m._count.savingsAdjustments,
@@ -108,6 +144,7 @@ export default async function MembersPage({
       endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
     } : null,
     latestNote: m.notes?.[0]?.content || "",
+    latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
   }));
 
   return (

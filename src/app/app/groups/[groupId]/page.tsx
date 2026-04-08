@@ -40,7 +40,7 @@ async function deleteMemberAction(groupId: string, memberId: string) {
   redirect(`/app/groups/${groupId}?deleted=1`);
 }
 
-async function onBulkUpdate(groupId: string, updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string; notes?: string }[]) {
+async function onBulkUpdate(groupId: string, updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; notes?: string }[]) {
   "use server";
   const actor = await requireUser();
   requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
@@ -50,7 +50,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
   const todayStr = formatDateYMD(businessDate);
   const todayRange = getManilaDateRange(todayStr, todayStr);
 
-  const errors: { memberId: string; message: string; type: "balance" | "savings" }[] = [];
+  const errors: { memberId: string; message: string; type: "balance" | "savings" | "processingFee" }[] = [];
   const warnings: { memberId: string; message: string }[] = [];
 
   await prisma.$transaction(async (tx) => {
@@ -63,6 +63,7 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
 
       const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
       const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
+      const processingFee = parseFloat(update.processingFee) || 0;
       const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
       const noteContent = update.notes?.trim() || "";
 
@@ -71,6 +72,17 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
           data: {
             memberId: member.id,
             content: noteContent,
+            createdAt: businessDate,
+          },
+        });
+      }
+
+      if (processingFee > 0) {
+        await (tx as any).processingFee.create({
+          data: {
+            memberId: member.id,
+            encodedById: actor.id,
+            amount: processingFee,
             createdAt: businessDate,
           },
         });
@@ -199,13 +211,13 @@ async function onBulkUpdate(groupId: string, updates: { memberId: string; balanc
         });
       }
 
-      if ((balanceDeduct > 0 || savingsIncrease > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
         await createAuditLog(tx, {
           actorUserId: actor.id,
           action: "MEMBER_BULK_UPDATE",
           entityType: "Member",
           entityId: member.id,
-          metadata: { balanceDeduct, savingsIncrease, daysCount: newDaysCount, hasNotes: noteContent !== "" },
+          metadata: { balanceDeduct, savingsIncrease, processingFee, daysCount: newDaysCount, hasNotes: noteContent !== "" },
           request,
         });
       }
@@ -232,6 +244,10 @@ export default async function GroupDetailsPage({
   requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
   const { groupId } = await params;
   const sp = await searchParams;
+
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
 
   const page = parseInt(sp.page ?? "1") || 1;
   const limit = parseInt(sp.limit ?? "50") || 50;
@@ -261,15 +277,34 @@ export default async function GroupDetailsPage({
           notes: true,
         },
       },
+      balanceAdjustments: {
+        where: {
+          type: "DEDUCT",
+          createdAt: { gte: todayRange.from, lte: todayRange.to },
+        },
+        select: { amount: true },
+      },
+      savingsAdjustments: {
+        where: {
+          type: "INCREASE",
+          createdAt: { gte: todayRange.from, lte: todayRange.to },
+        },
+        select: { amount: true },
+      },
       cycles: {
         orderBy: { cycleNumber: "desc" },
         take: 1,
       },
       notes: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    } as any,
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        processingFees: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      } as any,
     orderBy: { lastName: sort },
     skip: (page - 1) * limit,
     take: limit,
@@ -301,6 +336,18 @@ export default async function GroupDetailsPage({
     groupId: m.groupId,
     group: { id: group.id, name: group.name },
     daysCount: m.daysCount,
+    todayPayment: Array.isArray(m.balanceAdjustments)
+      ? m.balanceAdjustments.reduce(
+          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+          0,
+        )
+      : 0,
+    todaySavings: Array.isArray(m.savingsAdjustments)
+      ? m.savingsAdjustments.reduce(
+          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+          0,
+        )
+      : 0,
     age: m.age,
     address: m.address,
     phoneNumber: m.phoneNumber,
@@ -315,6 +362,7 @@ export default async function GroupDetailsPage({
       endDate: m.cycles[0].endDate instanceof Date ? m.cycles[0].endDate.toISOString() : (m.cycles[0].endDate || null),
     } : null,
     latestNote: m.notes?.[0]?.content || "",
+    latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
   }));
 
   return (

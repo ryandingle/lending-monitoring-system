@@ -42,7 +42,7 @@ export function MemberBulkEditTable({
 }: {
     initialMembers: Member[];
     user: User;
-    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; daysCount: string; notes?: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[], warnings?: { memberId: string, message: string }[] }>;
+    onBulkUpdate: (updates: { memberId: string; balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; notes?: string }[]) => Promise<{ success: boolean, errors?: { memberId: string, message: string, type: string }[], warnings?: { memberId: string, message: string }[] }>;
     deleteMemberAction: (memberId: string) => Promise<void>;
     groupId?: string;
     groupName?: string;
@@ -60,7 +60,7 @@ export function MemberBulkEditTable({
     const pathname = usePathname();
     const searchParams = useSearchParams();
     
-    const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; daysCount: string; notes: string }>>({});
+    const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; notes: string }>>({});
     const [errors, setErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
     const [warnings, setWarnings] = useState<{ memberId: string; message: string }[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -86,7 +86,7 @@ export function MemberBulkEditTable({
         router.push(`${pathname}?${newParams.toString()}`);
     };
 
-    const handleChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "daysCount" | "notes", value: string) => {
+    const handleChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "processingFee" | "daysCount" | "notes", value: string) => {
         // Only allow numbers and decimal point for balance/savings, integers for daysCount
         if (field === "daysCount") {
             if (value !== "" && !/^\d*$/.test(value)) return;
@@ -99,13 +99,13 @@ export function MemberBulkEditTable({
         setUpdates((prev) => ({
             ...prev,
             [memberId]: {
-                ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", notes: "" }),
+                ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", processingFee: "", daysCount: "", notes: "" }),
                 [field]: value,
             },
         }));
     };
 
-    const hasChanges = Object.values(updates).some((u) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.daysCount !== "" || u.notes !== "");
+    const hasChanges = Object.values(updates).some((u) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.processingFee !== "" || u.daysCount !== "" || u.notes !== "");
 
     const handleSave = async () => {
         if (!hasChanges || isSaving) return;
@@ -115,11 +115,12 @@ export function MemberBulkEditTable({
         setShowSuccess(false);
         try {
             const payload = Object.entries(updates)
-                .filter(([_, u]) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.daysCount !== "" || u.notes !== "")
+                .filter(([_, u]) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.processingFee !== "" || u.daysCount !== "" || u.notes !== "")
                 .map(([id, u]) => ({
                     memberId: id,
                     balanceDeduct: u.balanceDeduct || "0",
                     savingsIncrease: u.savingsIncrease || "0",
+                    processingFee: u.processingFee || "0",
                     daysCount: u.daysCount || "",
                     notes: u.notes || "",
                 }));
@@ -228,12 +229,13 @@ export function MemberBulkEditTable({
                                 <th className="w-24 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-emerald-600 text-right">Add (+)</th>
                                 <th className="w-40 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-left">Notes</th>
                                 <th className="w-20 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-center">Days</th>
+                                <th className="w-20 border-b border-r border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-amber-600 text-right">PF</th>
                                 <th className="w-32 border-b border-slate-200 px-3 py-2 font-semibold uppercase tracking-wider text-slate-700 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {initialMembers.map((m) => {
-                                const u = updates[m.id] || { balanceDeduct: "", savingsIncrease: "", daysCount: "", notes: "" };
+                                const u = updates[m.id] || { balanceDeduct: "", savingsIncrease: "", processingFee: "", daysCount: "", notes: "" };
                                 const memberErrors = errors.filter(e => e.memberId === m.id);
                                 const memberCreatedAt = new Date(m.createdAt);
 
@@ -290,6 +292,16 @@ export function MemberBulkEditTable({
                                                 onChange={(e) => handleChange(m.id, "daysCount", e.target.value)}
                                                 placeholder={String(m.daysCount)}
                                                 className="w-full bg-transparent px-2 py-1 text-center font-mono outline-none placeholder:text-slate-400 focus:bg-slate-200 rounded text-slate-900"
+                                            />
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 px-1 py-1 transition-colors group-hover:border-blue-500/30 bg-amber-500/5">
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={u.processingFee}
+                                                onChange={(e) => handleChange(m.id, "processingFee", e.target.value)}
+                                                placeholder="0"
+                                                className="w-full bg-transparent px-2 py-1 text-right font-mono outline-none placeholder:text-amber-200 focus:bg-amber-500/10 rounded text-amber-600"
                                             />
                                         </td>
                                         <td className="border-b border-slate-200 px-3 py-2 transition-colors group-hover:border-blue-500/30">
