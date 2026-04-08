@@ -56,6 +56,9 @@ export async function GET(
 
   const { id } = await ctx.params;
   const { from: dateFrom, to: dateTo } = parseDateRange(req);
+  const url = new URL(req.url);
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const isPreview = url.searchParams.get("preview") === "true";
 
   if (!dateFrom || !dateTo) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -180,14 +183,19 @@ export async function GET(
           day: "2-digit",
         })}`;
 
-  const reportData: OfficerReportData = {
+  const reportData = {
+    officerId: id,
     officerName: `${employee.firstName} ${employee.lastName}`,
     dateLabel,
     groups: groupRows,
     totals,
     companyName: "Triple E Microfinance",
-    logoUrl: logoBinary ?? undefined,
+    logoUrl: format === "json" ? undefined : (logoBinary ?? undefined),
   };
+
+  if (format === "json") {
+    return NextResponse.json(reportData);
+  }
 
   const stream = await renderToStream(
     React.createElement(OfficerCollectionReportPdf, { data: reportData }) as any,
@@ -208,7 +216,7 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${isPreview ? "inline" : "attachment"}; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

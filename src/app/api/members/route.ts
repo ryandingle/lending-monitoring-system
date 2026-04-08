@@ -116,6 +116,16 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "desc" },
             take: 1,
           },
+          processingFees: {
+            where: {
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
         orderBy: { lastName: sort },
         skip: (page - 1) * limit,
@@ -171,6 +181,10 @@ export async function GET(req: NextRequest) {
             ? (Number(m.activeReleases[0].amount) || 0) 
             : null,
         latestNote: Array.isArray(m.notes) && m.notes.length > 0 ? m.notes[0].content : "",
+        latestTodayProcessingFee:
+          Array.isArray(m.processingFees) && m.processingFees.length > 0 && m.processingFees[0] != null
+            ? (Number(m.processingFees[0].amount) || 0)
+            : null,
       };
     });
 
