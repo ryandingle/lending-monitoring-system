@@ -1358,13 +1358,15 @@ export function MemberList({
                                             <div>
                                                 <div className="text-xs text-slate-500">Status</div>
                                                 <div className="text-slate-700">
-                                                    {viewMember.latestCycle ? (
-                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                            viewMember.latestCycle.endDate 
-                                                                ? "bg-slate-200 text-slate-600" 
-                                                                : "bg-emerald-100 text-emerald-700"
-                                                        }`}>
-                                                            {viewMember.latestCycle.endDate ? "Completed" : "Active"}
+                                                    {viewMember.status ? (
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                viewMember.status === "INACTIVE"
+                                                                    ? "bg-rose-100 text-rose-700"
+                                                                    : "bg-emerald-100 text-emerald-700"
+                                                            }`}
+                                                        >
+                                                            {viewMember.status === "INACTIVE" ? "Inactive" : "Active"}
                                                         </span>
                                                     ) : "-"}
                                                 </div>

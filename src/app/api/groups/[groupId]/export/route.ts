@@ -66,6 +66,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     where: { id: groupId },
     include: {
       members: {
+        where: { status: "ACTIVE" },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         include: {
           balanceAdjustments: {
