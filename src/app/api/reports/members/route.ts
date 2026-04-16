@@ -10,17 +10,19 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q")?.trim() || "";
   const sort = searchParams.get("sort") === "desc" ? "desc" : "asc";
 
-  // Search by first or last name
-  const where = q
-    ? {
-        OR: [
-          // @ts-ignore
-          { firstName: { contains: q, mode: "insensitive" } },
-          // @ts-ignore
-          { lastName: { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where = {
+    status: "ACTIVE",
+    ...(q
+      ? {
+          OR: [
+            // @ts-ignore
+            { firstName: { contains: q, mode: "insensitive" } },
+            // @ts-ignore
+            { lastName: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
 
   const [items, total] = await Promise.all([
     prisma.member.findMany({

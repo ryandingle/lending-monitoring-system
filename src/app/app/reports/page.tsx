@@ -42,12 +42,13 @@ export default async function ReportsPage({
     }),
     prisma.group.count(),
     prisma.member.findMany({
+      where: { status: "ACTIVE" },
       orderBy: { lastName: "asc" },
       select: { id: true, firstName: true, lastName: true },
       skip: 0,
       take: limit,
     }),
-    prisma.member.count(),
+    prisma.member.count({ where: { status: "ACTIVE" } }),
     prisma.employee.findMany({
       where: {
         groupsAsCollectionOfficer: {

@@ -73,6 +73,7 @@ export async function GET(
         orderBy: { name: "asc" },
         include: {
           members: {
+            where: { status: "ACTIVE" },
             include: {
               balanceAdjustments: {
                 where: {
