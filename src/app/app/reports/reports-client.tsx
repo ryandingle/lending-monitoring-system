@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText } from "../_components/icons";
 
-type Group = { id: string; name: string; _count: { members: number } };
+type Group = { id: string; name: string; activeMemberCount: number };
 type Member = { id: string; firstName: string; lastName: string };
 type Officer = {
   id: string;
@@ -247,7 +247,7 @@ export function ReportsClient({
                     </Link>
                   </td>
                   <td className="py-2 pr-4 text-center text-slate-600">
-                    {g._count?.members || 0}
+                    {g.activeMemberCount || 0}
                   </td>
                   <td className="py-2 pr-0 text-right flex justify-end gap-2">
                     <button
