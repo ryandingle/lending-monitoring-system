@@ -17,12 +17,9 @@ export async function GET(req: NextRequest) {
       // @ts-ignore
       where,
       orderBy: { name: "asc" },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         name: true,
-        _count: {
-          select: { members: true }
-        }
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -31,8 +28,28 @@ export async function GET(req: NextRequest) {
     prisma.group.count({ where }),
   ]);
 
+  const groupIds = items.map((g) => g.id);
+  const activeMemberCounts =
+    groupIds.length > 0
+      ? await prisma.member.groupBy({
+          by: ["groupId"],
+          where: {
+            groupId: { in: groupIds },
+            status: "ACTIVE",
+          },
+          _count: { _all: true },
+        })
+      : [];
+
+  const activeCountByGroupId = Object.fromEntries(
+    activeMemberCounts.map((row) => [row.groupId as string, row._count._all]),
+  );
+
   return NextResponse.json({
-    items,
+    items: items.map((g) => ({
+      ...g,
+      activeMemberCount: activeCountByGroupId[g.id] ?? 0,
+    })),
     total,
     pages: Math.ceil(total / limit),
     page,
