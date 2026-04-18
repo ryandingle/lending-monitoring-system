@@ -27,16 +27,10 @@ export default async function ReportsPage({
 
   const limit = 20;
 
-  const [groups, totalGroups, members, totalMembers, officers] = await Promise.all([
+  const [groupsRaw, totalGroups, members, totalMembers, officers] = await Promise.all([
     prisma.group.findMany({
       orderBy: { name: "asc" },
-      select: { 
-        id: true, 
-        name: true,
-        _count: {
-          select: { members: true }
-        }
-      },
+      select: { id: true, name: true },
       skip: 0,
       take: limit,
     }),
@@ -69,6 +63,28 @@ export default async function ReportsPage({
       },
     }),
   ]);
+
+  const groupIds = groupsRaw.map((g) => g.id);
+  const activeMemberCounts =
+    groupIds.length > 0
+      ? await prisma.member.groupBy({
+          by: ["groupId"],
+          where: {
+            groupId: { in: groupIds },
+            status: "ACTIVE",
+          },
+          _count: { _all: true },
+        })
+      : [];
+
+  const activeCountByGroupId = Object.fromEntries(
+    activeMemberCounts.map((row) => [row.groupId as string, row._count._all]),
+  );
+
+  const groups = groupsRaw.map((g) => ({
+    ...g,
+    activeMemberCount: activeCountByGroupId[g.id] ?? 0,
+  }));
 
   return (
     <div className="space-y-6">
