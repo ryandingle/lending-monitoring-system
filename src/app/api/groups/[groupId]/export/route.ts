@@ -88,6 +88,33 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
             take: 1,
             select: { amount: true },
           },
+          processingFees: {
+            where: {
+              createdAt: {
+                gte: getManilaDateRange(dateFrom, dateTo).from,
+                lte: getManilaDateRange(dateFrom, dateTo).to,
+              },
+            },
+            select: { amount: true, createdAt: true },
+          },
+          passbookFees: {
+            where: {
+              createdAt: {
+                gte: getManilaDateRange(dateFrom, dateTo).from,
+                lte: getManilaDateRange(dateFrom, dateTo).to,
+              },
+            },
+            select: { amount: true, createdAt: true },
+          },
+          membershipFees: {
+            where: {
+              createdAt: {
+                gte: getManilaDateRange(dateFrom, dateTo).from,
+                lte: getManilaDateRange(dateFrom, dateTo).to,
+              },
+            },
+            select: { amount: true, createdAt: true },
+          },
         },
       },
     },
@@ -104,6 +131,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     activeReleaseAmount: 0,
     dailyPayments: {} as Record<string, number>,
     dailySavings: {} as Record<string, number>,
+    processingFee: 0,
+    passbookFee: 0,
+    membershipFee: 0,
     totalPayments: 0,
     totalSavings: 0,
   };
@@ -128,6 +158,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     const paymentsMap: Record<string, number> = {};
     const savingsMap: Record<string, number> = {};
 
+    const pfSum = Array.isArray(m.processingFees)
+      ? m.processingFees.reduce((s: number, pf: any) => s + toNumber(pf.amount), 0)
+      : 0;
+    const pbSum = Array.isArray(m.passbookFees)
+      ? m.passbookFees.reduce((s: number, pf: any) => s + toNumber(pf.amount), 0)
+      : 0;
+    const mfSum = Array.isArray(m.membershipFees)
+      ? m.membershipFees.reduce((s: number, pf: any) => s + toNumber(pf.amount), 0)
+      : 0;
+
     dayColumns.forEach((dateStr) => {
       const payments = m.balanceAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
       const savings = m.savingsAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
@@ -150,6 +190,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
 
     totals.totalPayments += memberTotalPayments;
     totals.totalSavings += memberTotalSavings;
+    totals.processingFee += pfSum;
+    totals.passbookFee += pbSum;
+    totals.membershipFee += mfSum;
 
     return {
       name: `${m.lastName}, ${m.firstName}`,
@@ -158,6 +201,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       activeReleaseAmount: latestActiveReleaseAmount,
       payments: paymentsMap,
       savings: savingsMap,
+      processingFee: pfSum,
+      passbookFee: pbSum,
+      membershipFee: mfSum,
       totalPayments: memberTotalPayments,
       totalSavings: memberTotalSavings,
     };

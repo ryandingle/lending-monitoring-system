@@ -60,13 +60,29 @@ export type Member = {
     createdAt: string;
     encodedBy: { name: string };
   }[];
+  passbookFees?: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    encodedBy: { name: string };
+  }[];
+  membershipFees?: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    encodedBy: { name: string };
+  }[];
   notes?: {
     id: string;
     content: string;
     createdAt: string;
   }[];
   latestNote?: string | null;
+  latestNoteCreatedAt?: string | null;
+  latestNoteIsToday?: boolean;
   latestTodayProcessingFee?: number | null;
+  latestTodayPassbookFee?: number | null;
+  latestTodayMembershipFee?: number | null;
   status?: string;
 };
 
@@ -114,7 +130,7 @@ export function MemberList({
   const [isLoading, setIsLoading] = useState(false);
   
   // Bulk Edit State
-  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; activeReleaseAmount: string; notes: string }>>({});
+  const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; passbookFee: string; membershipFee: string; daysCount: string; activeReleaseAmount: string; notes: string }>>({});
   const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const DRAFT_KEY = "member_list_bulk_draft";
 
@@ -241,9 +257,23 @@ export function MemberList({
           : m.latestTodayProcessingFee ?? 0;
       acc.pf += pfValue;
 
+      const pbInput = updates[m.id]?.passbookFee;
+      const pbValue =
+        pbInput !== undefined && pbInput !== ""
+          ? parseFloat(pbInput) || 0
+          : m.latestTodayPassbookFee ?? 0;
+      acc.pb += pbValue;
+
+      const mfInput = updates[m.id]?.membershipFee;
+      const mfValue =
+        mfInput !== undefined && mfInput !== ""
+          ? parseFloat(mfInput) || 0
+          : m.latestTodayMembershipFee ?? 0;
+      acc.mf += mfValue;
+
       return acc;
     },
-    { balance: 0, activeRelease: 0, savings: 0, payment: 0, paymentSavings: 0, pf: 0 },
+    { balance: 0, activeRelease: 0, savings: 0, payment: 0, paymentSavings: 0, pf: 0, pb: 0, mf: 0 },
   );
 
   // Confirmation Modal State
@@ -369,7 +399,7 @@ export function MemberList({
   };
 
   // Bulk Update Handlers
-  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "processingFee" | "daysCount" | "activeReleaseAmount" | "notes", value: string) => {
+  const handleBulkChange = (memberId: string, field: "balanceDeduct" | "savingsIncrease" | "processingFee" | "passbookFee" | "membershipFee" | "daysCount" | "activeReleaseAmount" | "notes", value: string) => {
     if (field === "daysCount") {
         if (value !== "" && !/^\d*$/.test(value)) return;
     } else if (field === "notes") {
@@ -381,7 +411,7 @@ export function MemberList({
     setUpdates((prev) => ({
       ...prev,
       [memberId]: {
-        ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", processingFee: "", daysCount: "", activeReleaseAmount: "", notes: "" }),
+          ...(prev[memberId] || { balanceDeduct: "", savingsIncrease: "", processingFee: "", passbookFee: "", membershipFee: "", daysCount: "", activeReleaseAmount: "", notes: "" }),
         [field]: value,
       },
     }));
@@ -423,6 +453,8 @@ export function MemberList({
             u.balanceDeduct ||
             u.savingsIncrease ||
             u.processingFee ||
+            u.passbookFee ||
+            u.membershipFee ||
             u.daysCount ||
             u.activeReleaseAmount ||
             u.notes,
@@ -874,13 +906,17 @@ export function MemberList({
       u.balanceDeduct !== "" ||
       u.savingsIncrease !== "" ||
       u.processingFee !== "" ||
+      u.passbookFee !== "" ||
+      u.membershipFee !== "" ||
       u.daysCount !== "" ||
       u.activeReleaseAmount !== "" ||
       u.notes !== "",
   );
 
+  const tableColSpan = 9 + (fixedGroupId ? 0 : 1) + (canBulkUpdate ? 6 : 0);
+
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
@@ -1035,10 +1071,25 @@ export function MemberList({
             )}
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm border border-emerald-300 bg-emerald-200" />
+                <span>Updated today</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm border border-blue-300 bg-blue-200" />
+                <span>New member</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm border border-red-300 bg-red-200" />
+                <span>Zero balance</span>
+            </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="min-h-0 overflow-auto">
                 <table className="w-full text-left text-sm text-slate-500">
-                    <thead className="bg-slate-50 text-slate-700 border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 border-b border-slate-200">
                         <tr>
                             <th className="px-4 py-3 font-semibold text-center w-12">No.</th>
                             <th className="px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100" onClick={handleSortToggle}>
@@ -1060,6 +1111,8 @@ export function MemberList({
                                     <th className="px-4 py-3 font-semibold w-24">Savings</th>
                                     <th className="px-4 py-3 font-semibold w-20">Days</th>
                                     <th className="px-4 py-3 font-semibold w-20">PF</th>
+                                    <th className="px-4 py-3 font-semibold w-20">PB</th>
+                                    <th className="px-4 py-3 font-semibold w-24">Mem Fee</th>
                                 </>
                             )}
                             <th className="px-4 py-3 font-semibold text-right">Actions</th>
@@ -1068,13 +1121,13 @@ export function MemberList({
                     <tbody className="divide-y divide-slate-200">
                         {isLoading ? (
                             <tr>
-                                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={tableColSpan} className="px-4 py-8 text-center text-slate-500">
                                     Loading members...
                                 </td>
                             </tr>
                         ) : members.length === 0 ? (
                             <tr>
-                                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={tableColSpan} className="px-4 py-8 text-center text-slate-500">
                                     No members found.
                                 </td>
                             </tr>
@@ -1146,7 +1199,7 @@ export function MemberList({
                                                 type="text"
                                                 placeholder="Notes..."
                                                 className="w-full min-w-[120px] rounded border border-slate-200 bg-white px-2 py-1 text-left text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                                value={updates[member.id]?.notes ?? (member.latestNote || "")}
+                                                value={updates[member.id]?.notes ?? (member.latestNoteIsToday ? (member.latestNote || "") : "")}
                                                 onChange={(e) => handleBulkChange(member.id, "notes", e.target.value)}
                                             />
                                         ) : (
@@ -1208,6 +1261,26 @@ export function MemberList({
                                                     className="w-full min-w-[60px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-amber-500 focus:outline-none"
                                                     value={updates[member.id]?.processingFee ?? (member.latestTodayProcessingFee != null ? String(member.latestTodayProcessingFee) : "")}
                                                     onChange={(e) => handleBulkChange(member.id, "processingFee", e.target.value)}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="0"
+                                                    className="w-full min-w-[60px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-amber-500 focus:outline-none"
+                                                    value={updates[member.id]?.passbookFee ?? (member.latestTodayPassbookFee != null ? String(member.latestTodayPassbookFee) : "")}
+                                                    onChange={(e) => handleBulkChange(member.id, "passbookFee", e.target.value)}
+                                                    onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="0"
+                                                    className="w-full min-w-[60px] rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs text-slate-900 focus:border-amber-500 focus:outline-none"
+                                                    value={updates[member.id]?.membershipFee ?? (member.latestTodayMembershipFee != null ? String(member.latestTodayMembershipFee) : "")}
+                                                    onChange={(e) => handleBulkChange(member.id, "membershipFee", e.target.value)}
                                                     onKeyDown={(e) => handleBulkInputKeyDown(e, member.id)}
                                                 />
                                             </td>
@@ -1276,6 +1349,12 @@ export function MemberList({
                                         <td className="px-4 py-3" />
                                         <td className="px-4 py-3 text-right font-mono text-slate-900">
                                             {totals.pf.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-900">
+                                            {totals.pb.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-900">
+                                            {totals.mf.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                                         </td>
                                     </>
                                 )}
@@ -1515,6 +1594,86 @@ export function MemberList({
                                             ) : (
                                                 <div className="p-4 text-center text-sm text-slate-500">
                                                     No processing fee history.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Passbook Fee History</h3>
+                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                            {viewMember.passbookFees && viewMember.passbookFees.length > 0 ? (
+                                                <table className="w-full text-sm text-left text-slate-500">
+                                                    <thead className="bg-slate-50 text-slate-700">
+                                                        <tr>
+                                                            <th className="px-3 py-2 font-medium">Date</th>
+                                                            <th className="px-3 py-2 text-right font-medium">Amount</th>
+                                                            <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-200 bg-white">
+                                                        {viewMember.passbookFees.map((pf) => (
+                                                            <tr key={pf.id}>
+                                                                <td className="px-3 py-2">
+                                                                    {formatDateManila(pf.createdAt)}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {Number(pf.amount).toLocaleString('en-US', {
+                                                                        style: 'currency',
+                                                                        currency: 'PHP',
+                                                                        minimumFractionDigits: 0,
+                                                                    })}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    {pf.encodedBy.name}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-slate-500">
+                                                    No passbook fee history.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <h3 className="mb-4 text-sm font-medium text-slate-500 uppercase tracking-wider">Membership Fee History</h3>
+                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                            {viewMember.membershipFees && viewMember.membershipFees.length > 0 ? (
+                                                <table className="w-full text-sm text-left text-slate-500">
+                                                    <thead className="bg-slate-50 text-slate-700">
+                                                        <tr>
+                                                            <th className="px-3 py-2 font-medium">Date</th>
+                                                            <th className="px-3 py-2 text-right font-medium">Amount</th>
+                                                            <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-200 bg-white">
+                                                        {viewMember.membershipFees.map((pf) => (
+                                                            <tr key={pf.id}>
+                                                                <td className="px-3 py-2">
+                                                                    {formatDateManila(pf.createdAt)}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {Number(pf.amount).toLocaleString('en-US', {
+                                                                        style: 'currency',
+                                                                        currency: 'PHP',
+                                                                        minimumFractionDigits: 0,
+                                                                    })}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    {pf.encodedBy.name}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-slate-500">
+                                                    No membership fee history.
                                                 </div>
                                             )}
                                         </div>

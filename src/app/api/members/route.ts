@@ -126,6 +126,26 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "desc" },
             take: 1,
           },
+          passbookFees: {
+            where: {
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          membershipFees: {
+            where: {
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
         orderBy: { lastName: sort },
         skip: (page - 1) * limit,
@@ -148,6 +168,15 @@ export async function GET(req: NextRequest) {
             0,
           )
         : 0;
+
+      const latestNoteCreatedAt =
+        Array.isArray(m.notes) && m.notes.length > 0 && m.notes[0]?.createdAt instanceof Date
+          ? m.notes[0].createdAt
+          : null;
+      const latestNoteIsToday =
+        latestNoteCreatedAt != null &&
+        latestNoteCreatedAt >= todayRange.from &&
+        latestNoteCreatedAt <= todayRange.to;
 
       return {
         id: m.id,
@@ -181,9 +210,19 @@ export async function GET(req: NextRequest) {
             ? (Number(m.activeReleases[0].amount) || 0) 
             : null,
         latestNote: Array.isArray(m.notes) && m.notes.length > 0 ? m.notes[0].content : "",
+        latestNoteCreatedAt: latestNoteCreatedAt ? latestNoteCreatedAt.toISOString() : null,
+        latestNoteIsToday,
         latestTodayProcessingFee:
           Array.isArray(m.processingFees) && m.processingFees.length > 0 && m.processingFees[0] != null
             ? (Number(m.processingFees[0].amount) || 0)
+            : null,
+        latestTodayPassbookFee:
+          Array.isArray(m.passbookFees) && m.passbookFees.length > 0 && m.passbookFees[0] != null
+            ? (Number(m.passbookFees[0].amount) || 0)
+            : null,
+        latestTodayMembershipFee:
+          Array.isArray(m.membershipFees) && m.membershipFees.length > 0 && m.membershipFees[0] != null
+            ? (Number(m.membershipFees[0].amount) || 0)
             : null,
       };
     });

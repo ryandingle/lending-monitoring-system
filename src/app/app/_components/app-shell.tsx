@@ -7,6 +7,7 @@ import { Topbar } from "./topbar";
 import { PageLoader } from "./page-loader";
 import { ToastContainer } from "./toast-container";
 import type { AuthUser } from "@/lib/auth/session";
+import clsx from "clsx";
 
 export function AppShell({
   user,
@@ -18,6 +19,7 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const isMembersRoute = pathname?.startsWith("/app/members");
 
   const toggleSidebar = () => {
     setCollapsed((prev) => {
@@ -73,22 +75,34 @@ export function AppShell({
   }, [open, user]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900">
       <PageLoader />
       <ToastContainer />
       {overlay}
 
-      <div className="flex min-h-screen">
-        <Sidebar user={user} collapsed={collapsed} />
+      <div className="flex h-screen">
+        <div className={clsx("hidden md:block", collapsed ? "w-20" : "w-72")} />
+        <div className="fixed left-0 top-0 z-30 hidden h-screen md:block">
+          <Sidebar user={user} collapsed={collapsed} />
+        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col transition-all duration-300">
+        <div className="flex min-w-0 flex-1 flex-col min-h-0 transition-all duration-300">
           <Topbar
             user={user}
             onMenuClick={() => setOpen(true)}
             onToggleSidebar={toggleSidebar}
             collapsed={collapsed}
           />
-          <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+          <main className="min-w-0 flex-1 min-h-0 overflow-hidden p-4 md:p-6 flex flex-col">
+            <div
+              className={clsx(
+                "min-h-0 flex-1",
+                isMembersRoute ? "flex flex-col overflow-hidden" : "overflow-y-auto",
+              )}
+            >
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </div>

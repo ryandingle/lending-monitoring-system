@@ -7,7 +7,7 @@ export function LoginToast() {
     const searchParams = useSearchParams();
 
     const [show, setShow] = useState(
-        () => searchParams.get("error") === "invalid"
+        () => searchParams?.get("error") === "invalid"
     );
 
     useEffect(() => {
