@@ -4,13 +4,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
 
 export function PageLoader() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
 
   const prevRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const current = `${pathname}?${searchParams.toString()}`;
+  const query = searchParams?.toString() ?? "";
+  const current = query ? `${pathname}?${query}` : pathname;
 
   // Compare with previous value and update loading state
   useEffect(() => {

@@ -17,8 +17,20 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1") || 1);
   const limit = Math.max(1, parseInt(searchParams.get("limit") ?? "20") || 20);
   const q = searchParams.get("q")?.trim() || "";
+  const groupId = searchParams.get("groupId")?.trim() || "";
+  const officerId = searchParams.get("officerId")?.trim() || "";
 
   const where: any = {};
+  if (groupId && /^[0-9a-fA-F-]{36}$/.test(groupId)) {
+    where.id = groupId;
+  }
+  if (officerId) {
+    if (officerId === "unassigned") {
+      where.collectionOfficerId = null;
+    } else if (/^[0-9a-fA-F-]{36}$/.test(officerId)) {
+      where.collectionOfficerId = officerId;
+    }
+  }
   if (q) {
     where.OR = [
       // @ts-ignore

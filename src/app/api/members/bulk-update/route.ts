@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
       const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
       const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
       const processingFee = parseFloat(update.processingFee) || 0;
+      const passbookFee = parseFloat(update.passbookFee) || 0;
+      const membershipFee = parseFloat(update.membershipFee) || 0;
       const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
       const noteContent = update.notes?.trim() || "";
 
@@ -49,6 +51,28 @@ export async function POST(req: NextRequest) {
             memberId: member.id,
             encodedById: actor.id,
             amount: processingFee,
+            createdAt: businessDate,
+          },
+        });
+      }
+
+      if (passbookFee > 0) {
+        await (tx as any).passbookFee.create({
+          data: {
+            memberId: member.id,
+            encodedById: actor.id,
+            amount: passbookFee,
+            createdAt: businessDate,
+          },
+        });
+      }
+
+      if (membershipFee > 0) {
+        await (tx as any).membershipFee.create({
+          data: {
+            memberId: member.id,
+            encodedById: actor.id,
+            amount: membershipFee,
             createdAt: businessDate,
           },
         });
@@ -177,13 +201,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || passbookFee > 0 || membershipFee > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
         await createAuditLog(tx, {
           actorUserId: actor.id,
           action: "MEMBER_BULK_UPDATE",
           entityType: "Member",
           entityId: member.id,
-          metadata: { balanceDeduct, savingsIncrease, processingFee, daysCount: newDaysCount, hasNotes: noteContent !== "" },
+          metadata: { balanceDeduct, savingsIncrease, processingFee, passbookFee, membershipFee, daysCount: newDaysCount, hasNotes: noteContent !== "" },
           request,
         });
       }

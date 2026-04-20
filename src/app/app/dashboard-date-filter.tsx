@@ -49,7 +49,7 @@ export function DashboardDateFilter({ from, to }: DashboardDateFilterProps) {
         }
 
         startTransition(() => {
-            const params = new URLSearchParams(searchParams.toString());
+            const params = new URLSearchParams(searchParams?.toString() ?? "");
             params.set("from", targetFrom);
             params.set("to", targetTo);
             router.push(`/app?${params.toString()}`);

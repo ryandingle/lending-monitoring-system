@@ -12,7 +12,7 @@ export function NavLink({
   label: string;
   icon: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const active = pathname === href || (href !== "/app" && pathname.startsWith(href));
 
   return (
@@ -35,4 +35,3 @@ export function NavLink({
     </Link>
   );
 }
-

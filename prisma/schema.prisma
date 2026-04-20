@@ -67,6 +67,8 @@ model User {
   balanceAdjustments BalanceAdjustment[] @relation("BalanceEncodedBy")
   savingsAdjustments SavingsAdjustment[] @relation("SavingsEncodedBy")
   processingFees     ProcessingFee[]     @relation("ProcessingFeeEncodedBy")
+  passbookFees       PassbookFee[]       @relation("PassbookFeeEncodedBy")
+  membershipFees     MembershipFee[]     @relation("MembershipFeeEncodedBy")
   auditLogs    AuditLog[]
   notificationReads NotificationRead[]
 
@@ -132,6 +134,8 @@ model Member {
   activeReleases ActiveRelease[]
   notes MemberNote[]
   processingFees ProcessingFee[]
+  passbookFees PassbookFee[]
+  membershipFees MembershipFee[]
 
   @@index([groupId])
   @@index([savingsLastAccruedAt])
@@ -151,6 +155,36 @@ model ProcessingFee {
   @@index([memberId, createdAt])
   @@index([encodedById, createdAt])
   @@map("processing_fees")
+}
+
+model PassbookFee {
+  id          String   @id @default(uuid()) @db.Uuid
+  memberId    String   @db.Uuid
+  encodedById String   @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  encodedBy User   @relation("PassbookFeeEncodedBy", fields: [encodedById], references: [id], onDelete: Restrict)
+
+  @@index([memberId, createdAt])
+  @@index([encodedById, createdAt])
+  @@map("passbook_fees")
+}
+
+model MembershipFee {
+  id          String   @id @default(uuid()) @db.Uuid
+  memberId    String   @db.Uuid
+  encodedById String   @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  encodedBy User   @relation("MembershipFeeEncodedBy", fields: [encodedById], references: [id], onDelete: Restrict)
+
+  @@index([memberId, createdAt])
+  @@index([encodedById, createdAt])
+  @@map("membership_fees")
 }
 
 model ActiveRelease {
