@@ -100,6 +100,16 @@ export default async function MembersPage({
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        passbookFees: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        membershipFees: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       } as any,
       orderBy: { lastName: sort },
       skip: (page - 1) * limit,
@@ -108,44 +118,59 @@ export default async function MembersPage({
     prisma.member.count({ where }),
   ]);
 
-  const serializedMembers = (members as any[]).map((m) => ({
-    id: m.id,
-    firstName: m.firstName,
-    lastName: m.lastName,
-    age: m.age,
-    address: m.address,
-    phoneNumber: m.phoneNumber,
-    balance: Number(m.balance),
-    savings: Number(m.savings),
-    createdAt: m.createdAt.toISOString(),
-    groupId: m.groupId,
-    group: m.group ? { id: m.group.id, name: m.group.name } : null,
-    daysCount: m.daysCount,
-    todayPayment: Array.isArray(m.balanceAdjustments)
-      ? m.balanceAdjustments.reduce(
-          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
-          0,
-        )
-      : 0,
-    todaySavings: Array.isArray(m.savingsAdjustments)
-      ? m.savingsAdjustments.reduce(
-          (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
-          0,
-        )
-      : 0,
-    _count: {
-      balanceAdjustments: m._count.balanceAdjustments,
-      savingsAdjustments: m._count.savingsAdjustments,
-      notes: m._count.notes,
-    },
-    latestCycle: m.cycles[0] ? {
-      cycleNumber: m.cycles[0].cycleNumber,
-      startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
-      endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
-    } : null,
-    latestNote: m.notes?.[0]?.content || "",
-    latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
-  }));
+  const serializedMembers = (members as any[]).map((m) => {
+    const latestNoteCreatedAt =
+      m.notes?.[0]?.createdAt instanceof Date ? m.notes[0].createdAt : null;
+    const latestNoteIsToday =
+      latestNoteCreatedAt != null &&
+      latestNoteCreatedAt >= todayRange.from &&
+      latestNoteCreatedAt <= todayRange.to;
+
+    return {
+      id: m.id,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      age: m.age,
+      address: m.address,
+      phoneNumber: m.phoneNumber,
+      balance: Number(m.balance),
+      savings: Number(m.savings),
+      createdAt: m.createdAt.toISOString(),
+      groupId: m.groupId,
+      group: m.group ? { id: m.group.id, name: m.group.name } : null,
+      daysCount: m.daysCount,
+      todayPayment: Array.isArray(m.balanceAdjustments)
+        ? m.balanceAdjustments.reduce(
+            (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+            0,
+          )
+        : 0,
+      todaySavings: Array.isArray(m.savingsAdjustments)
+        ? m.savingsAdjustments.reduce(
+            (sum: number, adj: any) => sum + (Number(adj.amount) || 0),
+            0,
+          )
+        : 0,
+      _count: {
+        balanceAdjustments: m._count.balanceAdjustments,
+        savingsAdjustments: m._count.savingsAdjustments,
+        notes: m._count.notes,
+      },
+      latestCycle: m.cycles[0]
+        ? {
+            cycleNumber: m.cycles[0].cycleNumber,
+            startDate: m.cycles[0].startDate ? m.cycles[0].startDate.toISOString() : null,
+            endDate: m.cycles[0].endDate ? m.cycles[0].endDate.toISOString() : null,
+          }
+        : null,
+      latestNote: m.notes?.[0]?.content || "",
+      latestNoteCreatedAt: latestNoteCreatedAt ? latestNoteCreatedAt.toISOString() : null,
+      latestNoteIsToday,
+      latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
+      latestTodayPassbookFee: m.passbookFees?.[0]?.amount ? Number(m.passbookFees[0].amount) : null,
+      latestTodayMembershipFee: m.membershipFees?.[0]?.amount ? Number(m.membershipFees[0].amount) : null,
+    };
+  });
 
   return (
     <MembersClient

@@ -26,10 +26,16 @@ type CollectionOfficer = {
   lastName: string;
 };
 
+type GroupOption = {
+  id: string;
+  name: string;
+};
+
 interface GroupsClientProps {
   initialGroups: Group[];
   initialTotal: number;
   initialCollectionOfficers: CollectionOfficer[];
+  initialGroupOptions: GroupOption[];
   canCreate: boolean;
   canDelete: boolean;
 }
@@ -86,6 +92,7 @@ export function GroupsClient({
   initialGroups,
   initialTotal,
   initialCollectionOfficers,
+  initialGroupOptions,
   canCreate,
   canDelete,
 }: GroupsClientProps) {
@@ -94,6 +101,8 @@ export function GroupsClient({
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
   // Modal State
@@ -124,13 +133,27 @@ export function GroupsClient({
   // Fetch Groups
   useEffect(() => {
     // Skip initial fetch if data matches initial props
-    if (page === 1 && search === "" && groups === initialGroups) return;
+    if (
+      page === 1 &&
+      search === "" &&
+      selectedGroupId === "" &&
+      selectedOfficerId === "" &&
+      groups === initialGroups
+    )
+      return;
 
     const fetchGroups = async () => {
       setIsLoading(true);
       try {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("limit", String(limit));
+        params.set("q", search);
+        if (selectedGroupId) params.set("groupId", selectedGroupId);
+        if (selectedOfficerId) params.set("officerId", selectedOfficerId);
+
         const res = await fetch(
-          `/api/groups?page=${page}&limit=${limit}&q=${encodeURIComponent(search)}`
+          `/api/groups?${params.toString()}`
         );
         if (!res.ok) throw new Error("Failed to fetch groups");
         const data = await res.json();
@@ -148,12 +171,16 @@ export function GroupsClient({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [page, search]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, search, selectedGroupId, selectedOfficerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset page on search
   useEffect(() => {
     setPage(1);
   }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedGroupId, selectedOfficerId]);
 
   const handleOpenModal = (group?: Group) => {
     if (group) {
@@ -201,9 +228,13 @@ export function GroupsClient({
       }
 
       // Refresh list
-      const refreshRes = await fetch(
-        `/api/groups?page=${page}&limit=${limit}&q=${encodeURIComponent(search)}`
-      );
+      const refreshParams = new URLSearchParams();
+      refreshParams.set("page", String(page));
+      refreshParams.set("limit", String(limit));
+      refreshParams.set("q", search);
+      if (selectedGroupId) refreshParams.set("groupId", selectedGroupId);
+      if (selectedOfficerId) refreshParams.set("officerId", selectedOfficerId);
+      const refreshRes = await fetch(`/api/groups?${refreshParams.toString()}`);
       if (refreshRes.ok) {
         const data = await refreshRes.json();
         setGroups(data.items);
@@ -240,9 +271,13 @@ export function GroupsClient({
       if (!res.ok) throw new Error("Failed to delete group");
 
       // Refresh list
-      const refreshRes = await fetch(
-        `/api/groups?page=${page}&limit=${limit}&q=${encodeURIComponent(search)}`
-      );
+      const refreshParams = new URLSearchParams();
+      refreshParams.set("page", String(page));
+      refreshParams.set("limit", String(limit));
+      refreshParams.set("q", search);
+      if (selectedGroupId) refreshParams.set("groupId", selectedGroupId);
+      if (selectedOfficerId) refreshParams.set("officerId", selectedOfficerId);
+      const refreshRes = await fetch(`/api/groups?${refreshParams.toString()}`);
       if (refreshRes.ok) {
         const data = await refreshRes.json();
         setGroups(data.items);
@@ -268,7 +303,34 @@ export function GroupsClient({
               Create and manage lending groups.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <select
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+              className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">All Groups</option>
+              {initialGroupOptions.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedOfficerId}
+              onChange={(e) => setSelectedOfficerId(e.target.value)}
+              className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">All Officers</option>
+              <option value="unassigned">Unassigned</option>
+              {initialCollectionOfficers.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.lastName}, {o.firstName}
+                </option>
+              ))}
+            </select>
+
              <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                   <IconSearch className="h-4 w-4" />

@@ -118,6 +118,9 @@ interface ReportData {
     activeReleaseAmount?: number | null;
     payments: Record<string, number>; // date -> amount
     savings: Record<string, number>; // date -> amount
+    processingFee: number;
+    passbookFee: number;
+    membershipFee: number;
     totalPayments: number;
     totalSavings: number;
   }>;
@@ -127,6 +130,9 @@ interface ReportData {
     activeReleaseAmount: number;
     dailyPayments: Record<string, number>;
     dailySavings: Record<string, number>;
+    processingFee: number;
+    passbookFee: number;
+    membershipFee: number;
     totalPayments: number;
     totalSavings: number;
   };
@@ -152,9 +158,15 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
   const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
   const numDayCols = dayColumns.length * 2;
-  const fixedParts = [2, 12, 6, 6, 6, 6, 6];
-  const fixedTotal = fixedParts.reduce((a, b) => a + b, 0);
-  const dynamicWidthPerCol = numDayCols > 0 ? ((100 - fixedTotal) / numDayCols) : 0;
+  const baseFixed = 2 + 12 + 6 + 6 + 6;
+  const remaining = Math.max(0, 100 - baseFixed);
+  const dayWeight = 1;
+  const feeWeight = 0.8;
+  const fwdWeight = 1.2;
+  const totalWeight = (numDayCols * dayWeight) + (3 * feeWeight) + (2 * fwdWeight);
+  const dayWidth = totalWeight > 0 ? (remaining * dayWeight) / totalWeight : 0;
+  const feeWidth = totalWeight > 0 ? (remaining * feeWeight) / totalWeight : 0;
+  const fwdWidth = totalWeight > 0 ? (remaining * fwdWeight) / totalWeight : 0;
 
   const colWidths = {
     no: '2%',
@@ -162,8 +174,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
     balance: '6%',
     savingsBalance: '6%',
     currentRelease: '6%',
-    day: `${dynamicWidthPerCol}%`,
-    fwd: '6%',
+    day: `${dayWidth}%`,
+    fee: `${feeWidth}%`,
+    fwd: `${fwdWidth}%`,
   };
 
   // Chunk members into pages of 30 (entire page is now tuned to fit)
@@ -207,11 +220,14 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
               <View style={[styles.tableCell, { width: colWidths.currentRelease, borderBottomWidth: 0 }]} />
               
               {dayColumns.map((date, i) => (
-                <View key={date} style={[styles.tableCell, { width: `${dynamicWidthPerCol * 2}%` }]}>
+                <View key={date} style={[styles.tableCell, { width: `${dayWidth * 2}%` }]}>
                   <Text style={styles.bold}>{formatDateHeader(date)}</Text>
                 </View>
               ))}
 
+              <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
+              <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
+              <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fwd, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fwd, borderBottomWidth: 0 }]} />
             </View>
@@ -245,6 +261,15 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 </React.Fragment>
               ))}
 
+              <View style={[styles.tableCell, { width: colWidths.fee }]}>
+                <Text style={{ fontSize: 6.5, ...styles.bold }}>PF</Text>
+              </View>
+              <View style={[styles.tableCell, { width: colWidths.fee }]}>
+                <Text style={{ fontSize: 6.5, ...styles.bold }}>PB</Text>
+              </View>
+              <View style={[styles.tableCell, { width: colWidths.fee }]}>
+                <Text style={{ fontSize: 6.5, ...styles.bold }}>MF</Text>
+              </View>
               <View style={[styles.tableCell, { width: colWidths.fwd }]}>
                 <Text style={{ fontSize: 6.5, ...styles.bold }}>Bal Fwd</Text>
               </View>
@@ -285,6 +310,15 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                     </React.Fragment>
                   ))}
 
+                  <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                    <Text>{formatMoney(member.processingFee)}</Text>
+                  </View>
+                  <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                    <Text>{formatMoney(member.passbookFee)}</Text>
+                  </View>
+                  <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                    <Text>{formatMoney(member.membershipFee)}</Text>
+                  </View>
                   <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
                     <Text>{formatMoney(member.totalPayments)}</Text>
                   </View>
@@ -322,6 +356,15 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                   </React.Fragment>
                 ))}
 
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.processingFee)}</Text>
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.passbookFee)}</Text>
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.membershipFee)}</Text>
+                </View>
                 <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.totalPayments)}</Text>
                 </View>

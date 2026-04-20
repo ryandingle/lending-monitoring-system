@@ -57,7 +57,7 @@ export function MemberBulkEditTable({
     onDeleteMember?: (member: Member) => void;
 }) {
     const router = useRouter();
-    const pathname = usePathname();
+    const pathname = usePathname() ?? "";
     const searchParams = useSearchParams();
     
     const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; notes: string }>>({});
@@ -75,7 +75,7 @@ export function MemberBulkEditTable({
     }, [pagination?.page, pagination?.limit, sort, groupId]);
 
     const updateUrl = (params: Record<string, string | number | null>) => {
-        const newParams = new URLSearchParams(searchParams.toString());
+        const newParams = new URLSearchParams(searchParams?.toString() ?? "");
         Object.entries(params).forEach(([key, value]) => {
             if (value === null) {
                 newParams.delete(key);

@@ -41,7 +41,7 @@ export default async function GroupsPage({
     ];
   }
 
-  const [groups, total, collectionOfficers] = await Promise.all([
+  const [groups, total, collectionOfficers, groupOptions] = await Promise.all([
     prisma.group.findMany({
       where,
       include: {
@@ -63,6 +63,10 @@ export default async function GroupsPage({
       select: { id: true, firstName: true, lastName: true },
       orderBy: { lastName: "asc" },
     }),
+    prisma.group.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
@@ -70,6 +74,7 @@ export default async function GroupsPage({
       initialGroups={groups}
       initialTotal={total}
       initialCollectionOfficers={collectionOfficers}
+      initialGroupOptions={groupOptions}
       canCreate={canCreate}
       canDelete={canDelete}
     />

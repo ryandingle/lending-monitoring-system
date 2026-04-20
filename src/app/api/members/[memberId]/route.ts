@@ -52,6 +52,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
           orderBy: { createdAt: "desc" },
           include: { encodedBy: { select: { name: true } } }
         },
+        passbookFees: {
+          orderBy: { createdAt: "desc" },
+          include: { encodedBy: { select: { name: true } } }
+        },
+        membershipFees: {
+          orderBy: { createdAt: "desc" },
+          include: { encodedBy: { select: { name: true } } }
+        },
       }
     });
 
@@ -85,6 +93,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
       })),
       processingFees: (member as any).processingFees.map((pf: any) => ({
+        ...pf,
+        amount: Number(pf.amount),
+        createdAt: pf.createdAt instanceof Date ? pf.createdAt.toISOString() : pf.createdAt,
+      })),
+      passbookFees: (member as any).passbookFees.map((pf: any) => ({
+        ...pf,
+        amount: Number(pf.amount),
+        createdAt: pf.createdAt instanceof Date ? pf.createdAt.toISOString() : pf.createdAt,
+      })),
+      membershipFees: (member as any).membershipFees.map((pf: any) => ({
         ...pf,
         amount: Number(pf.amount),
         createdAt: pf.createdAt instanceof Date ? pf.createdAt.toISOString() : pf.createdAt,

@@ -11,7 +11,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
   return (
     <aside
       className={clsx(
-        "shrink-0 border-r border-slate-200 bg-white transition-all duration-300",
+        "shrink-0 border-r border-slate-200 bg-white transition-all duration-300 h-screen overflow-y-auto",
         mobile ? "block h-full w-full" : "hidden md:block",
         isCollapsed ? "w-20" : "w-72"
       )}
@@ -46,7 +46,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
             ) : null}
             <NavLink href="/app/groups" label={isCollapsed ? "" : "Groups"} icon={<IconFolder />} />
-            {user.role !== Role.ENCODER ? (
+            {user.role === Role.ENCODER || user.role === Role.SUPER_ADMIN ? (
               <NavLink href="/app/members" label={isCollapsed ? "" : "Members"} icon={<IconUsers />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN ? (

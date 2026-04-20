@@ -16,6 +16,7 @@ export function ToastContainer() {
 
     // Initialize state from URL params (NO effects)
     const [toasts, setToasts] = useState<Toast[]>(() => {
+        const sp = searchParams ?? new URLSearchParams();
         const initial: Toast[] = [];
 
         const push = (type: ToastType, message: string) => {
@@ -26,24 +27,24 @@ export function ToastContainer() {
             });
         };
 
-        if (searchParams.get("saved") === "1")
+        if (sp.get("saved") === "1")
             push("success", "Changes saved successfully!");
-        if (searchParams.get("saved") === "0")
+        if (sp.get("saved") === "0")
             push("error", "Failed to save changes.");
 
-        if (searchParams.get("created") === "1")
+        if (sp.get("created") === "1")
             push("success", "Created successfully!");
-        if (searchParams.get("created") === "0")
+        if (sp.get("created") === "0")
             push("error", "Failed to create.");
 
-        if (searchParams.get("deleted") === "1")
+        if (sp.get("deleted") === "1")
             push("success", "Deleted successfully!");
-        if (searchParams.get("deleted") === "0")
+        if (sp.get("deleted") === "0")
             push("error", "Failed to delete.");
 
-        const error = searchParams.get("error");
-        const success = searchParams.get("success");
-        const warning = searchParams.get("warning");
+        const error = sp.get("error");
+        const success = sp.get("success");
+        const warning = sp.get("warning");
 
         if (error) push("error", decodeURIComponent(error));
         if (success) push("success", decodeURIComponent(success));
