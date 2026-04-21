@@ -79,7 +79,8 @@ export type Member = {
   }[];
   latestNote?: string | null;
   latestNoteCreatedAt?: string | null;
-  latestNoteIsToday?: boolean;
+  latestBalancePaymentCreatedAt?: string | null;
+  shouldPrefillLatestNote?: boolean;
   latestTodayProcessingFee?: number | null;
   latestTodayPassbookFee?: number | null;
   latestTodayMembershipFee?: number | null;
@@ -1199,7 +1200,7 @@ export function MemberList({
                                                 type="text"
                                                 placeholder="Notes..."
                                                 className="w-full min-w-[120px] rounded border border-slate-200 bg-white px-2 py-1 text-left text-xs text-slate-900 focus:border-indigo-500 focus:outline-none"
-                                                value={updates[member.id]?.notes ?? (member.latestNoteIsToday ? (member.latestNote || "") : "")}
+                                                value={updates[member.id]?.notes ?? (member.shouldPrefillLatestNote ? (member.latestNote || "") : "")}
                                                 onChange={(e) => handleBulkChange(member.id, "notes", e.target.value)}
                                             />
                                         ) : (
