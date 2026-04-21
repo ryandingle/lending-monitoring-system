@@ -154,6 +154,25 @@ export async function GET(req: NextRequest) {
       (prisma as any).member.count({ where }),
     ]);
 
+    const memberIds = (members as any[]).map((member: any) => member.id);
+    const latestBalancePayments =
+      memberIds.length > 0
+        ? await prisma.balanceAdjustment.groupBy({
+            by: ["memberId"],
+            where: {
+              memberId: { in: memberIds },
+              type: BalanceUpdateType.DEDUCT,
+            },
+            _max: {
+              createdAt: true,
+            },
+          })
+        : [];
+
+    const latestBalancePaymentByMemberId = new Map(
+      latestBalancePayments.map((entry) => [entry.memberId, entry._max.createdAt ?? null]),
+    );
+
     const serializedMembers = (members as any[]).map((m: any) => {
       const todayPayment = Array.isArray(m.balanceAdjustments)
         ? m.balanceAdjustments.reduce(
@@ -173,10 +192,10 @@ export async function GET(req: NextRequest) {
         Array.isArray(m.notes) && m.notes.length > 0 && m.notes[0]?.createdAt instanceof Date
           ? m.notes[0].createdAt
           : null;
-      const latestNoteIsToday =
+      const latestBalancePaymentCreatedAt = latestBalancePaymentByMemberId.get(m.id) ?? null;
+      const shouldPrefillLatestNote =
         latestNoteCreatedAt != null &&
-        latestNoteCreatedAt >= todayRange.from &&
-        latestNoteCreatedAt <= todayRange.to;
+        (latestBalancePaymentCreatedAt == null || latestNoteCreatedAt > latestBalancePaymentCreatedAt);
 
       return {
         id: m.id,
@@ -211,7 +230,10 @@ export async function GET(req: NextRequest) {
             : null,
         latestNote: Array.isArray(m.notes) && m.notes.length > 0 ? m.notes[0].content : "",
         latestNoteCreatedAt: latestNoteCreatedAt ? latestNoteCreatedAt.toISOString() : null,
-        latestNoteIsToday,
+        latestBalancePaymentCreatedAt: latestBalancePaymentCreatedAt
+          ? latestBalancePaymentCreatedAt.toISOString()
+          : null,
+        shouldPrefillLatestNote,
         latestTodayProcessingFee:
           Array.isArray(m.processingFees) && m.processingFees.length > 0 && m.processingFees[0] != null
             ? (Number(m.processingFees[0].amount) || 0)

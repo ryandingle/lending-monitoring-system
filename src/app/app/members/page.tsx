@@ -118,13 +118,32 @@ export default async function MembersPage({
     prisma.member.count({ where }),
   ]);
 
+  const memberIds = members.map((member) => member.id);
+  const latestBalancePayments =
+    memberIds.length > 0
+      ? await prisma.balanceAdjustment.groupBy({
+          by: ["memberId"],
+          where: {
+            memberId: { in: memberIds },
+            type: "DEDUCT",
+          },
+          _max: {
+            createdAt: true,
+          },
+        })
+      : [];
+
+  const latestBalancePaymentByMemberId = new Map(
+    latestBalancePayments.map((entry) => [entry.memberId, entry._max.createdAt ?? null]),
+  );
+
   const serializedMembers = (members as any[]).map((m) => {
     const latestNoteCreatedAt =
       m.notes?.[0]?.createdAt instanceof Date ? m.notes[0].createdAt : null;
-    const latestNoteIsToday =
+    const latestBalancePaymentCreatedAt = latestBalancePaymentByMemberId.get(m.id) ?? null;
+    const shouldPrefillLatestNote =
       latestNoteCreatedAt != null &&
-      latestNoteCreatedAt >= todayRange.from &&
-      latestNoteCreatedAt <= todayRange.to;
+      (latestBalancePaymentCreatedAt == null || latestNoteCreatedAt > latestBalancePaymentCreatedAt);
 
     return {
       id: m.id,
@@ -165,7 +184,10 @@ export default async function MembersPage({
         : null,
       latestNote: m.notes?.[0]?.content || "",
       latestNoteCreatedAt: latestNoteCreatedAt ? latestNoteCreatedAt.toISOString() : null,
-      latestNoteIsToday,
+      latestBalancePaymentCreatedAt: latestBalancePaymentCreatedAt
+        ? latestBalancePaymentCreatedAt.toISOString()
+        : null,
+      shouldPrefillLatestNote,
       latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
       latestTodayPassbookFee: m.passbookFees?.[0]?.amount ? Number(m.passbookFees[0].amount) : null,
       latestTodayMembershipFee: m.membershipFees?.[0]?.amount ? Number(m.membershipFees[0].amount) : null,
