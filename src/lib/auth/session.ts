@@ -8,7 +8,14 @@ import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "lms_session";
 const SESSION_HOURS = 8;
 
-export type AuthUser = Pick<User, "id" | "username" | "email" | "name" | "role">;
+export type AuthUser = {
+  id: string;
+  username: string;
+  email: User["email"];
+  name: string;
+  role: Role | "COLLECTOR";
+  employeeId: string | null;
+};
 
 function cookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
@@ -104,7 +111,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     username: session.user.username,
     email: session.user.email,
     name: session.user.name,
-    role: session.user.role,
+    role: session.user.role as AuthUser["role"],
+    employeeId: (session.user as any).employeeId ?? null,
   };
 }
 
@@ -114,9 +122,8 @@ export async function requireUser() {
   return user;
 }
 
-export function requireRole(user: AuthUser, roles: Role[]) {
-  if (!roles.includes(user.role)) {
+export function requireRole(user: AuthUser, roles: readonly (Role | "COLLECTOR")[]) {
+  if (!roles.includes(user.role as Role | "COLLECTOR")) {
     notFound();
   }
 }
-

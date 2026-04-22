@@ -4,7 +4,7 @@ import AccountClient from "./account-client";
 
 export default async function AccountPage() {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "COLLECTOR"] as Role[]);
 
   return <AccountClient user={user} />;
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { Role, EmployeePosition } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { GroupsClient } from "./groups-client";
 
 function clampInt(n: number, min: number, max: number) {
@@ -17,16 +18,20 @@ export default async function GroupsPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
   const sp = await searchParams;
   const canCreate = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
   const canDelete = user.role === Role.SUPER_ADMIN;
+  const collectorGroupIds = await getCollectorScopedGroupIds(user);
 
   const q = (sp.q ?? "").trim();
   const page = clampInt(Number(sp.page ?? "1") || 1, 1, 10_000);
   const limit = clampInt(Number(sp.pageSize ?? "20") || 20, 5, 100);
 
   const where: any = {};
+  if (collectorGroupIds) {
+    where.id = { in: collectorGroupIds };
+  }
   if (q) {
     where.OR = [
       { name: { contains: q, mode: "insensitive" } },
@@ -60,10 +65,14 @@ export default async function GroupsPage({
     }),
     prisma.group.count({ where }),
     prisma.employee.findMany({
+      where: collectorGroupIds
+        ? { groupsAsCollectionOfficer: { some: { id: { in: collectorGroupIds } } } }
+        : undefined,
       select: { id: true, firstName: true, lastName: true },
       orderBy: { lastName: "asc" },
     }),
     prisma.group.findMany({
+      where: collectorGroupIds ? { id: { in: collectorGroupIds } } : undefined,
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

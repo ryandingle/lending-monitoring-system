@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import { MembersClient } from "./members-client";
@@ -18,8 +19,9 @@ export default async function MembersPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
   const sp = await searchParams;
+  const collectorGroupIds = await getCollectorScopedGroupIds(user);
 
   const businessDate = getManilaBusinessDate();
   const todayStr = formatDateYMD(businessDate);
@@ -35,11 +37,21 @@ export default async function MembersPage({
   const status = (sp.status ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "ALL";
 
   const where: any = {};
+  if (collectorGroupIds) {
+    if (groupId) {
+      if (collectorGroupIds.includes(groupId)) {
+        where.groupId = groupId;
+      } else {
+        where.id = { in: [] };
+      }
+    } else {
+      where.groupId = { in: collectorGroupIds };
+    }
+  } else if (groupId) {
+    where.groupId = groupId;
+  }
   if (status !== "ALL") {
     where.status = status;
-  }
-  if (groupId) {
-    where.groupId = groupId;
   }
   if (days > 0) {
     where.daysCount = { gte: days };
@@ -56,6 +68,7 @@ export default async function MembersPage({
 
   // Fetch groups for dropdown
   const groups = await prisma.group.findMany({
+    where: collectorGroupIds ? { id: { in: collectorGroupIds } } : undefined,
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -199,7 +212,7 @@ export default async function MembersPage({
       initialMembers={serializedMembers}
       initialTotal={totalCount}
       initialGroups={groups}
-      userRole={user.role}
+      userRole={user.role as Role}
       initialGroupId={groupId}
       initialDays={days}
       initialStatus={status}
