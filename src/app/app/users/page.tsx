@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { Role } from "@prisma/client";
+import { EmployeePosition, Role } from "@prisma/client";
 import { UsersClient } from "./users-client";
 
 export default async function UsersAdminPage({
@@ -26,24 +26,41 @@ export default async function UsersAdminPage({
     ];
   }
 
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      name: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    },
-  });
+  const [users, collectionOfficerOptions] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        name: true,
+        role: true,
+        employeeId: true,
+        employee: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        isActive: true,
+        createdAt: true,
+      },
+    }),
+    prisma.employee.findMany({
+      where: { position: EmployeePosition.COLLECTION_OFFICER },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    }),
+  ]);
 
   const serializedUsers = users.map(u => ({
     ...u,
     createdAt: u.createdAt.toISOString()
   }));
 
-  return <UsersClient initialUsers={serializedUsers} currentUserId={actor.id} />;
+  return (
+    <UsersClient
+      initialUsers={serializedUsers}
+      currentUserId={actor.id}
+      collectionOfficerOptions={collectionOfficerOptions}
+    />
+  );
 }

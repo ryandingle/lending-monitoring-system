@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Prisma, Role, SavingsUpdateType } from "@prisma/client";
 import { z } from "zod";
@@ -27,7 +28,7 @@ const CreateMemberSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const user = await requireUser();
-    requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
+    requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
 
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") ?? "").trim();
@@ -38,9 +39,23 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get("days") ?? "0") || 0;
     const status = searchParams.get("status");
     const newMember = searchParams.get("newMember") === "true";
+    const collectorGroupIds = await getCollectorScopedGroupIds(user);
 
     const where: any = {};
-    if (groupId) where.groupId = groupId;
+    let forceNoResults = false;
+    if (collectorGroupIds) {
+      if (groupId) {
+        if (collectorGroupIds.includes(groupId)) {
+          where.groupId = groupId;
+        } else {
+          forceNoResults = true;
+        }
+      } else {
+        where.groupId = { in: collectorGroupIds };
+      }
+    } else if (groupId) {
+      where.groupId = groupId;
+    }
     if (days > 0) where.daysCount = { gte: days };
     if (status && status !== "ALL") where.status = status;
 
@@ -57,6 +72,10 @@ export async function GET(req: NextRequest) {
       `;
       const ids = matchingMembers.map(m => m.id);
       where.id = { in: ids };
+    }
+
+    if (forceNoResults) {
+      where.id = { in: [] };
     }
 
     if (q) {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth/session";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
+import { requireRole, requireUser } from "@/lib/auth/session";
 import { z } from "zod";
 import { getManilaBusinessDate } from "@/lib/date";
-import { BalanceAdjustment } from "@prisma/client";
+import { BalanceAdjustment, Role } from "@prisma/client";
 
 const BalanceAdjustmentSchema = z.object({
   memberId: z.string().uuid(),
@@ -12,16 +13,29 @@ const BalanceAdjustmentSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
+    const user = await requireUser();
+    requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
     const { searchParams } = new URL(req.url);
     const memberId = searchParams.get("memberId");
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "10");
+    const collectorGroupIds = await getCollectorScopedGroupIds(user);
 
     if (!memberId) {
         return NextResponse.json({ error: "Member ID is required" }, { status: 400 });
     }
 
     try {
+        if (collectorGroupIds) {
+            const member = await prisma.member.findUnique({
+                where: { id: memberId },
+                select: { groupId: true },
+            });
+            if (!member?.groupId || !collectorGroupIds.includes(member.groupId)) {
+                return NextResponse.json({ error: "Member not found" }, { status: 404 });
+            }
+        }
+
         const [adjustments, total] = await Promise.all([
             prisma.balanceAdjustment.findMany({
                 where: { memberId },
@@ -55,6 +69,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await requireUser();
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
   
   try {
     const body = await req.json();

@@ -5,17 +5,39 @@ import { useRouter } from "next/navigation";
 import { IconSearch, IconPlus, IconX, IconPencil, IconTrash } from "../_components/icons";
 import { Role } from "@prisma/client";
 
+type AppRole = Role | "COLLECTOR";
+
 type User = {
   id: string;
   username: string;
   email: string | null;
   name: string;
-  role: Role;
+  role: AppRole;
+  employeeId?: string | null;
+  employee?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   isActive: boolean;
   createdAt: string;
 };
 
-export function UsersClient({ initialUsers, currentUserId }: { initialUsers: User[], currentUserId: string }) {
+type CollectionOfficerOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
+
+export function UsersClient({
+  initialUsers,
+  currentUserId,
+  collectionOfficerOptions,
+}: {
+  initialUsers: User[];
+  currentUserId: string;
+  collectionOfficerOptions: CollectionOfficerOption[];
+}) {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [search, setSearch] = useState("");
@@ -35,7 +57,8 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
     username: "",
     email: "",
     name: "",
-    role: "ENCODER" as Role,
+    role: "ENCODER" as AppRole,
+    employeeId: "",
     password: "",
   });
 
@@ -69,6 +92,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
       email: "",
       name: "",
       role: "ENCODER",
+      employeeId: "",
       password: "",
     });
     setModalError(null);
@@ -100,6 +124,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
         email: "",
         name: "",
         role: "ENCODER",
+        employeeId: "",
         password: "",
       });
     } catch (error: any) {
@@ -116,6 +141,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
       email: user.email || "",
       name: user.name,
       role: user.role,
+      employeeId: user.employeeId || "",
       password: "",
     });
     setModalError(null);
@@ -133,6 +159,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
         email: formData.email,
         name: formData.name,
         role: formData.role,
+        employeeId: formData.role === "COLLECTOR" ? formData.employeeId || null : null,
       };
 
       const res = await fetch(`/api/users/${editingUser.id}`, {
@@ -271,6 +298,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <th className="py-2 pr-4">Username</th>
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Role</th>
+                <th className="py-2 pr-4">Linked Officer</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Created</th>
                 <th className="py-2 pr-4">Actions</th>
@@ -284,6 +312,11 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                   <td className="py-2 pr-4 text-slate-600">{u.email ?? "-"}</td>
                   <td className="py-2 pr-4 text-slate-600">
                     <span className="text-xs font-medium text-slate-600">{u.role}</span>
+                  </td>
+                  <td className="py-2 pr-4 text-slate-600">
+                    {u.employee
+                      ? `${u.employee.lastName}, ${u.employee.firstName}`
+                      : "-"}
                   </td>
                   <td className="py-2 pr-4">
                     <button
@@ -331,7 +364,7 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td className="py-4 text-center text-slate-500" colSpan={7}>
+                  <td className="py-4 text-center text-slate-500" colSpan={8}>
                     No users found.
                   </td>
                 </tr>
@@ -390,14 +423,33 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <label className="text-sm font-medium text-slate-700">Role</label>
                 <select
                   value={formData.role}
-                  onChange={e => setFormData({...formData, role: e.target.value as Role})}
+                  onChange={e => setFormData({...formData, role: e.target.value as AppRole, employeeId: e.target.value === "COLLECTOR" ? formData.employeeId : ""})}
                   className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                   <option value="VIEWER">VIEWER</option>
+                  <option value="COLLECTOR">COLLECTOR</option>
                 </select>
               </div>
+              {formData.role === "COLLECTOR" && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Collection Officer</label>
+                  <select
+                    required
+                    value={formData.employeeId}
+                    onChange={e => setFormData({...formData, employeeId: e.target.value})}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="">Select officer</option>
+                    {collectionOfficerOptions.map((officer) => (
+                      <option key={officer.id} value={officer.id}>
+                        {officer.lastName}, {officer.firstName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-slate-700">Password</label>
                 <input
@@ -479,14 +531,33 @@ export function UsersClient({ initialUsers, currentUserId }: { initialUsers: Use
                 <label className="text-sm font-medium text-slate-700">Role</label>
                 <select
                   value={formData.role}
-                  onChange={e => setFormData({...formData, role: e.target.value as Role})}
+                  onChange={e => setFormData({...formData, role: e.target.value as AppRole, employeeId: e.target.value === "COLLECTOR" ? formData.employeeId : ""})}
                   className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="ENCODER">ENCODER</option>
                   <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                   <option value="VIEWER">VIEWER</option>
+                  <option value="COLLECTOR">COLLECTOR</option>
                 </select>
               </div>
+              {formData.role === "COLLECTOR" && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Collection Officer</label>
+                  <select
+                    required
+                    value={formData.employeeId}
+                    onChange={e => setFormData({...formData, employeeId: e.target.value})}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="">Select officer</option>
+                    {collectionOfficerOptions.map((officer) => (
+                      <option key={officer.id} value={officer.id}>
+                        {officer.lastName}, {officer.firstName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <button

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import { z } from "zod";
@@ -12,7 +13,8 @@ const CreateGroupSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  await requireUser();
+  const user = await requireUser();
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1") || 1);
   const limit = Math.max(1, parseInt(searchParams.get("limit") ?? "20") || 20);
@@ -21,8 +23,16 @@ export async function GET(req: NextRequest) {
   const officerId = searchParams.get("officerId")?.trim() || "";
 
   const where: any = {};
+  const collectorGroupIds = await getCollectorScopedGroupIds(user);
+  if (collectorGroupIds) {
+    where.id = { in: collectorGroupIds };
+  }
   if (groupId && /^[0-9a-fA-F-]{36}$/.test(groupId)) {
-    where.id = groupId;
+    if (collectorGroupIds && !collectorGroupIds.includes(groupId)) {
+      where.id = { in: [] };
+    } else {
+      where.id = groupId;
+    }
   }
   if (officerId) {
     if (officerId === "unassigned") {

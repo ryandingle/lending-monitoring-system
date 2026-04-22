@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds, requireCollectorGroupAccess } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { Prisma, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
@@ -241,9 +242,11 @@ export default async function GroupDetailsPage({
   }>;
 }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER, Role.VIEWER]);
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
   const { groupId } = await params;
   const sp = await searchParams;
+  await requireCollectorGroupAccess(user, groupId);
+  const collectorGroupIds = await getCollectorScopedGroupIds(user);
 
   const businessDate = getManilaBusinessDate();
   const todayStr = formatDateYMD(businessDate);
@@ -262,6 +265,7 @@ export default async function GroupDetailsPage({
     }),
     prisma.member.count({ where: { groupId, status: "ACTIVE" } }),
     prisma.group.findMany({
+      where: collectorGroupIds ? { id: { in: collectorGroupIds } } : undefined,
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
@@ -323,7 +327,6 @@ export default async function GroupDetailsPage({
     );
   }
 
-  const canAddMember = user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER;
   const totalPages = Math.ceil(totalCount / limit);
 
   const plainMembers = (members as any[]).map((m) => ({
@@ -370,7 +373,7 @@ export default async function GroupDetailsPage({
       group={group}
       groups={allGroups}
       initialMembers={plainMembers}
-      userRole={user.role}
+      userRole={user.role as Role}
       onBulkUpdate={onBulkUpdate.bind(null, groupId)}
       deleteMemberAction={deleteMemberAction.bind(null, groupId)}
       pagination={{ page, limit, totalCount, totalPages }}

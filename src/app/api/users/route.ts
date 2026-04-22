@@ -10,7 +10,8 @@ const CreateUserSchema = z.object({
   username: z.string().min(3).max(50),
   email: z.string().email().optional().or(z.literal("")),
   name: z.string().min(1).max(100),
-  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER"]),
+  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"]),
+  employeeId: z.string().uuid().optional().nullable(),
   password: z.string().min(6).max(200),
 });
 
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const users = await prisma.user.findMany({
+  const users = await (prisma as any).user.findMany({
     where,
     orderBy: { createdAt: "desc" },
     select: {
@@ -42,6 +43,10 @@ export async function GET(req: NextRequest) {
       email: true,
       name: true,
       role: true,
+      employeeId: true,
+      employee: {
+        select: { id: true, firstName: true, lastName: true },
+      },
       isActive: true,
       createdAt: true,
     },
@@ -60,6 +65,7 @@ export async function POST(req: NextRequest) {
     email: String(body.email || "").trim().toLowerCase() || undefined,
     name: String(body.name || "").trim(),
     role: String(body.role || ""),
+    employeeId: body.employeeId ? String(body.employeeId).trim() : undefined,
     password: String(body.password || ""),
   });
 
@@ -73,18 +79,54 @@ export async function POST(req: NextRequest) {
   const request = await tryGetAuditRequestContext();
 
   try {
+    const finalEmployeeId =
+      parsed.data.role === "COLLECTOR" ? parsed.data.employeeId ?? null : null;
+
+    if (parsed.data.role === "COLLECTOR" && !finalEmployeeId) {
+      return NextResponse.json(
+        { error: "Collector users must be linked to a collection officer" },
+        { status: 400 }
+      );
+    }
+
+    if (finalEmployeeId) {
+      const existingLinkedUser = await (prisma as any).user.findFirst({
+        where: { employeeId: finalEmployeeId },
+        select: { id: true },
+      });
+      if (existingLinkedUser) {
+        return NextResponse.json(
+          { error: "That collection officer is already linked to another user" },
+          { status: 409 }
+        );
+      }
+    }
+
     let createdUser;
     await prisma.$transaction(async (tx) => {
-      createdUser = await tx.user.create({
+      createdUser = await (tx as any).user.create({
         data: {
           username: parsed.data.username,
           email: parsed.data.email || null,
           name: parsed.data.name,
-          role: parsed.data.role,
+          role: parsed.data.role as Role,
+          employeeId: finalEmployeeId,
           passwordHash: await hashPassword(parsed.data.password),
           isActive: true,
         },
-        select: { id: true, username: true, name: true, role: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          name: true,
+          role: true,
+          employeeId: true,
+          employee: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          isActive: true,
+          createdAt: true,
+        },
       });
 
       await createAuditLog(tx, {
@@ -92,7 +134,12 @@ export async function POST(req: NextRequest) {
         action: "USER_CREATE",
         entityType: "User",
         entityId: createdUser.id,
-        metadata: { username: createdUser.username, name: createdUser.name, role: createdUser.role },
+        metadata: {
+          username: createdUser.username,
+          name: createdUser.name,
+          role: createdUser.role,
+          employeeId: createdUser.employeeId,
+        },
         request,
       });
     });
