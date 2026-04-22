@@ -36,7 +36,7 @@ async function loginAction(formData: FormData) {
 
   await createSession(user.id);
   redirect(
-    user.role === Role.ENCODER || user.role === Role.VIEWER ? "/app/groups" : "/app",
+    user.role === Role.ENCODER || user.role === Role.VIEWER || user.role === "COLLECTOR" ? "/app/groups" : "/app",
   );
 }
 

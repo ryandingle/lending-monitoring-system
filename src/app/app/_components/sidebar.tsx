@@ -46,7 +46,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               <NavLink href="/app" label={isCollapsed ? "" : "Dashboard"} icon={<IconDashboard />} />
             ) : null}
             <NavLink href="/app/groups" label={isCollapsed ? "" : "Groups"} icon={<IconFolder />} />
-            {user.role === Role.ENCODER || user.role === Role.SUPER_ADMIN ? (
+            {user.role === Role.ENCODER || user.role === Role.SUPER_ADMIN || user.role === "COLLECTOR" ? (
               <NavLink href="/app/members" label={isCollapsed ? "" : "Members"} icon={<IconUsers />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN ? (

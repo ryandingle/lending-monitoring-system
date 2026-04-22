@@ -7,12 +7,13 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 
 const UpdateUserSchema = z.object({
-  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER"]).optional(),
+  role: z.enum(["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"]).optional(),
   isActive: z.boolean().optional(),
   password: z.string().min(6).max(200).optional(),
   username: z.string().min(1).max(50).optional(),
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional().or(z.literal("")),
+  employeeId: z.string().uuid().optional().nullable(),
 });
 
 export async function PUT(
@@ -33,7 +34,7 @@ export async function PUT(
     );
   }
 
-  const { role, isActive, password, username, name, email } = parsed.data;
+  const { role, isActive, password, username, name, email, employeeId } = parsed.data;
 
   // Prevent self-lockout
   if (isActive === false && id === actor.id) {
@@ -46,6 +47,32 @@ export async function PUT(
   const request = await tryGetAuditRequestContext();
 
   try {
+    const finalEmployeeId =
+      role === "COLLECTOR" ? employeeId ?? null : role ? null : employeeId;
+
+    if (role === "COLLECTOR" && !finalEmployeeId) {
+      return NextResponse.json(
+        { error: "Collector users must be linked to a collection officer" },
+        { status: 400 }
+      );
+    }
+
+    if (finalEmployeeId) {
+      const existingLinkedUser = await (prisma as any).user.findFirst({
+        where: {
+          employeeId: finalEmployeeId,
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+      if (existingLinkedUser) {
+        return NextResponse.json(
+          { error: "That collection officer is already linked to another user" },
+          { status: 409 }
+        );
+      }
+    }
+
     const updatedUser = await prisma.$transaction(async (tx) => {
       const dataToUpdate: any = {};
       if (role) dataToUpdate.role = role;
@@ -54,11 +81,24 @@ export async function PUT(
       if (username) dataToUpdate.username = username.trim().toLowerCase();
       if (name) dataToUpdate.name = name.trim();
       if (email !== undefined) dataToUpdate.email = email.trim().toLowerCase() || null;
+      if (role || employeeId !== undefined) dataToUpdate.employeeId = finalEmployeeId;
 
-      const user = await tx.user.update({
+      const user = await (tx as any).user.update({
         where: { id },
         data: dataToUpdate,
-        select: { id: true, username: true, name: true, role: true, isActive: true, email: true, createdAt: true },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          role: true,
+          employeeId: true,
+          employee: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          isActive: true,
+          email: true,
+          createdAt: true,
+        },
       });
 
       // Handle side effects
@@ -67,13 +107,14 @@ export async function PUT(
       }
 
       // Audit logs
-      if (role || isActive !== undefined || password || username || name || email !== undefined) {
+      if (role || isActive !== undefined || password || username || name || email !== undefined || employeeId !== undefined) {
          const changes: any = {};
          if (role) changes.role = role;
          if (isActive !== undefined) changes.isActive = isActive;
          if (username) changes.username = username;
          if (name) changes.name = name;
          if (email !== undefined) changes.email = email;
+         if (role || employeeId !== undefined) changes.employeeId = finalEmployeeId;
          
          await createAuditLog(tx, {
           actorUserId: actor.id,

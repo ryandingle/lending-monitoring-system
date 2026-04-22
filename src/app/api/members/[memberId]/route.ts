@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
@@ -27,7 +28,10 @@ const UpdateMemberSchema = z.object({
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ memberId: string }> }) {
+  const user = await requireUser();
+  requireRole(user, ["SUPER_ADMIN", "ENCODER", "VIEWER", "COLLECTOR"] as Role[]);
   const { memberId } = await params;
+  const collectorGroupIds = await getCollectorScopedGroupIds(user);
   
   try {
     const member = await (prisma as any).member.findUnique({
@@ -64,6 +68,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
     });
 
     if (!member) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    if (
+      collectorGroupIds &&
+      (!member.groupId || !collectorGroupIds.includes(member.groupId))
+    ) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
