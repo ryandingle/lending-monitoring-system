@@ -45,7 +45,6 @@ export default async function UsersAdminPage({
       },
     }),
     prisma.employee.findMany({
-      where: { position: EmployeePosition.COLLECTION_OFFICER },
       select: { id: true, firstName: true, lastName: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     }),
