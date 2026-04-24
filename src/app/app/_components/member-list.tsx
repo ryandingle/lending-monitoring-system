@@ -6,6 +6,7 @@ import { IconSearch, IconPencil, IconTrash, IconChevronUp, IconChevronDown, Icon
 import { PaginationControls } from "./pagination-controls";
 import { Role } from "@prisma/client";
 import { formatDateManila } from "@/lib/date";
+import { showAppToast } from "./app-toast";
 
 export type Member = {
   id: string;
@@ -91,15 +92,6 @@ export type Group = {
   id: string;
   name: string;
 };
-
-function showAppToast(type: "success" | "error" | "warning" | "info", message: string) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent("app-toast", {
-      detail: { type, message },
-    }),
-  );
-}
 
 interface MemberListProps {
   initialMembers: Member[];
@@ -197,7 +189,6 @@ export function MemberList({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
   
   // Adjustment Form State
   const [adjustmentForm, setAdjustmentForm] = useState<{
@@ -286,7 +277,7 @@ export function MemberList({
   // Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{
     isOpen: boolean;
-    type: 'DELETE_MEMBER' | 'REVERT_BALANCE' | 'REVERT_SAVINGS' | 'DELETE_NOTE' | null;
+    type: 'DELETE_MEMBER' | 'REVERT_BALANCE' | 'REVERT_SAVINGS' | 'DELETE_NOTE' | 'DISCARD_DRAFT' | null;
     id: string | null;
     title: string;
     message: string;
@@ -579,16 +570,21 @@ export function MemberList({
   };
 
   const handleConfirmAction = async () => {
-    if (!confirmation.id || !confirmation.type) return;
+    if (!confirmation.type) return;
     setIsConfirming(true);
     
     try {
-        if (confirmation.type === 'DELETE_MEMBER') {
+        if (confirmation.type === 'DISCARD_DRAFT') {
+            setUpdates({});
+            localStorage.removeItem(DRAFT_KEY);
+        } else if (confirmation.type === 'DELETE_MEMBER') {
+            if (!confirmation.id) return;
             const res = await fetch(`/api/members/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete");
             fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
             if (isViewModalOpen) setIsViewModalOpen(false);
         } else if (confirmation.type === 'REVERT_BALANCE') {
+            if (!confirmation.id) return;
             const res = await fetch(`/api/adjustments/balance/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) {
                 const data = await res.json();
@@ -605,6 +601,7 @@ export function MemberList({
             }
             fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         } else if (confirmation.type === 'REVERT_SAVINGS') {
+            if (!confirmation.id) return;
             const res = await fetch(`/api/adjustments/savings/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) {
                 const data = await res.json();
@@ -621,6 +618,7 @@ export function MemberList({
             }
             fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         } else if (confirmation.type === 'DELETE_NOTE') {
+            if (!confirmation.id) return;
             const res = await fetch(`/api/members/notes/${confirmation.id}`, { method: "DELETE" });
             if (!res.ok) {
                 const data = await res.json();
@@ -811,7 +809,6 @@ export function MemberList({
         activeReleaseAmount: member?.latestActiveReleaseAmount?.toString() || "",
         status: member?.status || "ACTIVE",
     });
-    setModalError(null);
     setIsModalOpen(true);
 
     // If editing, fetch full details to ensure we have all cycles
@@ -855,7 +852,6 @@ export function MemberList({
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalLoading(true);
-    setModalError(null);
 
     try {
         const url = editingMember ? `/api/members/${editingMember.id}` : "/api/members";
@@ -890,9 +886,9 @@ export function MemberList({
         }
 
         handleCloseModal();
+        showAppToast("success", editingMember ? "Member updated successfully." : "Member created successfully.");
         fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh list
     } catch (error: any) {
-        setModalError(error.message);
         showAppToast("error", error.message || "Failed to save member");
     } finally {
         setModalLoading(false);
@@ -1029,12 +1025,15 @@ export function MemberList({
             {hasChanges && (
                 <div className="flex items-center gap-2 ml-4">
                     <button
-                        onClick={() => {
-                            if (confirm("Are you sure you want to discard all pending changes?")) {
-                                setUpdates({});
-                                localStorage.removeItem(DRAFT_KEY);
-                            }
-                        }}
+                        onClick={() =>
+                            setConfirmation({
+                                isOpen: true,
+                                type: 'DISCARD_DRAFT',
+                                id: null,
+                                title: "Discard Draft",
+                                message: "Are you sure you want to discard all pending changes?",
+                            })
+                        }
                         disabled={isBulkSaving}
                         className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                     >
@@ -1354,11 +1353,15 @@ export function MemberList({
                     You have unsaved changes
                 </div>
                 <button
-                    onClick={() => {
-                        if (confirm("Are you sure you want to discard all pending changes?")) {
-                            setUpdates({});
-                        }
-                    }}
+                    onClick={() =>
+                        setConfirmation({
+                            isOpen: true,
+                            type: 'DISCARD_DRAFT',
+                            id: null,
+                            title: "Discard Draft",
+                            message: "Are you sure you want to discard all pending changes?",
+                        })
+                    }
                     disabled={isBulkSaving}
                     className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                 >
@@ -1896,12 +1899,6 @@ export function MemberList({
                             <IconX className="h-5 w-5" />
                         </button>
                     </div>
-
-                    {modalError && (
-                        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                            {modalError}
-                        </div>
-                    )}
 
                     <form onSubmit={handleFormSubmit} className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">

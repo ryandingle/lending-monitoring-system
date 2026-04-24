@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { showAppToast } from "../_components/app-toast";
 
 interface User {
   id: string;
@@ -21,13 +22,11 @@ export default function AccountClient({ user }: AccountClientProps) {
     currentPassword: "",
     newPassword: "",
   });
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus("loading");
-    setErrorMessage("");
+    setIsSaving(true);
 
     try {
       const res = await fetch("/api/account", {
@@ -43,17 +42,13 @@ export default function AccountClient({ user }: AccountClientProps) {
         throw new Error(data.error || "Failed to update account");
       }
 
-      setStatus("success");
       setFormData((prev) => ({ ...prev, currentPassword: "", newPassword: "" }));
+      showAppToast("success", "Account updated successfully.");
       router.refresh();
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setStatus("idle");
-      }, 3000);
     } catch (err: any) {
-      setStatus("error");
-      setErrorMessage(err.message);
+      showAppToast("error", err.message || "Failed to update account");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -64,18 +59,6 @@ export default function AccountClient({ user }: AccountClientProps) {
         <p className="mt-1 text-sm text-slate-500">
           Update your profile and password.
         </p>
-
-        {status === "success" && (
-          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            Account updated successfully.
-          </div>
-        )}
-
-        {status === "error" && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {errorMessage || "Could not update account (check inputs/password)."}
-          </div>
-        )}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="space-y-1">
@@ -131,10 +114,10 @@ export default function AccountClient({ user }: AccountClientProps) {
 
           <button
             type="submit"
-            disabled={status === "loading"}
+            disabled={isSaving}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {status === "loading" ? "Saving..." : "Save changes"}
+            {isSaving ? "Saving..." : "Save changes"}
           </button>
         </form>
       </div>

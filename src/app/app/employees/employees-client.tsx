@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { EmployeePosition, Role } from "@prisma/client";
 import { IconSearch, IconPlus, IconX, IconPencil, IconTrash } from "../_components/icons";
+import { showAppToast } from "../_components/app-toast";
 
 const POSITION_LABELS: Record<EmployeePosition, string> = {
   COLLECTION_OFFICER: "Collection officer",
@@ -41,7 +42,6 @@ export function EmployeesClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
 
   const [confirmation, setConfirmation] = useState<{
     isOpen: boolean;
@@ -95,7 +95,6 @@ export function EmployeesClient({
       position: "",
       assignedGroupIds: [],
     });
-    setModalError(null);
     setIsModalOpen(true);
   };
 
@@ -107,14 +106,12 @@ export function EmployeesClient({
       position: employee.position,
       assignedGroupIds: employee.groupsAsCollectionOfficer.map((g) => g.id),
     });
-    setModalError(null);
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalLoading(true);
-    setModalError(null);
 
     try {
       const url = editingEmployee
@@ -142,8 +139,9 @@ export function EmployeesClient({
       }
       
       setIsModalOpen(false);
+      showAppToast("success", editingEmployee ? "Employee updated successfully." : "Employee created successfully.");
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to save employee");
     } finally {
       setModalLoading(false);
     }
@@ -167,8 +165,9 @@ export function EmployeesClient({
 
           setEmployees(employees.filter(e => e.id !== employee.id));
           setConfirmation(prev => ({ ...prev, isOpen: false }));
+          showAppToast("success", "Employee deleted successfully.");
         } catch (error: any) {
-          alert(error.message);
+          showAppToast("error", error.message || "Failed to delete employee");
         }
       }
     });
@@ -306,13 +305,6 @@ export function EmployeesClient({
                 <IconX className="h-5 w-5" />
               </button>
             </div>
-
-            {modalError && (
-              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-                {modalError}
-              </div>
-            )}
-
             <form onSubmit={handleFormSubmit} className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm font-medium text-slate-700">First Name</label>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { IconSearch, IconPlus, IconX, IconPencil, IconTrash } from "../_components/icons";
 import { Role } from "@prisma/client";
+import { showAppToast } from "../_components/app-toast";
 
 type AppRole = Role | "COLLECTOR";
 
@@ -47,9 +48,8 @@ export function UsersClient({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [resettingPasswordUser, setResettingPasswordUser] = useState<User | null>(null);
+  const [statusChangeUser, setStatusChangeUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
-  
-  const [modalError, setModalError] = useState<string | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
   // Form states
@@ -95,14 +95,12 @@ export function UsersClient({
       employeeId: "",
       password: "",
     });
-    setModalError(null);
     setIsCreateModalOpen(true);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalLoading(true);
-    setModalError(null);
 
     try {
       const res = await fetch("/api/users", {
@@ -127,8 +125,9 @@ export function UsersClient({
         employeeId: "",
         password: "",
       });
+      showAppToast("success", "User created successfully.");
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to create user");
     } finally {
       setModalLoading(false);
     }
@@ -144,14 +143,12 @@ export function UsersClient({
       employeeId: user.employeeId || "",
       password: "",
     });
-    setModalError(null);
   };
 
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
     setModalLoading(true);
-    setModalError(null);
 
     try {
       const payload: any = {
@@ -176,22 +173,26 @@ export function UsersClient({
       const updatedUser = await res.json();
       setUsers(users.map(u => u.id === editingUser.id ? updatedUser : u));
       setEditingUser(null);
+      showAppToast("success", "User updated successfully.");
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to update user");
     } finally {
       setModalLoading(false);
     }
   };
 
   const handleToggleActive = async (user: User) => {
-    const action = user.isActive ? "deactivate" : "activate";
-    if (!confirm(`Are you sure you want to ${action} user "${user.name}"?`)) return;
+    setStatusChangeUser(user);
+  };
 
+  const handleConfirmToggleActive = async () => {
+    if (!statusChangeUser) return;
+    setModalLoading(true);
     try {
-      const res = await fetch(`/api/users/${user.id}`, {
+      const res = await fetch(`/api/users/${statusChangeUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !user.isActive }),
+        body: JSON.stringify({ isActive: !statusChangeUser.isActive }),
       });
 
       if (!res.ok) {
@@ -200,9 +201,13 @@ export function UsersClient({
       }
 
       const updatedUser = await res.json();
-      setUsers(users.map(u => u.id === user.id ? updatedUser : u));
+      setUsers(users.map(u => u.id === statusChangeUser.id ? updatedUser : u));
+      showAppToast("success", `User ${statusChangeUser.isActive ? "deactivated" : "activated"} successfully.`);
+      setStatusChangeUser(null);
     } catch (error: any) {
-      alert(error.message);
+      showAppToast("error", error.message || "Failed to update status");
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -211,7 +216,6 @@ export function UsersClient({
     if (!resettingPasswordUser) return;
     
     setModalLoading(true);
-    setModalError(null);
 
     try {
       const res = await fetch(`/api/users/${resettingPasswordUser.id}`, {
@@ -222,11 +226,11 @@ export function UsersClient({
 
       if (!res.ok) throw new Error("Failed to reset password");
 
-      alert("Password reset successfully");
+      showAppToast("success", "Password reset successfully.");
       setResettingPasswordUser(null);
       setPasswordResetValue("");
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to reset password");
     } finally {
       setModalLoading(false);
     }
@@ -234,13 +238,11 @@ export function UsersClient({
 
   const handleDeleteUser = (user: User) => {
     setDeletingUser(user);
-    setModalError(null);
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingUser) return;
     setModalLoading(true);
-    setModalError(null);
 
     try {
       const res = await fetch(`/api/users/${deletingUser.id}`, {
@@ -254,8 +256,9 @@ export function UsersClient({
 
       setUsers(users.filter(u => u.id !== deletingUser.id));
       setDeletingUser(null);
+      showAppToast("success", "User deleted successfully.");
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to delete user");
     } finally {
       setModalLoading(false);
     }
@@ -384,13 +387,6 @@ export function UsersClient({
                 <IconX className="h-5 w-5" />
               </button>
             </div>
-            
-            {modalError && (
-              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-                {modalError}
-              </div>
-            )}
-
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">Username</label>
@@ -492,13 +488,6 @@ export function UsersClient({
                 <IconX className="h-5 w-5" />
               </button>
             </div>
-            
-            {modalError && (
-              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-                {modalError}
-              </div>
-            )}
-
             <form onSubmit={handleUpdateSubmit} className="mt-4 space-y-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">Username</label>
@@ -591,12 +580,6 @@ export function UsersClient({
               </button>
             </div>
             
-            {modalError && (
-              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-                {modalError}
-              </div>
-            )}
-
             <div className="mt-2 mb-4 text-sm text-slate-600">
               Reset password for <strong>{resettingPasswordUser.name}</strong> ({resettingPasswordUser.username}).
             </div>
@@ -635,6 +618,49 @@ export function UsersClient({
         </div>
       )}
 
+      {/* Status Change Confirmation Modal */}
+      {statusChangeUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {statusChangeUser.isActive ? "Deactivate User" : "Activate User"}
+              </h2>
+              <button onClick={() => setStatusChangeUser(null)} className="text-slate-400 hover:text-slate-600">
+                <IconX className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-4 text-sm text-slate-600">
+              Are you sure you want to {statusChangeUser.isActive ? "deactivate" : "activate"} user{" "}
+              <strong>{statusChangeUser.name}</strong>?
+            </p>
+
+            <div className="flex justify-end gap-3 pt-6">
+              <button
+                type="button"
+                onClick={() => setStatusChangeUser(null)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                disabled={modalLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmToggleActive}
+                disabled={modalLoading}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {modalLoading
+                  ? "Saving..."
+                  : statusChangeUser.isActive
+                  ? "Deactivate User"
+                  : "Activate User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
@@ -645,13 +671,6 @@ export function UsersClient({
                 <IconX className="h-5 w-5" />
               </button>
             </div>
-            
-            {modalError && (
-              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-                {modalError}
-              </div>
-            )}
-
             <p className="mt-4 text-sm text-slate-600">
               Are you sure you want to delete user <strong>{deletingUser.name}</strong>? This action cannot be undone.
             </p>
