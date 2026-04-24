@@ -5,7 +5,7 @@ import { hasRole, requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
-import { getManilaBusinessDate } from "@/lib/date";
+import { formatDateYMD, getManilaBusinessDate, getManilaDateRange } from "@/lib/date";
 
 const UpdateMemberSchema = z.object({
   groupId: z.string().uuid().optional(),
@@ -152,13 +152,49 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
   }
 
   const request = await tryGetAuditRequestContext();
-  const releaseDate = getManilaBusinessDate();
+  const businessDate = getManilaBusinessDate();
+  const todayStr = formatDateYMD(businessDate);
+  const todayRange = getManilaDateRange(todayStr, todayStr);
+  const releaseDate = businessDate;
 
   try {
     const updatedMember = await prisma.$transaction(async (tx) => {
       const existingMember = await tx.member.findUnique({ where: { id: memberId } });
       if (!existingMember) {
         throw new Error("Member not found");
+      }
+
+      const existingBalance = Number(existingMember.balance);
+      const existingSavings = Number(existingMember.savings);
+      const nextBalance =
+        parsed.data.balance !== undefined ? Number(parsed.data.balance.toFixed(2)) : existingBalance;
+      const nextSavings =
+        parsed.data.savings !== undefined ? Number(parsed.data.savings.toFixed(2)) : existingSavings;
+      const balanceChanged = parsed.data.balance !== undefined && nextBalance !== existingBalance;
+      const savingsChanged = parsed.data.savings !== undefined && nextSavings !== existingSavings;
+
+      if (balanceChanged) {
+        const alreadyUpdatedToday = await tx.balanceAdjustment.findFirst({
+          where: {
+            memberId,
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
+          },
+        });
+        if (alreadyUpdatedToday) {
+          throw new Error("BALANCE_ALREADY_UPDATED_TODAY");
+        }
+      }
+
+      if (savingsChanged) {
+        const alreadyUpdatedToday = await tx.savingsAdjustment.findFirst({
+          where: {
+            memberId,
+            createdAt: { gte: todayRange.from, lte: todayRange.to },
+          },
+        });
+        if (alreadyUpdatedToday) {
+          throw new Error("SAVINGS_ALREADY_UPDATED_TODAY");
+        }
       }
 
       const updated = await tx.member.update({
@@ -179,6 +215,34 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
             group: { select: { id: true, name: true } }
         }
       });
+
+      if (balanceChanged) {
+        await tx.balanceAdjustment.create({
+          data: {
+            memberId,
+            encodedById: user.id,
+            type: nextBalance > existingBalance ? "INCREASE" : "DEDUCT",
+            amount: Math.abs(nextBalance - existingBalance),
+            balanceBefore: existingMember.balance,
+            balanceAfter: new Prisma.Decimal(nextBalance.toFixed(2)),
+            createdAt: businessDate,
+          },
+        });
+      }
+
+      if (savingsChanged) {
+        await tx.savingsAdjustment.create({
+          data: {
+            memberId,
+            encodedById: user.id,
+            type: nextSavings > existingSavings ? "INCREASE" : "WITHDRAW",
+            amount: Math.abs(nextSavings - existingSavings),
+            savingsBefore: existingMember.savings,
+            savingsAfter: new Prisma.Decimal(nextSavings.toFixed(2)),
+            createdAt: businessDate,
+          },
+        });
+      }
 
       await createAuditLog(tx, {
         actorUserId: user.id,
@@ -290,6 +354,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
   } catch (error: any) {
     if (error.message === "Member not found") {
         return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+    if (error.message === "BALANCE_ALREADY_UPDATED_TODAY") {
+      return NextResponse.json({ error: "Balance has already been updated today." }, { status: 409 });
+    }
+    if (error.message === "SAVINGS_ALREADY_UPDATED_TODAY") {
+      return NextResponse.json({ error: "Savings has already been updated today." }, { status: 409 });
     }
     console.error("Error updating member:", error);
     return NextResponse.json({ error: "Failed to update member" }, { status: 500 });
