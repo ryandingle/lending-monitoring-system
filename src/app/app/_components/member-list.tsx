@@ -92,6 +92,15 @@ export type Group = {
   name: string;
 };
 
+function showAppToast(type: "success" | "error" | "warning" | "info", message: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("app-toast", {
+      detail: { type, message },
+    }),
+  );
+}
+
 interface MemberListProps {
   initialMembers: Member[];
   initialTotal: number;
@@ -177,10 +186,7 @@ export function MemberList({
     }
   }, [updates, isDraftLoaded]);
 
-  const [bulkErrors, setBulkErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
-  const [bulkWarnings, setBulkWarnings] = useState<{ memberId: string; message: string }[]>([]);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
-  const [bulkSuccess, setBulkSuccess] = useState(false);
 
   // View Modal State
   const [viewMember, setViewMember] = useState<Member | null>(null);
@@ -305,6 +311,7 @@ export function MemberList({
   const canCreate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
+  const canManageActiveRelease = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
   const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter, nm = newMemberFilter) => {
     // If fixedGroupId is set, always use it
@@ -330,9 +337,6 @@ export function MemberList({
       
       // Clear updates when data refreshes
       // setUpdates({}); // Removed to allow draft persistence across navigations
-      setBulkErrors([]);
-      setBulkWarnings([]);
-      setBulkSuccess(false);
     } catch (error) {
       console.error(error);
     } finally {
@@ -439,9 +443,6 @@ export function MemberList({
   const handleBulkSave = async () => {
     if (Object.keys(updates).length === 0 || isBulkSaving) return;
     setIsBulkSaving(true);
-    setBulkErrors([]);
-    setBulkWarnings([]);
-    setBulkSuccess(false);
 
     try {
       const payload = Object.entries(updates)
@@ -462,7 +463,6 @@ export function MemberList({
         );
 
       if (payload.length === 0) {
-        setBulkSuccess(false);
         return;
       }
 
@@ -482,20 +482,26 @@ export function MemberList({
       if (!res.ok) throw new Error(result.error || "Failed to update");
 
       if (result.success) {
-          setBulkSuccess(true);
+          showAppToast("success", "Bulk update successful!");
           setUpdates({});
           localStorage.removeItem(DRAFT_KEY);
-          setBulkWarnings(result.warnings || []);
+          if (result.warnings?.length) {
+            showAppToast("warning", result.warnings[0].message);
+          }
           fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh data
         } else {
-          setBulkErrors(result.errors || []);
-          setBulkWarnings(result.warnings || []);
+          if (result.errors?.length) {
+            showAppToast("error", result.errors[0].message || "Bulk update failed.");
+          }
+          if (result.warnings?.length) {
+            showAppToast("warning", result.warnings[0].message);
+          }
           // Refresh data to show partial updates if any
           fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         }
     } catch (error: any) {
         console.error(error);
-        alert("An error occurred during bulk update.");
+        showAppToast("error", error.message || "An error occurred during bulk update.");
     } finally {
         setIsBulkSaving(false);
     }
@@ -565,7 +571,7 @@ export function MemberList({
         fetchNotes(id, 1);
     } catch (error) {
         console.error(error);
-        alert("Failed to load member details");
+        showAppToast("error", "Failed to load member details");
         setIsViewModalOpen(false);
     } finally {
         setViewLoading(false);
@@ -629,7 +635,7 @@ export function MemberList({
         
         setConfirmation({ ...confirmation, isOpen: false });
     } catch (error: any) {
-        alert(error.message || "An error occurred");
+        showAppToast("error", error.message || "An error occurred");
     } finally {
         setIsConfirming(false);
     }
@@ -709,7 +715,7 @@ export function MemberList({
             setActiveReleaseAmount("");
             fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         } catch (error: any) {
-            alert(error.message || "Failed to create active release");
+            showAppToast("error", error.message || "Failed to create active release");
         } finally {
             setAdjustmentLoading(false);
         }
@@ -758,7 +764,7 @@ export function MemberList({
         fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh main list in background
         setAdjustmentForm({ type: null, action: null, amount: "" });
     } catch (error: any) {
-        alert(error.message);
+        showAppToast("error", error.message || "Failed to create adjustment");
     } finally {
         setAdjustmentLoading(false);
     }
@@ -887,6 +893,7 @@ export function MemberList({
         fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter); // Refresh list
     } catch (error: any) {
         setModalError(error.message);
+        showAppToast("error", error.message || "Failed to save member");
     } finally {
         setModalLoading(false);
     }
@@ -1002,34 +1009,6 @@ export function MemberList({
                 </div>
             </div>
         </div>
-
-        {bulkSuccess && (
-            <div className="rounded-md bg-green-50 p-4 text-green-700">
-                Bulk update successful!
-            </div>
-        )}
-
-        {bulkWarnings.length > 0 && (
-            <div className="rounded-md bg-yellow-50 p-4 text-yellow-700">
-                <p className="font-bold">Warnings:</p>
-                <ul className="list-disc pl-5 text-sm">
-                    {bulkWarnings.map((w, i) => (
-                        <li key={i}>{w.message}</li>
-                    ))}
-                </ul>
-            </div>
-        )}
-        
-        {bulkErrors.length > 0 && (
-            <div className="rounded-md bg-red-50 p-4 text-red-700">
-                <p className="font-bold">Errors occurred during bulk update:</p>
-                <ul className="list-disc pl-5 text-sm">
-                    {bulkErrors.map((e, i) => (
-                        <li key={i}>{e.message}</li>
-                    ))}
-                </ul>
-            </div>
-        )}
 
         <div className="mb-4 flex items-center justify-between min-h-[40px]">
              <div className="flex-1">
@@ -1730,7 +1709,7 @@ export function MemberList({
                                                     <option value="">Select Type</option>
                                                     <option value="balance">Balance</option>
                                                     <option value="savings">Savings</option>
-                                                    <option value="activeRelease">Active Release</option>
+                                                    {canManageActiveRelease ? <option value="activeRelease">Active Release</option> : null}
                                                 </select>
                                                 <select 
                                                     className="rounded bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
@@ -2012,12 +1991,8 @@ export function MemberList({
                                     required
                                     value={formData.balance}
                                     onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                                    disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
-                                {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
-                                )}
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -2028,12 +2003,8 @@ export function MemberList({
                                     step="0.01"
                                     value={formData.savings}
                                     onChange={(e) => setFormData({ ...formData, savings: e.target.value })}
-                                    disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
-                                {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
-                                )}
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -2070,12 +2041,8 @@ export function MemberList({
                                     min="0"
                                     value={formData.daysCount}
                                     onChange={(e) => setFormData({ ...formData, daysCount: e.target.value })}
-                                    disabled={!!editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0)}
-                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
                                 />
-                                {editingMember?._count && (editingMember._count.balanceAdjustments > 0 || editingMember._count.savingsAdjustments > 0) && (
-                                    <p className="mt-1 text-xs text-amber-600">Cannot be edited due to member already has balance and savings adjustment records</p>
-                                )}
                             </div>
                         </div>
 

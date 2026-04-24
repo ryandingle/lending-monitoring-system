@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         const processingFee = parseFloat(update.processingFee) || 0;
         const passbookFee = parseFloat(update.passbookFee) || 0;
         const membershipFee = parseFloat(update.membershipFee) || 0;
+        const activeReleaseAmount = parseFloat(update.activeReleaseAmount) || 0;
         const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
         const noteContent = update.notes?.trim() || "";
 
@@ -81,6 +82,29 @@ export async function POST(req: NextRequest) {
               amount: membershipFee,
               createdAt: businessDate,
             },
+          });
+        }
+
+        if (activeReleaseAmount > 0) {
+          await (tx as any).activeRelease.create({
+            data: {
+              memberId: member.id,
+              amount: activeReleaseAmount,
+              releaseDate: businessDate,
+            },
+          });
+
+          await createAuditLog(tx, {
+            actorUserId: actor.id,
+            action: "ACTIVE_RELEASE_CREATE",
+            entityType: "Member",
+            entityId: member.id,
+            metadata: {
+              amount: activeReleaseAmount,
+              releaseDate: businessDate.toISOString(),
+              source: "member_bulk_update",
+            },
+            request,
           });
         }
 
@@ -213,6 +237,7 @@ export async function POST(req: NextRequest) {
             processingFee > 0 ||
             passbookFee > 0 ||
             membershipFee > 0 ||
+            activeReleaseAmount > 0 ||
             newDaysCount !== null ||
             noteContent !== "") &&
           !errors.some((e) => e.memberId === member.id)
@@ -228,6 +253,7 @@ export async function POST(req: NextRequest) {
               processingFee,
               passbookFee,
               membershipFee,
+              activeReleaseAmount,
               daysCount: newDaysCount,
               hasNotes: noteContent !== "",
             },
