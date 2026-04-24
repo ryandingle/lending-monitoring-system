@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconSearch, IconPencil, IconTrash, IconChevronUp, IconChevronDown, IconPlus, IconX, IconEye } from "../_components/icons";
+import { showAppToast } from "../_components/app-toast";
 
 type Group = {
   id: string;
@@ -109,7 +110,6 @@ export function GroupsClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState("");
   
   // Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{
@@ -198,7 +198,6 @@ export function GroupsClient({
         collectionOfficerId: "",
       });
     }
-    setModalError("");
     setIsModalOpen(true);
   };
 
@@ -210,7 +209,6 @@ export function GroupsClient({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalLoading(true);
-    setModalError("");
 
     try {
       const url = editingGroup ? `/api/groups/${editingGroup.id}` : "/api/groups";
@@ -242,9 +240,10 @@ export function GroupsClient({
       }
       
       handleCloseModal();
+      showAppToast("success", editingGroup ? "Group updated successfully." : "Group created successfully.");
       router.refresh(); // Refresh server components if any depend on this data
     } catch (error: any) {
-      setModalError(error.message);
+      showAppToast("error", error.message || "Failed to save group");
     } finally {
       setModalLoading(false);
     }
@@ -285,9 +284,10 @@ export function GroupsClient({
       }
       router.refresh();
       setConfirmation({ ...confirmation, isOpen: false });
+      showAppToast("success", "Group deleted successfully.");
     } catch (error) {
       console.error(error);
-      alert("Failed to delete group");
+      showAppToast("error", "Failed to delete group");
     } finally {
       setIsConfirming(false);
     }
@@ -465,13 +465,6 @@ export function GroupsClient({
                 <IconX className="h-5 w-5" />
               </button>
             </div>
-
-            {modalError && (
-              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                {modalError}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">

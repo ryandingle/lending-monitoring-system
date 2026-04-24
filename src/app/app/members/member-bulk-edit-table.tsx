@@ -8,6 +8,7 @@ import { countBusinessDays } from "@/lib/date";
 import { IconEye, IconPencil, IconTrash } from "../_components/icons";
 import { ConfirmSubmitButton } from "../_components/confirm-submit-button";
 import { PaginationControls } from "../_components/pagination-controls";
+import { showAppToast } from "../_components/app-toast";
 
 export interface Member {
     id: string;
@@ -26,15 +27,6 @@ export interface Member {
 
 interface User {
     role: Role;
-}
-
-function showAppToast(type: "success" | "error" | "warning" | "info", message: string) {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(
-        new CustomEvent("app-toast", {
-            detail: { type, message },
-        }),
-    );
 }
 
 export function MemberBulkEditTable({
