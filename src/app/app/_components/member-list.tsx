@@ -305,6 +305,7 @@ export function MemberList({
   const canCreate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
+  const canManageActiveRelease = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
   const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter, nm = newMemberFilter) => {
     // If fixedGroupId is set, always use it
@@ -1730,7 +1731,7 @@ export function MemberList({
                                                     <option value="">Select Type</option>
                                                     <option value="balance">Balance</option>
                                                     <option value="savings">Savings</option>
-                                                    <option value="activeRelease">Active Release</option>
+                                                    {canManageActiveRelease ? <option value="activeRelease">Active Release</option> : null}
                                                 </select>
                                                 <select 
                                                     className="rounded bg-white border border-slate-300 px-3 py-2 text-sm text-slate-900"
