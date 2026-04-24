@@ -13,7 +13,9 @@ export function NavLink({
   icon: React.ReactNode;
 }) {
   const pathname = usePathname() ?? "";
-  const active = pathname === href || (href !== "/app" && pathname.startsWith(href));
+  const active =
+    pathname === href ||
+    (href !== "/app" && pathname.startsWith(`${href}/`));
 
   return (
     <Link
