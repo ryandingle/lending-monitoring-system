@@ -24,19 +24,20 @@ export async function POST(req: NextRequest) {
   const errors: { memberId: string; message: string; type: "balance" | "savings" | "processingFee" }[] = [];
   const warnings: { memberId: string; message: string }[] = [];
 
-  await prisma.$transaction(async (tx) => {
-    for (const update of updates) {
+  for (const update of updates) {
+    await prisma.$transaction(async (tx) => {
       const member = await tx.member.findUnique({
         where: { id: update.memberId },
         select: { id: true, firstName: true, lastName: true, balance: true, savings: true, daysCount: true },
       });
-      if (!member) continue;
+      if (!member) return;
 
       const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
       const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
       const processingFee = parseFloat(update.processingFee) || 0;
       const passbookFee = parseFloat(update.passbookFee) || 0;
       const membershipFee = parseFloat(update.membershipFee) || 0;
+      const activeReleaseAmount = parseFloat(update.activeReleaseAmount) || 0;
       const newDaysCount = update.daysCount !== "" ? parseInt(update.daysCount) : null;
       const noteContent = update.notes?.trim() || "";
 
@@ -80,6 +81,29 @@ export async function POST(req: NextRequest) {
             amount: membershipFee,
             createdAt: businessDate,
           },
+        });
+      }
+
+      if (activeReleaseAmount > 0) {
+        await (tx as any).activeRelease.create({
+          data: {
+            memberId: member.id,
+            amount: activeReleaseAmount,
+            releaseDate: businessDate,
+          },
+        });
+
+        await createAuditLog(tx, {
+          actorUserId: actor.id,
+          action: "ACTIVE_RELEASE_CREATE",
+          entityType: "Member",
+          entityId: member.id,
+          metadata: {
+            amount: activeReleaseAmount,
+            releaseDate: businessDate.toISOString(),
+            source: "member_bulk_update",
+          },
+          request,
         });
       }
 
@@ -206,18 +230,21 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || passbookFee > 0 || membershipFee > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
+      if ((balanceDeduct > 0 || savingsIncrease > 0 || processingFee > 0 || passbookFee > 0 || membershipFee > 0 || activeReleaseAmount > 0 || newDaysCount !== null || noteContent !== "") && !errors.some(e => e.memberId === member.id)) {
         await createAuditLog(tx, {
           actorUserId: actor.id,
           action: "MEMBER_BULK_UPDATE",
           entityType: "Member",
           entityId: member.id,
-          metadata: { balanceDeduct, savingsIncrease, processingFee, passbookFee, membershipFee, daysCount: newDaysCount, hasNotes: noteContent !== "" },
+          metadata: { balanceDeduct, savingsIncrease, processingFee, passbookFee, membershipFee, activeReleaseAmount, daysCount: newDaysCount, hasNotes: noteContent !== "" },
           request,
         });
       }
-    }
-  });
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
+    });
+  }
 
   return NextResponse.json({ success: errors.length === 0, errors, warnings });
 }
