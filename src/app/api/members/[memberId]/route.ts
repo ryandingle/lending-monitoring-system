@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCollectorScopedGroupIds } from "@/lib/auth/access";
-import { requireRole, requireUser } from "@/lib/auth/session";
+import { hasRole, requireRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
@@ -136,7 +136,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ memberId: string }> }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  if (!hasRole(user, [Role.SUPER_ADMIN, Role.ENCODER])) {
+    return NextResponse.json(
+      { error: "Your role is not allowed to do this action" },
+      { status: 403 },
+    );
+  }
   const { memberId } = await params;
 
   const body = await req.json();
@@ -293,7 +298,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ memb
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ memberId: string }> }) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  if (!hasRole(user, [Role.SUPER_ADMIN])) {
+    return NextResponse.json(
+      { error: "Your role is not allowed to do this action" },
+      { status: 403 },
+    );
+  }
   const { memberId } = await params;
 
   const request = await tryGetAuditRequestContext();

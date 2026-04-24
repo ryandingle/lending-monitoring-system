@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCollectorScopedGroupIds } from "@/lib/auth/access";
-import { requireRole, requireUser } from "@/lib/auth/session";
+import { hasRole, requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Prisma, Role, SavingsUpdateType } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
@@ -283,7 +283,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
+  if (!hasRole(user, [Role.SUPER_ADMIN, Role.ENCODER])) {
+    return NextResponse.json(
+      { error: "Your role is not allowed to do this action" },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json();
   const parsed = CreateMemberSchema.safeParse(body);
