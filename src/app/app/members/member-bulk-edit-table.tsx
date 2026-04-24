@@ -28,6 +28,15 @@ interface User {
     role: Role;
 }
 
+function showAppToast(type: "success" | "error" | "warning" | "info", message: string) {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+        new CustomEvent("app-toast", {
+            detail: { type, message },
+        }),
+    );
+}
+
 export function MemberBulkEditTable({
     initialMembers,
     user,
@@ -62,16 +71,12 @@ export function MemberBulkEditTable({
     
     const [updates, setUpdates] = useState<Record<string, { balanceDeduct: string; savingsIncrease: string; processingFee: string; daysCount: string; notes: string }>>({});
     const [errors, setErrors] = useState<{ memberId: string; message: string; type: string }[]>([]);
-    const [warnings, setWarnings] = useState<{ memberId: string; message: string }[]>([]);
-    const [showSuccess, setShowSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
     // Clear updates when page/sort/limit changes to avoid applying updates to wrong rows if they shift
     useEffect(() => {
         setUpdates({});
         setErrors([]);
-        setWarnings([]);
-        setShowSuccess(false);
     }, [pagination?.page, pagination?.limit, sort, groupId]);
 
     const updateUrl = (params: Record<string, string | number | null>) => {
@@ -111,8 +116,6 @@ export function MemberBulkEditTable({
         if (!hasChanges || isSaving) return;
         setIsSaving(true);
         setErrors([]);
-        setWarnings([]);
-        setShowSuccess(false);
         try {
             const payload = Object.entries(updates)
                 .filter(([_, u]) => u.balanceDeduct !== "" || u.savingsIncrease !== "" || u.processingFee !== "" || u.daysCount !== "" || u.notes !== "")
@@ -127,13 +130,16 @@ export function MemberBulkEditTable({
             const result = await onBulkUpdate(payload);
             if (result.success) {
                 setUpdates({});
-                setWarnings(result.warnings || []);
-                setShowSuccess(true);
-                setTimeout(() => setShowSuccess(false), 5000);
+                showAppToast("success", "Bulk update successful!");
             } else if (result.errors) {
                 setErrors(result.errors);
-                setWarnings(result.warnings || []);
+                showAppToast("error", result.errors[0]?.message || "Bulk update failed.");
             }
+            if (result.warnings?.length) {
+                showAppToast("warning", result.warnings[0].message);
+            }
+        } catch (error: any) {
+            showAppToast("error", error?.message || "An error occurred during bulk update.");
         } finally {
             setIsSaving(false);
         }
@@ -141,53 +147,6 @@ export function MemberBulkEditTable({
 
     return (
         <div className="space-y-4">
-            {showSuccess && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center gap-2 text-emerald-700">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                            <path d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-xs font-bold uppercase tracking-wider">Updates Saved Successfully!</span>
-                    </div>
-                </div>
-            )}
-
-            {warnings.length > 0 && (
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                    <div className="flex items-center gap-2 text-yellow-700 mb-2">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span className="text-xs font-bold uppercase tracking-wider">Warnings</span>
-                    </div>
-                    <ul className="space-y-1">
-                        {warnings.map((w, i) => (
-                            <li key={i} className="text-xs text-yellow-800/80">
-                                • {w.message}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {errors.length > 0 && (
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                    <div className="flex items-center gap-2 text-yellow-700 mb-2">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span className="text-xs font-bold uppercase tracking-wider">Blocked Duplicate Updates</span>
-                    </div>
-                    <ul className="space-y-1">
-                        {errors.map((err, i) => (
-                            <li key={i} className="text-xs text-yellow-800/80">
-                                • {err.message}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                     <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">

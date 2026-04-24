@@ -19,7 +19,8 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const isMembersRoute = pathname?.startsWith("/app/members");
+  const isGroupDetailsRoute = /^\/app\/groups\/[^/]+$/.test(pathname ?? "");
+  const isMembersRoute = pathname?.startsWith("/app/members") || isGroupDetailsRoute;
 
   const toggleSidebar = () => {
     setCollapsed((prev) => {
