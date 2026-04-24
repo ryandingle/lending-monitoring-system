@@ -20,63 +20,105 @@ export type AccountingPdfData = AccountingReportData & {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 28,
-    fontSize: 8,
+    paddingTop: 32,
+    paddingBottom: 4,
+    paddingLeft: 50,
+    paddingRight: -20,
+    fontSize: 7,
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
   },
   header: {
-    marginBottom: 14,
-    alignItems: "center",
+    marginBottom: 10,
+    textAlign: "center",
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
+    justifyContent: "center",
+    gap: 4,
+    marginBottom: 2,
   },
   logo: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     objectFit: "contain",
   },
   companyName: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
   },
   title: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
   },
   subtitle: {
-    marginTop: 2,
-    fontSize: 8,
-  },
-  cardsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 14,
-  },
-  statCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 6,
-    padding: 8,
-    backgroundColor: "#f8fafc",
-  },
-  statLabel: {
+    marginTop: 1,
     fontSize: 7,
-    color: "#475569",
-    marginBottom: 4,
   },
-  statValue: {
-    fontSize: 11,
+  contentWidth: {
+    width: "92%",
+    alignSelf: "center",
+  },
+  summaryBox: {
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#0f172a",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    backgroundColor: "#e2e8f0",
+    borderBottomWidth: 1,
+    borderBottomColor: "#0f172a",
+  },
+  summaryTitle: {
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
+  },
+  legendChip: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderWidth: 1,
+    borderColor: "#d97706",
+    backgroundColor: "#fef08a",
+    borderRadius: 999,
+    fontSize: 6,
+    fontFamily: "Helvetica-Bold",
+    color: "#92400e",
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    backgroundColor: "#ffffff",
+  },
+  summaryItem: {
+    width: "33.3333%",
+    borderRightWidth: 1,
+    borderRightColor: "#cbd5e1",
+    borderBottomWidth: 1,
+    borderBottomColor: "#cbd5e1",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  summaryItemLabel: {
+    fontSize: 6,
+    color: "#475569",
+    marginBottom: 2,
+  },
+  summaryItemValue: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
   },
   sectionsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 6,
     alignItems: "flex-start",
   },
   section: {
@@ -87,39 +129,48 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   sectionHeader: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     backgroundColor: "#e2e8f0",
     borderBottomWidth: 1,
     borderBottomColor: "#0f172a",
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
   },
   sectionDescription: {
-    fontSize: 7,
+    fontSize: 5,
     color: "#334155",
-    marginTop: 2,
+    marginTop: 1,
   },
   row: {
     flexDirection: "row",
-    minHeight: 18,
+    minHeight: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#cbd5e1",
   },
   rowLabel: {
     width: "64%",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRightWidth: 1,
     borderRightColor: "#cbd5e1",
   },
   rowValue: {
     width: "36%",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     textAlign: "right",
+  },
+  rowValueManual: {
+    width: "36%",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    textAlign: "right",
+    backgroundColor: "#fef08a",
+    color: "#92400e",
+    fontFamily: "Helvetica-Bold",
   },
   totalRow: {
     flexDirection: "row",
@@ -127,23 +178,54 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     width: "64%",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     borderRightWidth: 1,
     borderRightColor: "#94a3b8",
     fontFamily: "Helvetica-Bold",
   },
   totalValue: {
     width: "36%",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     textAlign: "right",
     fontFamily: "Helvetica-Bold",
   },
   footer: {
-    marginTop: 12,
-    textAlign: "right",
+    width: "92%",
+    alignSelf: "center",
+    marginTop: 4,
+    gap: 4,
+  },
+  signatoriesTitle: {
     fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "#334155",
+  },
+  signatoriesRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  signatoryBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    minHeight: 28,
+  },
+  signatoryLine: {
+    width: "100%",
+    borderBottomWidth: 1,
+    borderBottomColor: "#0f172a",
+    marginBottom: 4,
+  },
+  signatoryLabel: {
+    fontSize: 6,
+    color: "#475569",
+    textAlign: "center",
+  },
+  generatedText: {
+    textAlign: "right",
+    fontSize: 6,
     color: "#475569",
   },
 });
@@ -159,7 +241,7 @@ function formatMoney(value: number) {
 function renderSection(
   title: string,
   description: string,
-  rows: Array<{ key: string; label: string; value: number }>,
+  rows: Array<{ key: string; label: string; value: number; manual?: boolean }>,
   totalLabel: string,
   totalValue: number,
 ) {
@@ -167,12 +249,14 @@ function renderSection(
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionDescription}>{description}</Text>
+        {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
       </View>
       {rows.map((row) => (
         <View key={row.key} style={styles.row}>
           <Text style={styles.rowLabel}>{row.label}</Text>
-          <Text style={styles.rowValue}>{formatMoney(row.value)}</Text>
+          <Text style={row.manual ? styles.rowValueManual : styles.rowValue}>
+            {formatMoney(row.value)}
+          </Text>
         </View>
       ))}
       <View style={styles.totalRow}>
@@ -190,27 +274,29 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
     { key: "savings", label: "Savings", value: data.computedTotals.savings },
     { key: "passbook", label: "Passbook", value: data.computedTotals.passbook },
     { key: "membershipFee", label: "Mem Fee", value: data.computedTotals.membershipFee },
-    { key: "cashAdvance", label: "CASH ADVANCE", value: data.manualData.receipts.cashAdvance },
+    { key: "cashAdvance", label: "CASH ADVANCE", value: data.manualData.receipts.cashAdvance, manual: true },
     { key: "loanInsurance", label: "Loan Insurance", value: data.computedTotals.loanInsurance },
-    { key: "ftIn", label: "FT(IN)", value: data.manualData.receipts.ftIn },
-    { key: "bankWithdrawal1", label: "Bank wdl.-DFOB1", value: data.manualData.receipts.bankWithdrawal1 },
-    { key: "bankWithdrawal2", label: "Bank wdl.-DFOB2", value: data.manualData.receipts.bankWithdrawal2 },
+    { key: "ftIn", label: "FT(IN)", value: data.manualData.receipts.ftIn, manual: true },
+    { key: "bankWithdrawal1", label: "Bank wdl.-DFOB1", value: data.manualData.receipts.bankWithdrawal1, manual: true },
+    { key: "bankWithdrawal2", label: "Bank wdl.-DFOB2", value: data.manualData.receipts.bankWithdrawal2, manual: true },
   ];
 
   const paymentRows = [
-    { key: "loanRelease", label: "Loan Release", value: data.manualData.payments.loanRelease },
+    { key: "loanRelease", label: "Loan Release", value: data.computedTotals.loanRelease },
     { key: "managementExpense", label: "Mgmt. Exp.", value: data.view.dailyExpensesTotal },
-    { key: "otherPay", label: "Other Pay", value: data.manualData.payments.otherPay },
-    { key: "ftOut", label: "FT(OUT)", value: data.manualData.payments.ftOut },
+    { key: "otherPay", label: "Other Pay", value: data.manualData.payments.otherPay, manual: true },
+    { key: "ftOut", label: "FT(OUT)", value: data.manualData.payments.ftOut, manual: true },
     ...PAYMENT_MANUAL_FIELDS.filter((field) => field.key.startsWith("bankDeposit")).map((field) => ({
       key: field.key,
       label: field.label,
       value: data.manualData.payments[field.key],
+      manual: true,
     })),
     ...PAYMENT_MANUAL_FIELDS.filter((field) => field.key.startsWith("bankTransaction")).map((field) => ({
       key: field.key,
       label: field.label,
       value: data.manualData.payments[field.key],
+      manual: true,
     })),
     { key: "bankDepositTotal", label: "Bank Deposit Total", value: data.view.bankDepositTotal },
     { key: "closingBalance", label: "Closing Balance", value: data.view.closingBalance },
@@ -220,7 +306,17 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
     key: field.key,
     label: field.label,
     value: data.manualData.dailyExpenses[field.key],
+    manual: true,
   }));
+
+  const computedSummaryRows = [
+    { key: "loanCollection", label: "Loan Collection Current", value: data.computedTotals.loanCollection },
+    { key: "savings", label: "Savings", value: data.computedTotals.savings },
+    { key: "passbook", label: "Passbook", value: data.computedTotals.passbook },
+    { key: "membershipFee", label: "Mem Fee", value: data.computedTotals.membershipFee },
+    { key: "totalCollection", label: "Total Collection", value: data.computedTotals.totalCollection },
+    { key: "fullRepaymentAmount", label: "Full Repayment", value: data.computedTotals.fullRepaymentAmount },
+  ];
 
   return (
     <Document>
@@ -234,50 +330,69 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
           <Text style={styles.subtitle}>Date: {data.accountingDate}</Text>
         </View>
 
-        <View style={styles.cardsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Total Collection</Text>
-            <Text style={styles.statValue}>{formatMoney(data.computedTotals.totalCollection)}</Text>
+        <View style={[styles.contentWidth, styles.summaryBox]} wrap={false}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>Computed Totals Summary</Text>
+            <Text style={styles.legendChip}>Yellow values = manual inputs</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Full Repayment Count</Text>
-            <Text style={styles.statValue}>{String(data.computedTotals.fullRepaymentCount || 0)}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Full Repayment Amount</Text>
-            <Text style={styles.statValue}>{formatMoney(data.computedTotals.fullRepaymentAmount)}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Last Saved</Text>
-            <Text style={styles.statValue}>{data.lastUpdatedAt ? data.lastUpdatedAt.slice(0, 16).replace("T", " ") : "Not yet saved"}</Text>
+          <View style={styles.summaryGrid}>
+            {computedSummaryRows.map((row) => (
+              <View key={row.key} style={styles.summaryItem}>
+                <Text style={styles.summaryItemLabel}>{row.label}</Text>
+                <Text style={styles.summaryItemValue}>{formatMoney(row.value)}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        <View style={styles.sectionsRow}>
+        <View style={styles.contentWidth} wrap={false}>
+          <View style={styles.sectionsRow}>
           {renderSection(
             "Receipts",
-            "Manual entries plus selected date collection totals",
+            "",
             receiptsRows,
             "Total Receipts",
             data.view.receiptsTotal,
           )}
           {renderSection(
             "Payments",
-            "Mgmt. Exp. follows the Daily Expenses total",
+            "",
             paymentRows,
             "Total Payments",
             data.view.totalPayments,
           )}
           {renderSection(
             "Daily Expenses",
-            "Saved manual values for the selected date",
+            "",
             expenseRows,
             "Total Daily Expenses",
             data.view.dailyExpensesTotal,
           )}
+          </View>
         </View>
 
-        <Text style={styles.footer}>Generated Triple E Monitoring System</Text>
+        <View style={styles.footer} wrap={false}>
+          <Text style={styles.signatoriesTitle}>Signatories</Text>
+          <View style={styles.signatoriesRow}>
+            <View style={styles.signatoryBox}>
+              <View style={styles.signatoryLine} />
+              <Text style={styles.signatoryLabel}>AO Signature 1</Text>
+            </View>
+            <View style={styles.signatoryBox}>
+              <View style={styles.signatoryLine} />
+              <Text style={styles.signatoryLabel}>AO Signature 2</Text>
+            </View>
+            <View style={styles.signatoryBox}>
+              <View style={styles.signatoryLine} />
+              <Text style={styles.signatoryLabel}>AO Signature 3</Text>
+            </View>
+            <View style={styles.signatoryBox}>
+              <View style={styles.signatoryLine} />
+              <Text style={styles.signatoryLabel}>Branch Manager Signature</Text>
+            </View>
+          </View>
+          <Text style={styles.generatedText}>Generated Triple E Monitoring System</Text>
+        </View>
       </Page>
     </Document>
   );

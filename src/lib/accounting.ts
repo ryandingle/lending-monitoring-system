@@ -1,4 +1,4 @@
-import { BalanceUpdateType, Prisma, SavingsUpdateType } from "@prisma/client";
+import { BalanceUpdateType, MemberStatus, Prisma, SavingsUpdateType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getManilaDateRange } from "@/lib/date";
 
@@ -57,6 +57,7 @@ export type AccountingManualData = {
 export type AccountingComputedTotals = {
   cashOnHand: number;
   loanCollection: number;
+  loanRelease: number;
   loanInsurance: number;
   passbook: number;
   membershipFee: number;
@@ -130,12 +131,12 @@ function sumSection(section: AccountingManualSection, keys: readonly { key: stri
 export function buildAccountingView(
   manual: AccountingManualData,
   computed: AccountingComputedTotals,
+  openingBalance = computed.cashOnHand,
 ): AccountingView {
   const bankDepositTotal = PAYMENT_MANUAL_FIELDS.filter((field) =>
     field.key.startsWith("bankDeposit"),
   ).reduce((sum, field) => sum + toNumber(manual.payments[field.key]), 0);
 
-  const openingBalance = computed.cashOnHand;
   const dailyExpensesTotal = sumSection(manual.dailyExpenses, DAILY_EXPENSE_FIELDS);
   const manualReceiptInflows =
     toNumber(manual.receipts.cashAdvance) +
@@ -152,14 +153,14 @@ export function buildAccountingView(
     manualReceiptInflows;
 
   const paymentBaseTotal =
-    toNumber(manual.payments.loanRelease) +
+    computed.loanRelease +
     dailyExpensesTotal +
     toNumber(manual.payments.otherPay) +
     toNumber(manual.payments.ftOut) +
     bankDepositTotal;
 
   const closingBalance =
-    computed.cashOnHand + computed.totalCollection + manualReceiptInflows - paymentBaseTotal;
+    openingBalance + computed.totalCollection + manualReceiptInflows - paymentBaseTotal;
   const totalPayments = paymentBaseTotal + closingBalance;
 
   return {
@@ -179,7 +180,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
 }> {
   const record = await (prisma as any).accountingDay.findUnique({
     where: {
-      accountingDate: new Date(`${accountingDate}T00:00:00.000+08:00`),
+      accountingDate: toAccountingDate(accountingDate),
     },
     select: {
       receipts: true,
@@ -203,11 +204,36 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
   };
 }
 
+function toAccountingDate(accountingDate: string) {
+  return new Date(`${accountingDate}T00:00:00.000+08:00`);
+}
+
+async function getPreviousAccountingDate(accountingDate: string): Promise<string | null> {
+  const previousRecord = await (prisma as any).accountingDay.findFirst({
+    where: {
+      accountingDate: {
+        lt: toAccountingDate(accountingDate),
+      },
+    },
+    orderBy: {
+      accountingDate: "desc",
+    },
+    select: {
+      accountingDate: true,
+    },
+  });
+
+  return previousRecord?.accountingDate
+    ? new Date(previousRecord.accountingDate).toISOString().slice(0, 10)
+    : null;
+}
+
 export async function getAccountingComputedTotals(accountingDate: string): Promise<AccountingComputedTotals> {
   const range = getManilaDateRange(accountingDate, accountingDate);
 
   const [
     loanCollectionAgg,
+    loanReleaseAgg,
     passbookAgg,
     membershipFeeAgg,
     savingsAgg,
@@ -218,18 +244,36 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
       where: {
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
+      },
+      _sum: { amount: true },
+    }),
+    (prisma as any).activeRelease.aggregate({
+      where: {
+        releaseDate: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).passbookFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).membershipFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
       _sum: { amount: true },
     }),
@@ -237,6 +281,9 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
       where: {
         type: SavingsUpdateType.INCREASE,
         createdAt: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
       _sum: { amount: true },
     }),
@@ -245,6 +292,9 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
         balanceAfter: new Prisma.Decimal(0),
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
     }),
     prisma.balanceAdjustment.aggregate({
@@ -252,12 +302,16 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
         balanceAfter: new Prisma.Decimal(0),
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
       },
       _sum: { amount: true },
     }),
   ]);
 
   const loanCollection = Number(loanCollectionAgg._sum.amount ?? 0);
+  const loanRelease = Number(loanReleaseAgg._sum.amount ?? 0);
   const loanInsurance = 0;
   const passbook = Number(passbookAgg._sum.amount ?? 0);
   const membershipFee = Number(membershipFeeAgg._sum.amount ?? 0);
@@ -269,6 +323,7 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   return {
     cashOnHand,
     loanCollection,
+    loanRelease,
     loanInsurance,
     passbook,
     membershipFee,
@@ -279,17 +334,37 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   };
 }
 
-export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
-  const [{ manualData, lastUpdatedAt }, computedTotals] = await Promise.all([
-    getAccountingManualDataForDate(accountingDate),
-    getAccountingComputedTotals(accountingDate),
-  ]);
+async function getAccountingReportDataInternal(
+  accountingDate: string,
+  cache: Map<string, Promise<AccountingReportData>>,
+): Promise<AccountingReportData> {
+  const cached = cache.get(accountingDate);
+  if (cached) return cached;
 
-  return {
-    accountingDate,
-    manualData,
-    computedTotals,
-    view: buildAccountingView(manualData, computedTotals),
-    lastUpdatedAt,
-  };
+  const reportPromise = (async () => {
+    const [{ manualData, lastUpdatedAt }, computedTotals, previousAccountingDate] = await Promise.all([
+      getAccountingManualDataForDate(accountingDate),
+      getAccountingComputedTotals(accountingDate),
+      getPreviousAccountingDate(accountingDate),
+    ]);
+
+    const openingBalance = previousAccountingDate
+      ? (await getAccountingReportDataInternal(previousAccountingDate, cache)).view.closingBalance
+      : computedTotals.cashOnHand;
+
+    return {
+      accountingDate,
+      manualData,
+      computedTotals,
+      view: buildAccountingView(manualData, computedTotals, openingBalance),
+      lastUpdatedAt,
+    };
+  })();
+
+  cache.set(accountingDate, reportPromise);
+  return reportPromise;
+}
+
+export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
+  return getAccountingReportDataInternal(accountingDate, new Map());
 }

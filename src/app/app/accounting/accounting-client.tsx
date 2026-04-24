@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { IconEye, IconFileText, IconX } from "../_components/icons";
+import { Role } from "@prisma/client";
 import {
   buildAccountingView,
   DAILY_EXPENSE_FIELDS,
@@ -10,6 +10,7 @@ import {
   type AccountingComputedTotals,
   type AccountingManualData,
 } from "@/lib/accounting";
+import { showAppToast } from "../_components/app-toast";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -99,31 +100,50 @@ function SectionCard({
 
 export function AccountingClient({
   selectedDate,
+  maxDate,
+  userRole,
   initialManualData,
   computedTotals,
+  initialOpeningBalance,
   lastUpdatedAt,
 }: {
   selectedDate: string;
+  maxDate: string;
+  userRole: Role | "COLLECTOR";
   initialManualData: AccountingManualData;
   computedTotals: AccountingComputedTotals;
+  initialOpeningBalance: number;
   lastUpdatedAt: string | null;
 }) {
-  const router = useRouter();
-  const pathname = usePathname() ?? "";
-  const searchParams = useSearchParams();
+  const [currentDate, setCurrentDate] = useState(selectedDate);
   const [manualData, setManualData] = useState(initialManualData);
+  const [currentComputedTotals, setCurrentComputedTotals] = useState(computedTotals);
+  const [openingBalance, setOpeningBalance] = useState(initialOpeningBalance);
+  const [currentLastUpdatedAt, setCurrentLastUpdatedAt] = useState(lastUpdatedAt);
   const [saving, setSaving] = useState(false);
+  const [loadingDate, setLoadingDate] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isOverrideMode, setIsOverrideMode] = useState(false);
 
   useEffect(() => {
+    setCurrentDate(selectedDate);
     setManualData(initialManualData);
-  }, [initialManualData]);
+    setCurrentComputedTotals(computedTotals);
+    setOpeningBalance(initialOpeningBalance);
+    setCurrentLastUpdatedAt(lastUpdatedAt);
+    setIsOverrideMode(false);
+  }, [selectedDate, initialManualData, computedTotals, initialOpeningBalance, lastUpdatedAt]);
+
+  const isSavedDay = Boolean(currentLastUpdatedAt);
+  const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+  const canOverride = isSavedDay && isSuperAdmin;
+  const canEditManualInputs = !isSavedDay || (isSuperAdmin && isOverrideMode);
 
   const view = useMemo(
-    () => buildAccountingView(manualData, computedTotals),
-    [manualData, computedTotals],
+    () => buildAccountingView(manualData, currentComputedTotals, openingBalance),
+    [manualData, currentComputedTotals, openingBalance],
   );
 
   const updateValue = (
@@ -140,10 +160,45 @@ export function AccountingClient({
     }));
   };
 
-  const handleDateChange = (nextDate: string) => {
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.set("date", nextDate);
-    router.push(`${pathname}?${params.toString()}`);
+  const handleDateChange = async (nextDate: string) => {
+    if (!nextDate) return;
+    const safeDate = nextDate > maxDate ? maxDate : nextDate;
+    setLoadingDate(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/accounting?date=${encodeURIComponent(safeDate)}`);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to load accounting data");
+      }
+
+      const reportData = result.reportData as {
+        manualData: AccountingManualData;
+        computedTotals: AccountingComputedTotals;
+        view: { openingBalance: number };
+        lastUpdatedAt: string | null;
+      };
+
+      setCurrentDate(safeDate);
+      setManualData(reportData.manualData);
+      setCurrentComputedTotals(reportData.computedTotals);
+      setOpeningBalance(reportData.view.openingBalance);
+      setCurrentLastUpdatedAt(reportData.lastUpdatedAt);
+      setIsOverrideMode(false);
+
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("date", safeDate);
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load accounting data");
+      showAppToast("error", err.message || "Failed to load accounting data");
+    } finally {
+      setLoadingDate(false);
+    }
   };
 
   const handleSave = async () => {
@@ -158,7 +213,7 @@ export function AccountingClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountingDate: selectedDate,
+          accountingDate: currentDate,
           receipts: manualData.receipts,
           payments: manualData.payments,
           dailyExpenses: manualData.dailyExpenses,
@@ -170,16 +225,19 @@ export function AccountingClient({
         throw new Error(result.error || "Failed to save accounting data");
       }
 
-      setMessage(`Saved accounting data for ${selectedDate}.`);
-      router.refresh();
+      setCurrentLastUpdatedAt(result.data?.lastUpdatedAt ?? new Date().toISOString());
+      setMessage(`Saved accounting data for ${currentDate}.`);
+      setIsOverrideMode(false);
+      showAppToast("success", `Saved accounting data for ${currentDate}.`);
     } catch (err: any) {
       setError(err.message || "Failed to save accounting data");
+      showAppToast("error", err.message || "Failed to save accounting data");
     } finally {
       setSaving(false);
     }
   };
 
-  const basePdfUrl = `/api/accounting/export?date=${encodeURIComponent(selectedDate)}`;
+  const basePdfUrl = `/api/accounting/export?date=${encodeURIComponent(currentDate)}`;
 
   const handlePreview = () => {
     setPreviewUrl(`${basePdfUrl}&preview=true`);
@@ -195,37 +253,37 @@ export function AccountingClient({
       label: "Opening Balance",
       value: view.openingBalance,
     },
-    { key: "loanCollection", label: "Loan Col. (Current)", value: computedTotals.loanCollection },
-    { key: "savings", label: "Savings", value: computedTotals.savings },
-    { key: "passbook", label: "Passbook", value: computedTotals.passbook },
-    { key: "membershipFee", label: "Mem Fee", value: computedTotals.membershipFee },
+    { key: "loanCollection", label: "Loan Col. (Current)", value: currentComputedTotals.loanCollection },
+    { key: "savings", label: "Savings", value: currentComputedTotals.savings },
+    { key: "passbook", label: "Passbook", value: currentComputedTotals.passbook },
+    { key: "membershipFee", label: "Mem Fee", value: currentComputedTotals.membershipFee },
     {
       key: "cashAdvance",
       label: "CASH ADVANCE",
       value: manualData.receipts.cashAdvance,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("receipts", "cashAdvance", next),
     },
-    { key: "loanInsurance", label: "Loan Insurance", value: computedTotals.loanInsurance },
+    { key: "loanInsurance", label: "Loan Insurance", value: currentComputedTotals.loanInsurance },
     {
       key: "ftIn",
       label: "FT(IN)",
       value: manualData.receipts.ftIn,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("receipts", "ftIn", next),
     },
     {
       key: "bankWithdrawal1",
       label: "Bank wdl.-DFOB1",
       value: manualData.receipts.bankWithdrawal1,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("receipts", "bankWithdrawal1", next),
     },
     {
       key: "bankWithdrawal2",
       label: "Bank wdl.-DFOB2",
       value: manualData.receipts.bankWithdrawal2,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("receipts", "bankWithdrawal2", next),
     },
   ];
@@ -234,37 +292,35 @@ export function AccountingClient({
     {
       key: "loanRelease",
       label: "Loan Release",
-      value: manualData.payments.loanRelease,
-      editable: true,
-      onChange: (next: number) => updateValue("payments", "loanRelease", next),
+      value: currentComputedTotals.loanRelease,
     },
     { key: "managementExpense", label: "Mgmt. Exp.", value: view.dailyExpensesTotal },
     {
       key: "otherPay",
       label: "Other Pay",
       value: manualData.payments.otherPay,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("payments", "otherPay", next),
     },
     {
       key: "ftOut",
       label: "FT(OUT)",
       value: manualData.payments.ftOut,
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("payments", "ftOut", next),
     },
     ...PAYMENT_MANUAL_FIELDS.filter((field) => field.key.startsWith("bankDeposit")).map((field) => ({
       key: field.key,
       label: field.label,
       value: manualData.payments[field.key],
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("payments", field.key, next),
     })),
     ...PAYMENT_MANUAL_FIELDS.filter((field) => field.key.startsWith("bankTransaction")).map((field) => ({
       key: field.key,
       label: field.label,
       value: manualData.payments[field.key],
-      editable: true,
+      editable: canEditManualInputs,
       onChange: (next: number) => updateValue("payments", field.key, next),
     })),
     { key: "bankDepositTotal", label: "Bank Deposit Total", value: view.bankDepositTotal },
@@ -275,7 +331,7 @@ export function AccountingClient({
     key: field.key,
     label: field.label,
     value: manualData.dailyExpenses[field.key],
-    editable: true,
+    editable: canEditManualInputs,
     onChange: (next: number) => updateValue("dailyExpenses", field.key, next),
   }));
 
@@ -295,15 +351,18 @@ export function AccountingClient({
               <label className="text-sm font-medium text-slate-700">Accounting Date</label>
               <input
                 type="date"
-                value={selectedDate}
-                onChange={(e) => handleDateChange(e.target.value)}
+                value={currentDate}
+                onChange={(e) => void handleDateChange(e.target.value)}
+                max={maxDate}
+                disabled={loadingDate || saving}
                 className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <button
               type="button"
               onClick={handlePreview}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50"
+              disabled={loadingDate}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <IconEye className="h-4 w-4" />
               Preview Print
@@ -315,23 +374,45 @@ export function AccountingClient({
               <IconFileText className="h-4 w-4" />
               Download PDF
             </a>
+            {canOverride ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOverrideMode((current) => !current);
+                  setMessage(null);
+                  setError(null);
+                }}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              >
+                {isOverrideMode ? "Cancel Override" : "Enable Override"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || loadingDate || !canEditManualInputs}
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save Daily Inputs"}
+              {saving ? "Saving..." : loadingDate ? "Loading..." : canEditManualInputs ? "Save Daily Inputs" : "Inputs Locked"}
             </button>
           </div>
         </div>
+        {isSavedDay ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {isSuperAdmin
+              ? isOverrideMode
+                ? "Override mode is enabled. You can now adjust the saved manual inputs."
+                : "This accounting day is already saved. Manual inputs are locked until a super admin enables override."
+              : "This accounting day is already saved. Manual inputs are locked and only a super admin can override them."}
+          </div>
+        ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Total Collection
             </div>
             <div className="mt-2 text-xl font-semibold text-slate-900">
-              {formatMoney(computedTotals.totalCollection)}
+              {formatMoney(currentComputedTotals.totalCollection)}
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -339,7 +420,7 @@ export function AccountingClient({
               Full Repayment Count
             </div>
             <div className="mt-2 text-xl font-semibold text-slate-900">
-              {computedTotals.fullRepaymentCount}
+              {currentComputedTotals.fullRepaymentCount}
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -347,7 +428,7 @@ export function AccountingClient({
               Full Repayment Amount
             </div>
             <div className="mt-2 text-xl font-semibold text-slate-900">
-              {formatMoney(computedTotals.fullRepaymentAmount)}
+              {formatMoney(currentComputedTotals.fullRepaymentAmount)}
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -355,7 +436,7 @@ export function AccountingClient({
               Last Saved
             </div>
             <div className="mt-2 text-sm font-semibold text-slate-900">
-              {formatDateTime(lastUpdatedAt)}
+              {formatDateTime(currentLastUpdatedAt)}
             </div>
           </div>
         </div>

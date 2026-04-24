@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import {
+  getAccountingReportData,
   sanitizeAccountingManualData,
   type AccountingManualData,
 } from "@/lib/accounting";
@@ -18,6 +19,33 @@ const SaveAccountingSchema = z.object({
 
 function toDateOnly(date: string) {
   return new Date(`${date}T00:00:00.000+08:00`);
+}
+
+export async function GET(req: NextRequest) {
+  const user = await requireUser();
+  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+
+  const accountingDate = req.nextUrl.searchParams.get("date");
+  if (!accountingDate || !/^\d{4}-\d{2}-\d{2}$/.test(accountingDate)) {
+    return NextResponse.json(
+      { error: "Invalid accounting date" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const reportData = await getAccountingReportData(accountingDate);
+    return NextResponse.json({
+      success: true,
+      reportData,
+    });
+  } catch (error) {
+    console.error("Error loading accounting day:", error);
+    return NextResponse.json(
+      { error: "Failed to load accounting day" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -39,24 +67,39 @@ export async function PUT(req: NextRequest) {
   const request = await tryGetAuditRequestContext();
 
   try {
+    const existing = await (prisma as any).accountingDay.findUnique({
+      where: { accountingDate: toDateOnly(accountingDate) },
+      select: { id: true },
+    });
+
+    if (existing && user.role !== Role.SUPER_ADMIN) {
+      return NextResponse.json(
+        { error: "This accounting day is already saved. Only a super admin can override it." },
+        { status: 403 },
+      );
+    }
+
     const saved = await prisma.$transaction(async (tx) => {
-      const result = await (tx as any).accountingDay.upsert({
-        where: { accountingDate: toDateOnly(accountingDate) },
-        update: {
-          receipts: manualData.receipts,
-          payments: manualData.payments,
-          dailyExpenses: manualData.dailyExpenses,
-          updatedById: user.id,
-        },
-        create: {
-          accountingDate: toDateOnly(accountingDate),
-          receipts: manualData.receipts,
-          payments: manualData.payments,
-          dailyExpenses: manualData.dailyExpenses,
-          createdById: user.id,
-          updatedById: user.id,
-        },
-      });
+      const result = existing
+        ? await (tx as any).accountingDay.update({
+            where: { accountingDate: toDateOnly(accountingDate) },
+            data: {
+              receipts: manualData.receipts,
+              payments: manualData.payments,
+              dailyExpenses: manualData.dailyExpenses,
+              updatedById: user.id,
+            },
+          })
+        : await (tx as any).accountingDay.create({
+            data: {
+              accountingDate: toDateOnly(accountingDate),
+              receipts: manualData.receipts,
+              payments: manualData.payments,
+              dailyExpenses: manualData.dailyExpenses,
+              createdById: user.id,
+              updatedById: user.id,
+            },
+          });
 
       await createAuditLog(tx, {
         actorUserId: user.id,
@@ -77,6 +120,7 @@ export async function PUT(req: NextRequest) {
         receipts: saved.receipts,
         payments: saved.payments,
         dailyExpenses: saved.dailyExpenses,
+        lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
       },
     });
   } catch (error) {

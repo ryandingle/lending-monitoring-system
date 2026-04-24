@@ -8,7 +8,7 @@ import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit
 import { getAccountingReportData } from "@/lib/accounting";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { AccountingReportPdf } from "@/lib/pdf/AccountingReportPdf";
-import { formatDateYMD, getManilaBusinessDate } from "@/lib/date";
+import { formatDateYMD, getManilaToday } from "@/lib/date";
 
 export const runtime = "nodejs";
 
@@ -26,8 +26,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const rawDate = url.searchParams.get("date")?.trim() ?? "";
   const isPreview = url.searchParams.get("preview") === "true";
+  const today = formatDateYMD(getManilaToday());
   const accountingDate =
-    /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : formatDateYMD(getManilaBusinessDate());
+    /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+      ? rawDate > today
+        ? today
+        : rawDate
+      : today;
 
   try {
     const reportData = await getAccountingReportData(accountingDate);
