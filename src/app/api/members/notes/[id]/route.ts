@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser, requireRole } from "@/lib/auth/session";
+import { hasRole, requireUser, requireRole } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 
 export async function DELETE(
@@ -8,7 +8,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  if (!hasRole(user, [Role.SUPER_ADMIN, Role.ENCODER])) {
+    return NextResponse.json(
+      { error: "Your role is not allowed to do this action" },
+      { status: 403 },
+    );
+  }
   const { id } = await params;
 
   try {
