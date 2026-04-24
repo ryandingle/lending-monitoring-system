@@ -53,10 +53,34 @@ export function ToastContainer() {
         return initial;
     });
 
+    const addToast = useCallback((type: ToastType, message: string) => {
+        setToasts((prev) => [
+            ...prev,
+            {
+                id: `${prev.length}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                type,
+                message,
+            },
+        ]);
+    }, []);
+
     // Stable remover
     const removeToast = useCallback((id: string) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
+
+    useEffect(() => {
+        const handleToastEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ type?: ToastType; message?: string }>;
+            const type = customEvent.detail?.type;
+            const message = customEvent.detail?.message?.trim();
+            if (!type || !message) return;
+            addToast(type, message);
+        };
+
+        window.addEventListener("app-toast", handleToastEvent as EventListener);
+        return () => window.removeEventListener("app-toast", handleToastEvent as EventListener);
+    }, [addToast]);
 
     // Auto-dismiss effect (REACTS to state — allowed)
     useEffect(() => {

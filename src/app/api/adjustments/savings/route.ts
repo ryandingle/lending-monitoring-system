@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCollectorScopedGroupIds } from "@/lib/auth/access";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { z } from "zod";
-import { getManilaBusinessDate } from "@/lib/date";
+import { formatDateYMD, getManilaBusinessDate, getManilaDateRange } from "@/lib/date";
 import { Role, SavingsAdjustment } from "@prisma/client";
 
 const SavingsAdjustmentSchema = z.object({
@@ -82,8 +82,20 @@ export async function POST(req: NextRequest) {
     const { memberId, type, amount } = parsed.data;
 
     const adjustmentDate = getManilaBusinessDate();
+    const todayStr = formatDateYMD(adjustmentDate);
+    const todayRange = getManilaDateRange(todayStr, todayStr);
 
     const result = await prisma.$transaction(async (tx) => {
+      const alreadyUpdated = await tx.savingsAdjustment.findFirst({
+        where: {
+          memberId,
+          createdAt: { gte: todayRange.from, lte: todayRange.to },
+        },
+      });
+      if (alreadyUpdated) {
+        throw new Error("SAVINGS_ALREADY_UPDATED_TODAY");
+      }
+
       const member = await tx.member.findUnique({ where: { id: memberId } });
       if (!member) throw new Error("Member not found");
 
@@ -124,6 +136,12 @@ export async function POST(req: NextRequest) {
         newSavings: result.savingsAfter
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "SAVINGS_ALREADY_UPDATED_TODAY") {
+      return NextResponse.json(
+        { error: "Savings has already been updated today." },
+        { status: 409 },
+      );
+    }
     console.error("Error creating savings adjustment:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create adjustment" },

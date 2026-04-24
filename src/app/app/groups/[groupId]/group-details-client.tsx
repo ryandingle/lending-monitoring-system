@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Role } from "@prisma/client";
 import { MemberList, Member } from "../../_components/member-list";
-import { IconPlus } from "../../_components/icons";
 
 interface GroupDetailsClientProps {
   group: {
@@ -38,8 +37,8 @@ export function GroupDetailsClient({
   pagination,
 }: GroupDetailsClientProps) {
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <div className="shrink-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Link href="/app/groups" className="text-sm text-slate-500 hover:underline">
@@ -60,14 +59,16 @@ export function GroupDetailsClient({
         </div>
       </div>
 
-      <MemberList
-        initialMembers={initialMembers}
-        initialTotal={pagination.totalCount}
-        initialGroups={groups}
-        userRole={userRole}
-        fixedGroupId={group.id}
-        showTitle={false}
-      />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <MemberList
+          initialMembers={initialMembers}
+          initialTotal={pagination.totalCount}
+          initialGroups={groups}
+          userRole={userRole}
+          fixedGroupId={group.id}
+          showTitle={false}
+        />
+      </div>
     </div>
   );
 }
