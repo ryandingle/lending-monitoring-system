@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireRole, requireUser } from "@/lib/auth/session";
+import { hasRole, requireUser } from "@/lib/auth/session";
 import { Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
@@ -21,7 +21,12 @@ export async function POST(
   { params }: { params: Promise<{ groupId: string }> }
 ) {
   const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+  if (!hasRole(user, [Role.SUPER_ADMIN, Role.ENCODER])) {
+    return NextResponse.json(
+      { error: "Your role is not allowed to do this action" },
+      { status: 403 },
+    );
+  }
   const { groupId } = await params;
 
   try {

@@ -122,8 +122,12 @@ export async function requireUser() {
   return user;
 }
 
+export function hasRole(user: AuthUser, roles: readonly (Role | "COLLECTOR")[]) {
+  return roles.includes(user.role as Role | "COLLECTOR");
+}
+
 export function requireRole(user: AuthUser, roles: readonly (Role | "COLLECTOR")[]) {
-  if (!roles.includes(user.role as Role | "COLLECTOR")) {
+  if (!hasRole(user, roles)) {
     notFound();
   }
 }
