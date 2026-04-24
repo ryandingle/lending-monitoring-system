@@ -72,6 +72,8 @@ model User {
   processingFees     ProcessingFee[]     @relation("ProcessingFeeEncodedBy")
   passbookFees       PassbookFee[]       @relation("PassbookFeeEncodedBy")
   membershipFees     MembershipFee[]     @relation("MembershipFeeEncodedBy")
+  createdAccountingDays AccountingDay[]  @relation("AccountingDayCreatedBy")
+  updatedAccountingDays AccountingDay[]  @relation("AccountingDayUpdatedBy")
   auditLogs    AuditLog[]
   notificationReads NotificationRead[]
   employee     Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
@@ -289,6 +291,25 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+model AccountingDay {
+  id             String   @id @default(uuid()) @db.Uuid
+  accountingDate DateTime @unique @db.Date
+  receipts       Json
+  payments       Json
+  dailyExpenses  Json
+  createdById    String   @db.Uuid
+  updatedById    String   @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz
+  updatedAt      DateTime @updatedAt @db.Timestamptz
+
+  createdBy User @relation("AccountingDayCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User @relation("AccountingDayUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([createdById, createdAt])
+  @@index([updatedById, updatedAt])
+  @@map("accounting_days")
 }
 
 model MemberNote {
