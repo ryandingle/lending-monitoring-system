@@ -53,6 +53,9 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               <NavLink href="/app/employees" label={isCollapsed ? "" : "Employees"} icon={<IconBriefcase />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER ? (
+              <NavLink href="/app/accounting" label={isCollapsed ? "" : "Accounting"} icon={<IconFileText />} />
+            ) : null}
+            {user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER ? (
               <NavLink href="/app/reports" label={isCollapsed ? "" : "Reports"} icon={<IconFileText />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN ? (
