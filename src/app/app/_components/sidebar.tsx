@@ -1,6 +1,16 @@
 import Image from "next/image";
 import { NavLink } from "./nav-link";
-import { IconBriefcase, IconDashboard, IconFileText, IconFolder, IconSettings, IconShield, IconUsers } from "./icons";
+import {
+  IconBriefcase,
+  IconDashboard,
+  IconFileText,
+  IconFolder,
+  IconMoney,
+  IconSearch,
+  IconSettings,
+  IconShield,
+  IconUsers,
+} from "./icons";
 import type { AuthUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import clsx from "clsx";
@@ -53,7 +63,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               <NavLink href="/app/employees" label={isCollapsed ? "" : "Employees"} icon={<IconBriefcase />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER ? (
-              <NavLink href="/app/accounting" label={isCollapsed ? "" : "Accounting"} icon={<IconFileText />} />
+              <NavLink href="/app/accounting" label={isCollapsed ? "" : "Accounting"} icon={<IconMoney />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN || user.role === Role.ENCODER ? (
               <NavLink href="/app/reports" label={isCollapsed ? "" : "Reports"} icon={<IconFileText />} />
@@ -62,7 +72,7 @@ export function Sidebar({ user, mobile, collapsed }: { user: AuthUser; mobile?: 
               <NavLink href="/app/users" label={isCollapsed ? "" : "Users"} icon={<IconShield />} />
             ) : null}
             {user.role === Role.SUPER_ADMIN ? (
-              <NavLink href="/app/audit" label={isCollapsed ? "" : "Audit Trail"} icon={<IconShield />} />
+              <NavLink href="/app/audit" label={isCollapsed ? "" : "Audit Trail"} icon={<IconSearch />} />
             ) : null}
             {user.role !== Role.VIEWER ? (
               <NavLink href="/app/account" label={isCollapsed ? "" : "Account"} icon={<IconSettings />} />
