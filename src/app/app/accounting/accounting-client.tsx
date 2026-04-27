@@ -140,6 +140,7 @@ export function AccountingClient({
   const isSuperAdmin = userRole === Role.SUPER_ADMIN;
   const canOverride = isSavedDay && isSuperAdmin;
   const canEditManualInputs = !isSavedDay || (isSuperAdmin && isOverrideMode);
+  const canEditOpeningBalance = isSuperAdmin && canEditManualInputs;
 
   const view = useMemo(
     () => buildAccountingView(manualData, currentComputedTotals, openingBalance),
@@ -147,7 +148,7 @@ export function AccountingClient({
   );
 
   const updateValue = (
-    section: keyof AccountingManualData,
+    section: "receipts" | "payments" | "dailyExpenses",
     key: string,
     value: number,
   ) => {
@@ -214,6 +215,7 @@ export function AccountingClient({
         },
         body: JSON.stringify({
           accountingDate: currentDate,
+          openingBalanceOverride: isSuperAdmin ? openingBalance : null,
           receipts: manualData.receipts,
           payments: manualData.payments,
           dailyExpenses: manualData.dailyExpenses,
@@ -252,6 +254,8 @@ export function AccountingClient({
       key: "openingBalance",
       label: "Opening Balance",
       value: view.openingBalance,
+      editable: canEditOpeningBalance,
+      onChange: (next: number) => setOpeningBalance(next),
     },
     { key: "loanCollection", label: "Loan Col. (Current)", value: currentComputedTotals.loanCollection },
     { key: "savings", label: "Savings", value: currentComputedTotals.savings },
@@ -343,7 +347,7 @@ export function AccountingClient({
             <h1 className="text-xl font-semibold text-slate-900">Accounting</h1>
             <p className="mt-1 text-sm text-slate-500">
               Manual inputs are saved per day. Gray fields are calculated from the selected
-              date&apos;s collector totals.
+              date&apos;s collector totals. Super admin can also manually adjust Opening Balance.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
