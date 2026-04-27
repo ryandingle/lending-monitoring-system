@@ -269,7 +269,12 @@ function renderSection(
 
 export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
   const receiptsRows = [
-    { key: "openingBalance", label: "Opening Balance", value: data.view.openingBalance },
+    {
+      key: "openingBalance",
+      label: "Opening Balance",
+      value: data.view.openingBalance,
+      manual: data.manualData.openingBalanceOverride != null,
+    },
     { key: "loanCollection", label: "Loan Col. (Current)", value: data.computedTotals.loanCollection },
     { key: "savings", label: "Savings", value: data.computedTotals.savings },
     { key: "passbook", label: "Passbook", value: data.computedTotals.passbook },

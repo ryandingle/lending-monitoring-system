@@ -49,6 +49,7 @@ export const DAILY_EXPENSE_FIELDS = [
 export type AccountingManualSection = Record<string, number>;
 
 export type AccountingManualData = {
+  openingBalanceOverride: number | null;
   receipts: AccountingManualSection;
   payments: AccountingManualSection;
   dailyExpenses: AccountingManualSection;
@@ -85,10 +86,24 @@ export type AccountingReportData = {
   lastUpdatedAt: string | null;
 };
 
+const OPENING_BALANCE_OVERRIDE_KEY = "__openingBalanceOverride";
+
 function toNumber(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") return Number(value) || 0;
   return 0;
+}
+
+function toOptionalNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function createEmptySection(keys: readonly { key: string }[]) {
@@ -97,6 +112,7 @@ function createEmptySection(keys: readonly { key: string }[]) {
 
 export function getDefaultAccountingManualData(): AccountingManualData {
   return {
+    openingBalanceOverride: null,
     receipts: createEmptySection(RECEIPTS_MANUAL_FIELDS),
     payments: createEmptySection(PAYMENT_MANUAL_FIELDS),
     dailyExpenses: createEmptySection(DAILY_EXPENSE_FIELDS),
@@ -115,12 +131,32 @@ export function sanitizeAccountingManualData(
     ) as AccountingManualSection;
 
   return {
+    openingBalanceOverride: toOptionalNumber(
+      input?.openingBalanceOverride ??
+        (input?.receipts as Record<string, unknown> | undefined)?.[OPENING_BALANCE_OVERRIDE_KEY],
+    ),
     receipts: normalize(input?.receipts as Record<string, unknown> | undefined, RECEIPTS_MANUAL_FIELDS),
     payments: normalize(input?.payments as Record<string, unknown> | undefined, PAYMENT_MANUAL_FIELDS),
     dailyExpenses: normalize(
       input?.dailyExpenses as Record<string, unknown> | undefined,
       DAILY_EXPENSE_FIELDS,
     ),
+  };
+}
+
+export function serializeAccountingManualData(manualData: AccountingManualData) {
+  const receipts =
+    manualData.openingBalanceOverride == null
+      ? { ...manualData.receipts }
+      : {
+          ...manualData.receipts,
+          [OPENING_BALANCE_OVERRIDE_KEY]: manualData.openingBalanceOverride,
+        };
+
+  return {
+    receipts,
+    payments: { ...manualData.payments },
+    dailyExpenses: { ...manualData.dailyExpenses },
   };
 }
 
@@ -351,12 +387,13 @@ async function getAccountingReportDataInternal(
     const openingBalance = previousAccountingDate
       ? (await getAccountingReportDataInternal(previousAccountingDate, cache)).view.closingBalance
       : computedTotals.cashOnHand;
+    const resolvedOpeningBalance = manualData.openingBalanceOverride ?? openingBalance;
 
     return {
       accountingDate,
       manualData,
       computedTotals,
-      view: buildAccountingView(manualData, computedTotals, openingBalance),
+      view: buildAccountingView(manualData, computedTotals, resolvedOpeningBalance),
       lastUpdatedAt,
     };
   })();

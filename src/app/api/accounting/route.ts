@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import {
   getAccountingReportData,
+  serializeAccountingManualData,
   sanitizeAccountingManualData,
   type AccountingManualData,
 } from "@/lib/accounting";
@@ -12,6 +13,7 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 
 const SaveAccountingSchema = z.object({
   accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  openingBalanceOverride: z.union([z.number(), z.string(), z.null()]).optional(),
   receipts: z.record(z.string(), z.union([z.number(), z.string()])),
   payments: z.record(z.string(), z.union([z.number(), z.string()])),
   dailyExpenses: z.record(z.string(), z.union([z.number(), z.string()])),
@@ -62,9 +64,10 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const manualData = sanitizeAccountingManualData(parsed.data as AccountingManualData);
+  const manualData = sanitizeAccountingManualData(parsed.data as Partial<AccountingManualData>);
   const accountingDate = parsed.data.accountingDate;
   const request = await tryGetAuditRequestContext();
+  const serializedManualData = serializeAccountingManualData(manualData);
 
   try {
     const existing = await (prisma as any).accountingDay.findUnique({
@@ -84,18 +87,18 @@ export async function PUT(req: NextRequest) {
         ? await (tx as any).accountingDay.update({
             where: { accountingDate: toDateOnly(accountingDate) },
             data: {
-              receipts: manualData.receipts,
-              payments: manualData.payments,
-              dailyExpenses: manualData.dailyExpenses,
+              receipts: serializedManualData.receipts,
+              payments: serializedManualData.payments,
+              dailyExpenses: serializedManualData.dailyExpenses,
               updatedById: user.id,
             },
           })
         : await (tx as any).accountingDay.create({
             data: {
               accountingDate: toDateOnly(accountingDate),
-              receipts: manualData.receipts,
-              payments: manualData.payments,
-              dailyExpenses: manualData.dailyExpenses,
+              receipts: serializedManualData.receipts,
+              payments: serializedManualData.payments,
+              dailyExpenses: serializedManualData.dailyExpenses,
               createdById: user.id,
               updatedById: user.id,
             },
@@ -117,9 +120,7 @@ export async function PUT(req: NextRequest) {
       success: true,
       accountingDate,
       data: {
-        receipts: saved.receipts,
-        payments: saved.payments,
-        dailyExpenses: saved.dailyExpenses,
+        ...serializedManualData,
         lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
       },
     });
