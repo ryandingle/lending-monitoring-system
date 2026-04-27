@@ -920,7 +920,7 @@ export function MemberList({
   const tableColSpan = 9 + (fixedGroupId ? 0 : 1) + (canBulkUpdate ? 6 : 0);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
+    <div className="flex flex-col gap-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
@@ -1065,8 +1065,8 @@ export function MemberList({
             </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <div className="min-h-0 overflow-auto">
+        <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-500">
                     <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 border-b border-slate-200">
                         <tr>
