@@ -19,8 +19,6 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const isGroupDetailsRoute = /^\/app\/groups\/[^/]+$/.test(pathname ?? "");
-  const isMembersRoute = pathname?.startsWith("/app/members") || isGroupDetailsRoute;
 
   const toggleSidebar = () => {
     setCollapsed((prev) => {
@@ -94,13 +92,8 @@ export function AppShell({
             onToggleSidebar={toggleSidebar}
             collapsed={collapsed}
           />
-          <main className="min-w-0 flex-1 min-h-0 overflow-hidden p-4 md:p-6 flex flex-col">
-            <div
-              className={clsx(
-                "min-h-0 flex-1",
-                isMembersRoute ? "flex flex-col overflow-hidden" : "overflow-y-auto",
-              )}
-            >
+          <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="min-w-0">
               {children}
             </div>
           </main>

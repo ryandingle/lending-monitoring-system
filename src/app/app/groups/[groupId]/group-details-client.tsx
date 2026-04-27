@@ -37,7 +37,7 @@ export function GroupDetailsClient({
   pagination,
 }: GroupDetailsClientProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="shrink-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -59,7 +59,7 @@ export function GroupDetailsClient({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div>
         <MemberList
           initialMembers={initialMembers}
           initialTotal={pagination.totalCount}
