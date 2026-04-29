@@ -287,7 +287,12 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
   ];
 
   const paymentRows = [
-    { key: "loanRelease", label: "Loan Release", value: data.computedTotals.loanRelease },
+    {
+      key: "loanRelease",
+      label: "Loan Release",
+      value: data.computedTotals.loanRelease,
+      manual: data.manualData.loanReleaseOverride != null,
+    },
     { key: "managementExpense", label: "Mgmt. Exp.", value: data.view.dailyExpensesTotal },
     { key: "otherPay", label: "Other Pay", value: data.manualData.payments.otherPay, manual: true },
     { key: "ftOut", label: "FT(OUT)", value: data.manualData.payments.ftOut, manual: true },

@@ -50,6 +50,7 @@ export type AccountingManualSection = Record<string, number>;
 
 export type AccountingManualData = {
   openingBalanceOverride: number | null;
+  loanReleaseOverride: number | null;
   receipts: AccountingManualSection;
   payments: AccountingManualSection;
   dailyExpenses: AccountingManualSection;
@@ -87,6 +88,7 @@ export type AccountingReportData = {
 };
 
 const OPENING_BALANCE_OVERRIDE_KEY = "__openingBalanceOverride";
+const LOAN_RELEASE_OVERRIDE_KEY = "__loanReleaseOverride";
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -113,6 +115,7 @@ function createEmptySection(keys: readonly { key: string }[]) {
 export function getDefaultAccountingManualData(): AccountingManualData {
   return {
     openingBalanceOverride: null,
+    loanReleaseOverride: null,
     receipts: createEmptySection(RECEIPTS_MANUAL_FIELDS),
     payments: createEmptySection(PAYMENT_MANUAL_FIELDS),
     dailyExpenses: createEmptySection(DAILY_EXPENSE_FIELDS),
@@ -135,6 +138,10 @@ export function sanitizeAccountingManualData(
       input?.openingBalanceOverride ??
         (input?.receipts as Record<string, unknown> | undefined)?.[OPENING_BALANCE_OVERRIDE_KEY],
     ),
+    loanReleaseOverride: toOptionalNumber(
+      input?.loanReleaseOverride ??
+        (input?.payments as Record<string, unknown> | undefined)?.[LOAN_RELEASE_OVERRIDE_KEY],
+    ),
     receipts: normalize(input?.receipts as Record<string, unknown> | undefined, RECEIPTS_MANUAL_FIELDS),
     payments: normalize(input?.payments as Record<string, unknown> | undefined, PAYMENT_MANUAL_FIELDS),
     dailyExpenses: normalize(
@@ -152,10 +159,17 @@ export function serializeAccountingManualData(manualData: AccountingManualData) 
           ...manualData.receipts,
           [OPENING_BALANCE_OVERRIDE_KEY]: manualData.openingBalanceOverride,
         };
+  const payments =
+    manualData.loanReleaseOverride == null
+      ? { ...manualData.payments }
+      : {
+          ...manualData.payments,
+          [LOAN_RELEASE_OVERRIDE_KEY]: manualData.loanReleaseOverride,
+        };
 
   return {
     receipts,
-    payments: { ...manualData.payments },
+    payments,
     dailyExpenses: { ...manualData.dailyExpenses },
   };
 }
@@ -195,9 +209,8 @@ export function buildAccountingView(
     toNumber(manual.payments.ftOut) +
     bankDepositTotal;
 
-  const closingBalance =
-    openingBalance + computed.totalCollection + manualReceiptInflows - paymentBaseTotal;
-  const totalPayments = paymentBaseTotal + closingBalance;
+  const closingBalance = paymentBaseTotal;
+  const totalPayments = paymentBaseTotal;
 
   return {
     openingBalance,
@@ -388,12 +401,16 @@ async function getAccountingReportDataInternal(
       ? (await getAccountingReportDataInternal(previousAccountingDate, cache)).view.closingBalance
       : computedTotals.cashOnHand;
     const resolvedOpeningBalance = manualData.openingBalanceOverride ?? openingBalance;
+    const resolvedComputedTotals = {
+      ...computedTotals,
+      loanRelease: manualData.loanReleaseOverride ?? computedTotals.loanRelease,
+    };
 
     return {
       accountingDate,
       manualData,
-      computedTotals,
-      view: buildAccountingView(manualData, computedTotals, resolvedOpeningBalance),
+      computedTotals: resolvedComputedTotals,
+      view: buildAccountingView(manualData, resolvedComputedTotals, resolvedOpeningBalance),
       lastUpdatedAt,
     };
   })();
