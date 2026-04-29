@@ -141,6 +141,7 @@ export function AccountingClient({
   const canOverride = isSavedDay && isSuperAdmin;
   const canEditManualInputs = !isSavedDay || (isSuperAdmin && isOverrideMode);
   const canEditOpeningBalance = isSuperAdmin && canEditManualInputs;
+  const canEditLoanRelease = canEditManualInputs;
 
   const view = useMemo(
     () => buildAccountingView(manualData, currentComputedTotals, openingBalance),
@@ -216,6 +217,7 @@ export function AccountingClient({
         body: JSON.stringify({
           accountingDate: currentDate,
           openingBalanceOverride: isSuperAdmin ? openingBalance : null,
+          loanReleaseOverride: canEditLoanRelease ? currentComputedTotals.loanRelease : null,
           receipts: manualData.receipts,
           payments: manualData.payments,
           dailyExpenses: manualData.dailyExpenses,
@@ -297,6 +299,12 @@ export function AccountingClient({
       key: "loanRelease",
       label: "Loan Release",
       value: currentComputedTotals.loanRelease,
+      editable: canEditLoanRelease,
+      onChange: (next: number) =>
+        setCurrentComputedTotals((current) => ({
+          ...current,
+          loanRelease: next,
+        })),
     },
     { key: "managementExpense", label: "Mgmt. Exp.", value: view.dailyExpensesTotal },
     {
@@ -347,7 +355,8 @@ export function AccountingClient({
             <h1 className="text-xl font-semibold text-slate-900">Accounting</h1>
             <p className="mt-1 text-sm text-slate-500">
               Manual inputs are saved per day. Gray fields are calculated from the selected
-              date&apos;s collector totals. Super admin can also manually adjust Opening Balance.
+              date&apos;s collector totals. Encoders can adjust Loan Release, while super admin
+              can also adjust Opening Balance.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
