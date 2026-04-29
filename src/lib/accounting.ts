@@ -209,8 +209,8 @@ export function buildAccountingView(
     toNumber(manual.payments.ftOut) +
     bankDepositTotal;
 
-  const closingBalance = paymentBaseTotal;
-  const totalPayments = paymentBaseTotal;
+  const closingBalance = receiptsTotal - paymentBaseTotal;
+  const totalPayments = paymentBaseTotal + closingBalance;
 
   return {
     openingBalance,
