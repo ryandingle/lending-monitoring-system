@@ -264,7 +264,6 @@ export function AccountingClient({
           accountingDate: currentDate,
           openingBalanceOverride: canEditOpeningBalance ? openingBalance : null,
           loanReleaseOverride: canEditLoanRelease ? currentComputedTotals.loanRelease : null,
-          managementExpenseOverride: manualData.managementExpenseOverride,
           receipts: manualData.receipts,
           payments: manualData.payments,
           dailyExpenses: manualData.dailyExpenses,
@@ -409,12 +408,6 @@ export function AccountingClient({
       key: "managementExpense",
       label: "Mgmt. Exp.",
       value: view.managementExpense,
-      editable: canEditManualInputs,
-      onChange: (next: number) =>
-        setManualData((current) => ({
-          ...current,
-          managementExpenseOverride: next,
-        })),
     },
     {
       key: "otherPay",

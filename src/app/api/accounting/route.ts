@@ -15,7 +15,6 @@ const SaveAccountingSchema = z.object({
   accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   openingBalanceOverride: z.union([z.number(), z.string(), z.null()]).optional(),
   loanReleaseOverride: z.union([z.number(), z.string(), z.null()]).optional(),
-  managementExpenseOverride: z.union([z.number(), z.string(), z.null()]).optional(),
   receipts: z.record(z.string(), z.union([z.number(), z.string()])),
   payments: z.record(z.string(), z.union([z.number(), z.string()])),
   dailyExpenses: z.record(z.string(), z.union([z.number(), z.string()])),

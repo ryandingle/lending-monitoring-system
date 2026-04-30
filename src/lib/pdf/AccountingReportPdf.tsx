@@ -297,7 +297,6 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
       key: "managementExpense",
       label: "Mgmt. Exp.",
       value: data.view.managementExpense,
-      manual: data.manualData.managementExpenseOverride != null,
     },
     { key: "otherPay", label: "Other Pay", value: data.manualData.payments.otherPay, manual: true },
     { key: "ftOut", label: "FT(OUT)", value: data.manualData.payments.ftOut, manual: true },
