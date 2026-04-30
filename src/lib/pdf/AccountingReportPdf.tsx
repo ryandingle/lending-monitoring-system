@@ -293,7 +293,12 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
       value: data.computedTotals.loanRelease,
       manual: data.manualData.loanReleaseOverride != null,
     },
-    { key: "managementExpense", label: "Mgmt. Exp.", value: data.view.dailyExpensesTotal },
+    {
+      key: "managementExpense",
+      label: "Mgmt. Exp.",
+      value: data.view.managementExpense,
+      manual: data.manualData.managementExpenseOverride != null,
+    },
     { key: "otherPay", label: "Other Pay", value: data.manualData.payments.otherPay, manual: true },
     { key: "ftOut", label: "FT(OUT)", value: data.manualData.payments.ftOut, manual: true },
     ...PAYMENT_MANUAL_FIELDS.filter((field) => field.key.startsWith("bankDeposit")).map((field) => ({

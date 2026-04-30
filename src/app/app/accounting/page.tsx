@@ -18,9 +18,7 @@ export default async function AccountingPage({
   const today = formatDateYMD(getManilaToday());
   const selectedDate =
     sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date)
-      ? sp.date > today
-        ? today
-        : sp.date
+      ? sp.date
       : today;
 
   const reportData = await getAccountingReportData(selectedDate);
@@ -28,7 +26,6 @@ export default async function AccountingPage({
   return (
     <AccountingClient
       selectedDate={selectedDate}
-      maxDate={today}
       userRole={user.role}
       initialManualData={reportData.manualData}
       computedTotals={reportData.computedTotals}

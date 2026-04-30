@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconEye, IconFileText, IconX } from "../_components/icons";
 import { Role } from "@prisma/client";
 import {
@@ -100,7 +100,6 @@ function SectionCard({
 
 export function AccountingClient({
   selectedDate,
-  maxDate,
   userRole,
   initialManualData,
   computedTotals,
@@ -108,7 +107,6 @@ export function AccountingClient({
   lastUpdatedAt,
 }: {
   selectedDate: string;
-  maxDate: string;
   userRole: Role | "COLLECTOR";
   initialManualData: AccountingManualData;
   computedTotals: AccountingComputedTotals;
@@ -122,6 +120,7 @@ export function AccountingClient({
   const [currentLastUpdatedAt, setCurrentLastUpdatedAt] = useState(lastUpdatedAt);
   const [saving, setSaving] = useState(false);
   const [loadingDate, setLoadingDate] = useState(false);
+  const [updatingEncoderOverride, setUpdatingEncoderOverride] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -138,9 +137,13 @@ export function AccountingClient({
 
   const isSavedDay = Boolean(currentLastUpdatedAt);
   const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+  const isEncoder = userRole === Role.ENCODER;
   const canOverride = isSavedDay && isSuperAdmin;
-  const canEditManualInputs = !isSavedDay || (isSuperAdmin && isOverrideMode);
-  const canEditOpeningBalance = isSuperAdmin && canEditManualInputs;
+  const canEncoderOverride = isSavedDay && isEncoder && manualData.encoderOverrideAllowed;
+  const canEditManualInputs =
+    !isSavedDay || (isSuperAdmin && isOverrideMode) || canEncoderOverride;
+  const canEditOpeningBalance =
+    (isSuperAdmin && canEditManualInputs) || canEncoderOverride;
   const canEditLoanRelease = canEditManualInputs;
 
   const view = useMemo(
@@ -162,15 +165,58 @@ export function AccountingClient({
     }));
   };
 
+  const refreshEncoderOverrideState = useCallback(async () => {
+    if (!isEncoder || !isSavedDay) return;
+
+    try {
+      const response = await fetch(`/api/accounting?date=${encodeURIComponent(currentDate)}`);
+      const result = await response.json();
+      if (!response.ok) return;
+
+      const reportData = result.reportData as {
+        manualData: AccountingManualData;
+        lastUpdatedAt: string | null;
+      };
+
+      setManualData((current) => ({
+        ...current,
+        encoderOverrideAllowed: reportData.manualData.encoderOverrideAllowed,
+      }));
+      setCurrentLastUpdatedAt(reportData.lastUpdatedAt);
+    } catch {
+      // Ignore background refresh errors and keep the current UI state.
+    }
+  }, [currentDate, isEncoder, isSavedDay]);
+
+  useEffect(() => {
+    if (!isEncoder || !isSavedDay) return;
+
+    const handleFocus = () => {
+      void refreshEncoderOverrideState();
+    };
+
+    const intervalId = window.setInterval(() => {
+      void refreshEncoderOverrideState();
+    }, 10000);
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [isEncoder, isSavedDay, refreshEncoderOverrideState]);
+
   const handleDateChange = async (nextDate: string) => {
     if (!nextDate) return;
-    const safeDate = nextDate > maxDate ? maxDate : nextDate;
     setLoadingDate(true);
     setError(null);
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/accounting?date=${encodeURIComponent(safeDate)}`);
+      const response = await fetch(`/api/accounting?date=${encodeURIComponent(nextDate)}`);
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || "Failed to load accounting data");
@@ -183,7 +229,7 @@ export function AccountingClient({
         lastUpdatedAt: string | null;
       };
 
-      setCurrentDate(safeDate);
+      setCurrentDate(nextDate);
       setManualData(reportData.manualData);
       setCurrentComputedTotals(reportData.computedTotals);
       setOpeningBalance(reportData.view.openingBalance);
@@ -192,7 +238,7 @@ export function AccountingClient({
 
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
-        url.searchParams.set("date", safeDate);
+        url.searchParams.set("date", nextDate);
         window.history.replaceState({}, "", url.toString());
       }
     } catch (err: any) {
@@ -216,8 +262,9 @@ export function AccountingClient({
         },
         body: JSON.stringify({
           accountingDate: currentDate,
-          openingBalanceOverride: isSuperAdmin ? openingBalance : null,
+          openingBalanceOverride: canEditOpeningBalance ? openingBalance : null,
           loanReleaseOverride: canEditLoanRelease ? currentComputedTotals.loanRelease : null,
+          managementExpenseOverride: manualData.managementExpenseOverride,
           receipts: manualData.receipts,
           payments: manualData.payments,
           dailyExpenses: manualData.dailyExpenses,
@@ -236,8 +283,60 @@ export function AccountingClient({
     } catch (err: any) {
       setError(err.message || "Failed to save accounting data");
       showAppToast("error", err.message || "Failed to save accounting data");
+      if (err.message?.includes("encoder allowed for this date")) {
+        setManualData((current) => ({
+          ...current,
+          encoderOverrideAllowed: false,
+        }));
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEncoderOverridePermission = async (nextAllowed: boolean) => {
+    setUpdatingEncoderOverride(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/accounting", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountingDate: currentDate,
+          encoderOverrideAllowed: nextAllowed,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update encoder override permission");
+      }
+
+      setManualData((current) => ({
+        ...current,
+        encoderOverrideAllowed: nextAllowed,
+      }));
+      setCurrentLastUpdatedAt(result.lastUpdatedAt ?? currentLastUpdatedAt);
+      setMessage(
+        nextAllowed
+          ? `Encoder override enabled for ${currentDate}.`
+          : `Encoder override removed for ${currentDate}.`,
+      );
+      showAppToast(
+        "success",
+        nextAllowed
+          ? `Encoder override enabled for ${currentDate}.`
+          : `Encoder override removed for ${currentDate}.`,
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to update encoder override permission");
+      showAppToast("error", err.message || "Failed to update encoder override permission");
+    } finally {
+      setUpdatingEncoderOverride(false);
     }
   };
 
@@ -306,7 +405,17 @@ export function AccountingClient({
           loanRelease: next,
         })),
     },
-    { key: "managementExpense", label: "Mgmt. Exp.", value: view.dailyExpensesTotal },
+    {
+      key: "managementExpense",
+      label: "Mgmt. Exp.",
+      value: view.managementExpense,
+      editable: canEditManualInputs,
+      onChange: (next: number) =>
+        setManualData((current) => ({
+          ...current,
+          managementExpenseOverride: next,
+        })),
+    },
     {
       key: "otherPay",
       label: "Other Pay",
@@ -355,8 +464,8 @@ export function AccountingClient({
             <h1 className="text-xl font-semibold text-slate-900">Accounting</h1>
             <p className="mt-1 text-sm text-slate-500">
               Manual inputs are saved per day. Gray fields are calculated from the selected
-              date&apos;s collector totals. Encoders can adjust Loan Release, while super admin
-              can also adjust Opening Balance.
+              date&apos;s collector totals. Encoders with override access can adjust all inputs,
+              including Opening Balance.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -366,8 +475,7 @@ export function AccountingClient({
                 type="date"
                 value={currentDate}
                 onChange={(e) => void handleDateChange(e.target.value)}
-                max={maxDate}
-                disabled={loadingDate || saving}
+                disabled={loadingDate || saving || updatingEncoderOverride}
                 className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -400,10 +508,26 @@ export function AccountingClient({
                 {isOverrideMode ? "Cancel Override" : "Enable Override"}
               </button>
             ) : null}
+            {isSuperAdmin && isSavedDay ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void handleEncoderOverridePermission(!manualData.encoderOverrideAllowed)
+                }
+                disabled={updatingEncoderOverride || loadingDate || saving}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {updatingEncoderOverride
+                  ? "Updating Access..."
+                  : manualData.encoderOverrideAllowed
+                    ? "Revoke Encoder Override"
+                    : "Allow Encoder Override"}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || loadingDate || !canEditManualInputs}
+              disabled={saving || loadingDate || updatingEncoderOverride || !canEditManualInputs}
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Saving..." : loadingDate ? "Loading..." : canEditManualInputs ? "Save Daily Inputs" : "Inputs Locked"}
@@ -415,8 +539,12 @@ export function AccountingClient({
             {isSuperAdmin
               ? isOverrideMode
                 ? "Override mode is enabled. You can now adjust the saved manual inputs."
-                : "This accounting day is already saved. Manual inputs are locked until a super admin enables override."
-              : "This accounting day is already saved. Manual inputs are locked and only a super admin can override them."}
+                : manualData.encoderOverrideAllowed
+                  ? "This accounting day is already saved. Encoder override is allowed for this date."
+                  : "This accounting day is already saved. Manual inputs are locked until a super admin enables override."
+              : canEncoderOverride
+                ? "This accounting day is already saved, but encoder override is allowed for this date."
+                : "This accounting day is already saved. Manual inputs are locked and only a super admin can override them."}
           </div>
         ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-4">
