@@ -33,6 +33,10 @@ function toNumber(d: unknown) {
   }
 }
 
+function normalizeMemberNote(value: string | null | undefined) {
+  return value?.trim().toUpperCase() ?? "";
+}
+
 function parseDateRange(req: Request): { from: string | null; to: string | null } {
   try {
     const url = new URL(req.url);
@@ -90,14 +94,25 @@ export async function GET(
               },
               savingsAdjustments: {
                 where: {
-                  type: SavingsUpdateType.INCREASE,
                   createdAt: {
                     gte: range.from,
                     lte: range.to,
                   },
+                  OR: [
+                    { type: SavingsUpdateType.INCREASE },
+                    { type: SavingsUpdateType.WITHDRAW },
+                  ],
                 },
                 select: {
                   amount: true,
+                  type: true,
+                },
+              },
+              notes: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: {
+                  content: true,
                 },
               },
             },
@@ -118,6 +133,8 @@ export async function GET(
     totalCollection: 0,
     fullRepaymentCount: 0,
     fullRepaymentAmount: 0,
+    offsetCount: 0,
+    offsetAmount: 0,
   };
 
   for (const group of employee.groupsAsCollectionOfficer) {
@@ -125,19 +142,42 @@ export async function GET(
     let savings = 0;
     let fullRepaymentCount = 0;
     let fullRepaymentAmount = 0;
+    let offsetCount = 0;
+    let offsetAmount = 0;
 
     for (const member of group.members) {
+      const latestNote = normalizeMemberNote(member.notes[0]?.content);
+      let memberFullRepaymentAmount = 0;
+      let hasFullRepayment = false;
+      let memberOffsetAmount = 0;
+
       for (const adj of member.balanceAdjustments) {
         const amount = toNumber(adj.amount);
         loanCollection += amount;
         if (toNumber(adj.balanceAfter) === 0 && amount > 0) {
-          fullRepaymentCount += 1;
-          fullRepaymentAmount += amount;
+          hasFullRepayment = true;
+          memberFullRepaymentAmount += amount;
         }
       }
 
       for (const sav of member.savingsAdjustments) {
-        savings += toNumber(sav.amount);
+        const amount = toNumber(sav.amount);
+        if (sav.type === SavingsUpdateType.INCREASE) {
+          savings += amount;
+        }
+        if (sav.type === SavingsUpdateType.WITHDRAW) {
+          memberOffsetAmount += amount;
+        }
+      }
+
+      if (latestNote === "FULL" && hasFullRepayment) {
+        fullRepaymentCount += 1;
+        fullRepaymentAmount += memberFullRepaymentAmount;
+      }
+
+      if (latestNote === "OFFSET" && memberOffsetAmount > 0) {
+        offsetCount += 1;
+        offsetAmount += memberOffsetAmount;
       }
     }
 
@@ -150,6 +190,8 @@ export async function GET(
       totalCollection,
       fullRepaymentCount,
       fullRepaymentAmount,
+      offsetCount,
+      offsetAmount,
     });
 
     totals.loanCollection += loanCollection;
@@ -157,6 +199,8 @@ export async function GET(
     totals.totalCollection += totalCollection;
     totals.fullRepaymentCount += fullRepaymentCount;
     totals.fullRepaymentAmount += fullRepaymentAmount;
+    totals.offsetCount += offsetCount;
+    totals.offsetAmount += offsetAmount;
   }
 
   let logoBinary: Buffer | null = null;
@@ -184,7 +228,7 @@ export async function GET(
           day: "2-digit",
         })}`;
 
-  const reportData = {
+  const reportData: OfficerReportData = {
     officerId: id,
     officerName: `${employee.firstName} ${employee.lastName}`,
     dateLabel,
