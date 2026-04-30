@@ -299,6 +299,7 @@ model AccountingDay {
   receipts       Json
   payments       Json
   dailyExpenses  Json
+  encoderOverrideAllowed Boolean @default(false)
   createdById    String   @db.Uuid
   updatedById    String   @db.Uuid
   createdAt      DateTime @default(now()) @db.Timestamptz

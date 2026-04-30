@@ -51,6 +51,8 @@ export type AccountingManualSection = Record<string, number>;
 export type AccountingManualData = {
   openingBalanceOverride: number | null;
   loanReleaseOverride: number | null;
+  managementExpenseOverride: number | null;
+  encoderOverrideAllowed: boolean;
   receipts: AccountingManualSection;
   payments: AccountingManualSection;
   dailyExpenses: AccountingManualSection;
@@ -72,6 +74,7 @@ export type AccountingComputedTotals = {
 export type AccountingView = {
   openingBalance: number;
   receiptsTotal: number;
+  managementExpense: number;
   dailyExpensesTotal: number;
   bankDepositTotal: number;
   paymentBaseTotal: number;
@@ -89,6 +92,8 @@ export type AccountingReportData = {
 
 const OPENING_BALANCE_OVERRIDE_KEY = "__openingBalanceOverride";
 const LOAN_RELEASE_OVERRIDE_KEY = "__loanReleaseOverride";
+const MANAGEMENT_EXPENSE_OVERRIDE_KEY = "__managementExpenseOverride";
+const ENCODER_OVERRIDE_ALLOWED_KEY = "__encoderOverrideAllowed";
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -116,6 +121,8 @@ export function getDefaultAccountingManualData(): AccountingManualData {
   return {
     openingBalanceOverride: null,
     loanReleaseOverride: null,
+    managementExpenseOverride: null,
+    encoderOverrideAllowed: false,
     receipts: createEmptySection(RECEIPTS_MANUAL_FIELDS),
     payments: createEmptySection(PAYMENT_MANUAL_FIELDS),
     dailyExpenses: createEmptySection(DAILY_EXPENSE_FIELDS),
@@ -142,6 +149,13 @@ export function sanitizeAccountingManualData(
       input?.loanReleaseOverride ??
         (input?.payments as Record<string, unknown> | undefined)?.[LOAN_RELEASE_OVERRIDE_KEY],
     ),
+    managementExpenseOverride: toOptionalNumber(
+      input?.managementExpenseOverride ??
+        (input?.payments as Record<string, unknown> | undefined)?.[MANAGEMENT_EXPENSE_OVERRIDE_KEY],
+    ),
+    encoderOverrideAllowed:
+      input?.encoderOverrideAllowed === true ||
+      (input?.receipts as Record<string, unknown> | undefined)?.[ENCODER_OVERRIDE_ALLOWED_KEY] === true,
     receipts: normalize(input?.receipts as Record<string, unknown> | undefined, RECEIPTS_MANUAL_FIELDS),
     payments: normalize(input?.payments as Record<string, unknown> | undefined, PAYMENT_MANUAL_FIELDS),
     dailyExpenses: normalize(
@@ -153,19 +167,22 @@ export function sanitizeAccountingManualData(
 
 export function serializeAccountingManualData(manualData: AccountingManualData) {
   const receipts =
-    manualData.openingBalanceOverride == null
-      ? { ...manualData.receipts }
-      : {
-          ...manualData.receipts,
-          [OPENING_BALANCE_OVERRIDE_KEY]: manualData.openingBalanceOverride,
-        };
+    {
+      ...manualData.receipts,
+      ...(manualData.openingBalanceOverride == null
+        ? {}
+        : { [OPENING_BALANCE_OVERRIDE_KEY]: manualData.openingBalanceOverride }),
+    };
   const payments =
-    manualData.loanReleaseOverride == null
-      ? { ...manualData.payments }
-      : {
-          ...manualData.payments,
-          [LOAN_RELEASE_OVERRIDE_KEY]: manualData.loanReleaseOverride,
-        };
+    {
+      ...manualData.payments,
+      ...(manualData.loanReleaseOverride == null
+        ? {}
+        : { [LOAN_RELEASE_OVERRIDE_KEY]: manualData.loanReleaseOverride }),
+      ...(manualData.managementExpenseOverride == null
+        ? {}
+        : { [MANAGEMENT_EXPENSE_OVERRIDE_KEY]: manualData.managementExpenseOverride }),
+    };
 
   return {
     receipts,
@@ -188,6 +205,7 @@ export function buildAccountingView(
   ).reduce((sum, field) => sum + toNumber(manual.payments[field.key]), 0);
 
   const dailyExpensesTotal = sumSection(manual.dailyExpenses, DAILY_EXPENSE_FIELDS);
+  const managementExpense = manual.managementExpenseOverride ?? dailyExpensesTotal;
   const manualReceiptInflows =
     toNumber(manual.receipts.cashAdvance) +
     toNumber(manual.receipts.ftIn) +
@@ -204,7 +222,7 @@ export function buildAccountingView(
 
   const paymentBaseTotal =
     computed.loanRelease +
-    dailyExpensesTotal +
+    managementExpense +
     toNumber(manual.payments.otherPay) +
     toNumber(manual.payments.ftOut) +
     bankDepositTotal;
@@ -215,6 +233,7 @@ export function buildAccountingView(
   return {
     openingBalance,
     receiptsTotal,
+    managementExpense,
     dailyExpensesTotal,
     bankDepositTotal,
     paymentBaseTotal,
@@ -235,6 +254,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
       receipts: true,
       payments: true,
       dailyExpenses: true,
+      encoderOverrideAllowed: true,
       updatedAt: true,
     },
   });
@@ -244,6 +264,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
         receipts: record.receipts,
         payments: record.payments,
         dailyExpenses: record.dailyExpenses,
+        encoderOverrideAllowed: record.encoderOverrideAllowed,
       })
     : getDefaultAccountingManualData();
 
@@ -255,6 +276,12 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
 
 function toAccountingDate(accountingDate: string) {
   return new Date(`${accountingDate}T00:00:00.000+08:00`);
+}
+
+function getPreviousCalendarDate(accountingDate: string) {
+  const date = new Date(`${accountingDate}T12:00:00.000+08:00`);
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
 }
 
 async function getPreviousAccountingDate(accountingDate: string): Promise<string | null> {
@@ -398,7 +425,8 @@ async function getAccountingReportDataInternal(
     ]);
 
     const openingBalance = previousAccountingDate
-      ? (await getAccountingReportDataInternal(previousAccountingDate, cache)).view.closingBalance
+      ? (await getAccountingReportDataInternal(getPreviousCalendarDate(accountingDate), cache)).view
+          .closingBalance
       : computedTotals.cashOnHand;
     const resolvedOpeningBalance = manualData.openingBalanceOverride ?? openingBalance;
     const resolvedComputedTotals = {
