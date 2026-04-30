@@ -51,7 +51,6 @@ export type AccountingManualSection = Record<string, number>;
 export type AccountingManualData = {
   openingBalanceOverride: number | null;
   loanReleaseOverride: number | null;
-  managementExpenseOverride: number | null;
   encoderOverrideAllowed: boolean;
   receipts: AccountingManualSection;
   payments: AccountingManualSection;
@@ -92,7 +91,6 @@ export type AccountingReportData = {
 
 const OPENING_BALANCE_OVERRIDE_KEY = "__openingBalanceOverride";
 const LOAN_RELEASE_OVERRIDE_KEY = "__loanReleaseOverride";
-const MANAGEMENT_EXPENSE_OVERRIDE_KEY = "__managementExpenseOverride";
 const ENCODER_OVERRIDE_ALLOWED_KEY = "__encoderOverrideAllowed";
 
 function toNumber(value: unknown) {
@@ -121,7 +119,6 @@ export function getDefaultAccountingManualData(): AccountingManualData {
   return {
     openingBalanceOverride: null,
     loanReleaseOverride: null,
-    managementExpenseOverride: null,
     encoderOverrideAllowed: false,
     receipts: createEmptySection(RECEIPTS_MANUAL_FIELDS),
     payments: createEmptySection(PAYMENT_MANUAL_FIELDS),
@@ -149,10 +146,6 @@ export function sanitizeAccountingManualData(
       input?.loanReleaseOverride ??
         (input?.payments as Record<string, unknown> | undefined)?.[LOAN_RELEASE_OVERRIDE_KEY],
     ),
-    managementExpenseOverride: toOptionalNumber(
-      input?.managementExpenseOverride ??
-        (input?.payments as Record<string, unknown> | undefined)?.[MANAGEMENT_EXPENSE_OVERRIDE_KEY],
-    ),
     encoderOverrideAllowed:
       input?.encoderOverrideAllowed === true ||
       (input?.receipts as Record<string, unknown> | undefined)?.[ENCODER_OVERRIDE_ALLOWED_KEY] === true,
@@ -179,9 +172,6 @@ export function serializeAccountingManualData(manualData: AccountingManualData) 
       ...(manualData.loanReleaseOverride == null
         ? {}
         : { [LOAN_RELEASE_OVERRIDE_KEY]: manualData.loanReleaseOverride }),
-      ...(manualData.managementExpenseOverride == null
-        ? {}
-        : { [MANAGEMENT_EXPENSE_OVERRIDE_KEY]: manualData.managementExpenseOverride }),
     };
 
   return {
@@ -205,7 +195,7 @@ export function buildAccountingView(
   ).reduce((sum, field) => sum + toNumber(manual.payments[field.key]), 0);
 
   const dailyExpensesTotal = sumSection(manual.dailyExpenses, DAILY_EXPENSE_FIELDS);
-  const managementExpense = manual.managementExpenseOverride ?? dailyExpensesTotal;
+  const managementExpense = dailyExpensesTotal;
   const manualReceiptInflows =
     toNumber(manual.receipts.cashAdvance) +
     toNumber(manual.receipts.ftIn) +
