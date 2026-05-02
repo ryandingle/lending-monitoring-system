@@ -300,6 +300,7 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   const [
     loanCollectionAgg,
     loanReleaseAgg,
+    loanInsuranceAgg,
     passbookAgg,
     membershipFeeAgg,
     savingsAgg,
@@ -319,6 +320,15 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
     (prisma as any).activeRelease.aggregate({
       where: {
         releaseDate: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
+      },
+      _sum: { amount: true },
+    }),
+    (prisma as any).loanInsurance.aggregate({
+      where: {
+        createdAt: { gte: range.from, lte: range.to },
         member: {
           status: MemberStatus.ACTIVE,
         },
@@ -378,7 +388,7 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
 
   const loanCollection = Number(loanCollectionAgg._sum.amount ?? 0);
   const loanRelease = Number(loanReleaseAgg._sum.amount ?? 0);
-  const loanInsurance = 0;
+  const loanInsurance = Number(loanInsuranceAgg._sum.amount ?? 0);
   const passbook = Number(passbookAgg._sum.amount ?? 0);
   const membershipFee = Number(membershipFeeAgg._sum.amount ?? 0);
   const savings = Number(savingsAgg._sum.amount ?? 0);
