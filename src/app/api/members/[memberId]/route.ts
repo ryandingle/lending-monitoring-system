@@ -56,6 +56,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
           orderBy: { createdAt: "desc" },
           include: { encodedBy: { select: { name: true } } }
         },
+        loanInsurances: {
+          orderBy: { createdAt: "desc" },
+          include: { encodedBy: { select: { name: true } } }
+        },
         passbookFees: {
           orderBy: { createdAt: "desc" },
           include: { encodedBy: { select: { name: true } } }
@@ -107,6 +111,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ memb
         ...pf,
         amount: Number(pf.amount),
         createdAt: pf.createdAt instanceof Date ? pf.createdAt.toISOString() : pf.createdAt,
+      })),
+      loanInsurances: (member as any).loanInsurances.map((li: any) => ({
+        ...li,
+        amount: Number(li.amount),
+        createdAt: li.createdAt instanceof Date ? li.createdAt.toISOString() : li.createdAt,
       })),
       passbookFees: (member as any).passbookFees.map((pf: any) => ({
         ...pf,

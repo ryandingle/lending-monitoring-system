@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
         const balanceDeduct = parseFloat(update.balanceDeduct) || 0;
         const savingsIncrease = parseFloat(update.savingsIncrease) || 0;
         const processingFee = parseFloat(update.processingFee) || 0;
+        const loanInsurance = parseFloat(update.loanInsurance) || 0;
         const passbookFee = parseFloat(update.passbookFee) || 0;
         const membershipFee = parseFloat(update.membershipFee) || 0;
         const activeReleaseAmount = parseFloat(update.activeReleaseAmount) || 0;
@@ -69,6 +70,17 @@ export async function POST(req: NextRequest) {
               memberId: member.id,
               encodedById: actor.id,
               amount: passbookFee,
+              createdAt: businessDate,
+            },
+          });
+        }
+
+        if (loanInsurance > 0) {
+          await (tx as any).loanInsurance.create({
+            data: {
+              memberId: member.id,
+              encodedById: actor.id,
+              amount: loanInsurance,
               createdAt: businessDate,
             },
           });
@@ -235,6 +247,7 @@ export async function POST(req: NextRequest) {
           (balanceDeduct > 0 ||
             savingsIncrease > 0 ||
             processingFee > 0 ||
+            loanInsurance > 0 ||
             passbookFee > 0 ||
             membershipFee > 0 ||
             activeReleaseAmount > 0 ||
@@ -251,6 +264,7 @@ export async function POST(req: NextRequest) {
               balanceDeduct,
               savingsIncrease,
               processingFee,
+              loanInsurance,
               passbookFee,
               membershipFee,
               activeReleaseAmount,

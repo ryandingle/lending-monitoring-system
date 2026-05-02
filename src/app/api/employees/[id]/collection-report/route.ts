@@ -70,7 +70,7 @@ export async function GET(
 
   const range = getManilaDateRange(dateFrom, dateTo);
 
-  const employee = await prisma.employee.findUnique({
+  const employee = await (prisma as any).employee.findUnique({
     where: { id },
     include: {
       groupsAsCollectionOfficer: {
@@ -115,6 +115,39 @@ export async function GET(
                   content: true,
                 },
               },
+              processingFees: {
+                where: {
+                  createdAt: {
+                    gte: range.from,
+                    lte: range.to,
+                  },
+                },
+                select: {
+                  amount: true,
+                },
+              },
+              loanInsurances: {
+                where: {
+                  createdAt: {
+                    gte: range.from,
+                    lte: range.to,
+                  },
+                },
+                select: {
+                  amount: true,
+                },
+              },
+              passbookFees: {
+                where: {
+                  createdAt: {
+                    gte: range.from,
+                    lte: range.to,
+                  },
+                },
+                select: {
+                  amount: true,
+                },
+              },
             },
           },
         },
@@ -130,6 +163,9 @@ export async function GET(
   const totals = {
     loanCollection: 0,
     savings: 0,
+    processingFee: 0,
+    loanInsurance: 0,
+    passbookFee: 0,
     totalCollection: 0,
     fullRepaymentCount: 0,
     fullRepaymentAmount: 0,
@@ -137,9 +173,12 @@ export async function GET(
     offsetAmount: 0,
   };
 
-  for (const group of employee.groupsAsCollectionOfficer) {
+  for (const group of employee.groupsAsCollectionOfficer as any[]) {
     let loanCollection = 0;
     let savings = 0;
+    let processingFee = 0;
+    let loanInsurance = 0;
+    let passbookFee = 0;
     let fullRepaymentCount = 0;
     let fullRepaymentAmount = 0;
     let offsetCount = 0;
@@ -170,6 +209,18 @@ export async function GET(
         }
       }
 
+      for (const fee of member.processingFees) {
+        processingFee += toNumber(fee.amount);
+      }
+
+      for (const insurance of member.loanInsurances) {
+        loanInsurance += toNumber(insurance.amount);
+      }
+
+      for (const fee of member.passbookFees) {
+        passbookFee += toNumber(fee.amount);
+      }
+
       if (latestNote === "FULL" && hasFullRepayment) {
         fullRepaymentCount += 1;
         fullRepaymentAmount += memberFullRepaymentAmount;
@@ -181,12 +232,15 @@ export async function GET(
       }
     }
 
-    const totalCollection = loanCollection + savings;
+    const totalCollection = loanCollection + savings + processingFee + loanInsurance + passbookFee;
 
     groupRows.push({
       groupName: group.name,
       loanCollection,
       savings,
+      processingFee,
+      loanInsurance,
+      passbookFee,
       totalCollection,
       fullRepaymentCount,
       fullRepaymentAmount,
@@ -196,6 +250,9 @@ export async function GET(
 
     totals.loanCollection += loanCollection;
     totals.savings += savings;
+    totals.processingFee += processingFee;
+    totals.loanInsurance += loanInsurance;
+    totals.passbookFee += passbookFee;
     totals.totalCollection += totalCollection;
     totals.fullRepaymentCount += fullRepaymentCount;
     totals.fullRepaymentAmount += fullRepaymentAmount;

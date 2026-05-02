@@ -113,6 +113,11 @@ export default async function MembersPage({
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        loanInsurances: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
         passbookFees: {
           where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
           orderBy: { createdAt: "desc" },
@@ -202,6 +207,7 @@ export default async function MembersPage({
         : null,
       shouldPrefillLatestNote,
       latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
+      latestTodayLoanInsurance: m.loanInsurances?.[0]?.amount ? Number(m.loanInsurances[0].amount) : null,
       latestTodayPassbookFee: m.passbookFees?.[0]?.amount ? Number(m.passbookFees[0].amount) : null,
       latestTodayMembershipFee: m.membershipFees?.[0]?.amount ? Number(m.membershipFees[0].amount) : null,
     };

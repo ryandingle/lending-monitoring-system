@@ -145,6 +145,16 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: "desc" },
             take: 1,
           },
+          loanInsurances: {
+            where: {
+              createdAt: {
+                gte: todayRange.from,
+                lte: todayRange.to,
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
           passbookFees: {
             where: {
               createdAt: {
@@ -256,6 +266,10 @@ export async function GET(req: NextRequest) {
         latestTodayProcessingFee:
           Array.isArray(m.processingFees) && m.processingFees.length > 0 && m.processingFees[0] != null
             ? (Number(m.processingFees[0].amount) || 0)
+            : null,
+        latestTodayLoanInsurance:
+          Array.isArray(m.loanInsurances) && m.loanInsurances.length > 0 && m.loanInsurances[0] != null
+            ? (Number(m.loanInsurances[0].amount) || 0)
             : null,
         latestTodayPassbookFee:
           Array.isArray(m.passbookFees) && m.passbookFees.length > 0 && m.passbookFees[0] != null
