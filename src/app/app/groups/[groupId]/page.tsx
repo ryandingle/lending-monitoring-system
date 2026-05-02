@@ -308,6 +308,11 @@ export default async function GroupDetailsPage({
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        loanInsurances: {
+          where: { createdAt: { gte: todayRange.from, lte: todayRange.to } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       } as any,
     orderBy: { lastName: sort },
     skip: (page - 1) * limit,
@@ -366,6 +371,7 @@ export default async function GroupDetailsPage({
     } : null,
     latestNote: m.notes?.[0]?.content || "",
     latestTodayProcessingFee: m.processingFees?.[0]?.amount ? Number(m.processingFees[0].amount) : null,
+    latestTodayLoanInsurance: m.loanInsurances?.[0]?.amount ? Number(m.loanInsurances[0].amount) : null,
   }));
 
   return (
