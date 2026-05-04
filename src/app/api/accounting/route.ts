@@ -3,6 +3,10 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 import { createAuditLog, tryGetAuditRequestContext } from "@/lib/audit";
 import {
+  buildAccountingView,
+  CLOSING_BALANCE_KEY,
+  getAccountingComputedTotals,
+  getBaseOpeningBalance,
   getAccountingReportData,
   serializeAccountingManualData,
   sanitizeAccountingManualData,
@@ -100,6 +104,19 @@ export async function PUT(req: NextRequest) {
     };
     const serializedManualData = serializeAccountingManualData(manualData);
 
+    const computedTotals = await getAccountingComputedTotals(accountingDate);
+    const baseOpeningBalance = await getBaseOpeningBalance(accountingDate, computedTotals);
+    const resolvedOpeningBalance = manualData.openingBalanceOverride ?? baseOpeningBalance;
+    const resolvedComputedTotals = {
+      ...computedTotals,
+      loanRelease: manualData.loanReleaseOverride ?? computedTotals.loanRelease,
+    };
+    const view = buildAccountingView(manualData, resolvedComputedTotals, resolvedOpeningBalance);
+    const paymentsWithClosingBalance = {
+      ...serializedManualData.payments,
+      [CLOSING_BALANCE_KEY]: Number(view.closingBalance.toFixed(2)),
+    };
+
     if (existing && user.role !== Role.SUPER_ADMIN && !existingManualData?.encoderOverrideAllowed) {
       return NextResponse.json(
         {
@@ -116,7 +133,7 @@ export async function PUT(req: NextRequest) {
             where: { accountingDate: toDateOnly(accountingDate) },
             data: {
               receipts: serializedManualData.receipts,
-              payments: serializedManualData.payments,
+              payments: paymentsWithClosingBalance,
               dailyExpenses: serializedManualData.dailyExpenses,
               encoderOverrideAllowed: manualData.encoderOverrideAllowed,
               updatedById: user.id,
@@ -126,7 +143,7 @@ export async function PUT(req: NextRequest) {
             data: {
               accountingDate: toDateOnly(accountingDate),
               receipts: serializedManualData.receipts,
-              payments: serializedManualData.payments,
+              payments: paymentsWithClosingBalance,
               dailyExpenses: serializedManualData.dailyExpenses,
               encoderOverrideAllowed: manualData.encoderOverrideAllowed,
               createdById: user.id,
@@ -151,6 +168,7 @@ export async function PUT(req: NextRequest) {
       accountingDate,
       data: {
         ...serializedManualData,
+        payments: paymentsWithClosingBalance,
         encoderOverrideAllowed: manualData.encoderOverrideAllowed,
         lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
       },
@@ -208,13 +226,18 @@ export async function PATCH(req: NextRequest) {
       encoderOverrideAllowed,
     });
     const serializedManualData = serializeAccountingManualData(manualData);
+    const existingClosingBalance = (existing.payments as any)?.[CLOSING_BALANCE_KEY];
+    const nextPayments = {
+      ...serializedManualData.payments,
+      ...(existingClosingBalance === undefined ? {} : { [CLOSING_BALANCE_KEY]: existingClosingBalance }),
+    };
 
     const saved = await prisma.$transaction(async (tx) => {
       const result = await (tx as any).accountingDay.update({
         where: { accountingDate: toDateOnly(accountingDate) },
         data: {
           receipts: serializedManualData.receipts,
-          payments: serializedManualData.payments,
+          payments: nextPayments,
           dailyExpenses: serializedManualData.dailyExpenses,
           encoderOverrideAllowed,
           updatedById: user.id,
