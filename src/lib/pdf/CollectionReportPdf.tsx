@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#000',
     borderLeftWidth: 1,
     borderLeftColor: '#000',
-    minHeight: 12,
+    minHeight: 14,
     alignItems: 'center',
   },
   tableHeaderRow: {
@@ -279,6 +279,10 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
             </View>
 
             {/* Data Rows */}
+            {(() => {
+              const fillerRowCount = Math.max(0, ITEMS_PER_PAGE - chunkMembers.length);
+              return (
+                <>
             {chunkMembers.map((member, i) => {
               const globalIndex = (pageIndex * ITEMS_PER_PAGE) + i + 1;
               return (
@@ -328,6 +332,55 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 </View>
               );
             })}
+            {Array.from({ length: fillerRowCount }).map((_, i) => (
+              <View key={`filler-${i}`} style={styles.tableRow}>
+                <View style={[styles.tableCell, { width: colWidths.no }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.name, alignItems: 'flex-start', paddingLeft: 4 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.balance, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.savingsBalance, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.currentRelease, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+
+                {dayColumns.map((date) => (
+                  <React.Fragment key={date}>
+                    <View style={[styles.tableCell, { width: colWidths.day, textAlign: 'right', paddingRight: 2 }]}>
+                      <Text />
+                    </View>
+                    <View style={[styles.tableCell, { width: colWidths.day, textAlign: 'right', paddingRight: 2 }]}>
+                      <Text />
+                    </View>
+                  </React.Fragment>
+                ))}
+
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
+              </View>
+            ))}
+                </>
+              );
+            })()}
 
             {/* Total Row */}
             {pageIndex === memberChunks.length - 1 && (

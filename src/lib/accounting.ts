@@ -522,24 +522,59 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   };
 }
 
+async function getOffsetAmountForDate(accountingDate: string): Promise<number> {
+  const range = getManilaDateRange(accountingDate, accountingDate);
+
+  const offsetAgg = await prisma.savingsAdjustment.aggregate({
+    where: {
+      type: SavingsUpdateType.WITHDRAW,
+      createdAt: { gte: range.from, lte: range.to },
+      member: {
+        status: MemberStatus.ACTIVE,
+        notes: {
+          some: {
+            createdAt: { gte: range.from, lte: range.to },
+            content: { startsWith: "OFFSET", mode: "insensitive" },
+          },
+        },
+      },
+    },
+    _sum: { amount: true },
+  });
+
+  return Number(offsetAgg._sum.amount ?? 0);
+}
+
 export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
-  const [{ manualData, lastUpdatedAt }, computedTotals] = await Promise.all([
+  const [{ manualData, lastUpdatedAt }, computedTotals, offsetAmount] = await Promise.all([
     getAccountingManualDataForDate(accountingDate),
     getAccountingComputedTotals(accountingDate),
+    getOffsetAmountForDate(accountingDate),
   ]);
 
+  const resolvedManualData =
+    !lastUpdatedAt && Number(manualData.dailyExpenses.offset || 0) === 0 && offsetAmount > 0
+      ? {
+          ...manualData,
+          dailyExpenses: {
+            ...manualData.dailyExpenses,
+            offset: offsetAmount,
+          },
+        }
+      : manualData;
+
   const baseOpeningBalance = await getBaseOpeningBalance(accountingDate, computedTotals);
-  const resolvedOpeningBalance = manualData.openingBalanceOverride ?? baseOpeningBalance;
+  const resolvedOpeningBalance = resolvedManualData.openingBalanceOverride ?? baseOpeningBalance;
   const resolvedComputedTotals = {
     ...computedTotals,
-    loanRelease: manualData.loanReleaseOverride ?? computedTotals.loanRelease,
+    loanRelease: resolvedManualData.loanReleaseOverride ?? computedTotals.loanRelease,
   };
 
   return {
     accountingDate,
-    manualData,
+    manualData: resolvedManualData,
     computedTotals: resolvedComputedTotals,
-    view: buildAccountingView(manualData, resolvedComputedTotals, resolvedOpeningBalance),
+    view: buildAccountingView(resolvedManualData, resolvedComputedTotals, resolvedOpeningBalance),
     lastUpdatedAt,
   };
 }

@@ -226,7 +226,7 @@ export async function GET(
         fullRepaymentAmount += memberFullRepaymentAmount;
       }
 
-      if (latestNote === "OFFSET" && memberOffsetAmount > 0) {
+      if (latestNote.startsWith("OFFSET") && memberOffsetAmount > 0) {
         offsetCount += 1;
         offsetAmount += memberOffsetAmount;
       }
