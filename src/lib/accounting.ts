@@ -92,6 +92,7 @@ export type AccountingReportData = {
 const OPENING_BALANCE_OVERRIDE_KEY = "__openingBalanceOverride";
 const LOAN_RELEASE_OVERRIDE_KEY = "__loanReleaseOverride";
 const ENCODER_OVERRIDE_ALLOWED_KEY = "__encoderOverrideAllowed";
+export const CLOSING_BALANCE_KEY = "__closingBalance";
 
 function toNumber(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -109,6 +110,11 @@ function toOptionalNumber(value: unknown) {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function extractClosingBalance(payments: unknown): number | null {
+  if (!payments || typeof payments !== "object") return null;
+  return toOptionalNumber((payments as Record<string, unknown>)[CLOSING_BALANCE_KEY]);
 }
 
 function createEmptySection(keys: readonly { key: string }[]) {
@@ -268,14 +274,48 @@ function toAccountingDate(accountingDate: string) {
   return new Date(`${accountingDate}T00:00:00.000+08:00`);
 }
 
-function getPreviousCalendarDate(accountingDate: string) {
-  const date = new Date(`${accountingDate}T12:00:00.000+08:00`);
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().slice(0, 10);
+type AccountingDaySnapshot = {
+  accountingDate: string;
+  receipts: unknown;
+  payments: unknown;
+  dailyExpenses: unknown;
+  encoderOverrideAllowed: boolean;
+  closingBalance: number | null;
+  updatedAt: string | null;
+};
+
+function dateToYmd(value: Date) {
+  return new Date(value).toISOString().slice(0, 10);
 }
 
-async function getPreviousAccountingDate(accountingDate: string): Promise<string | null> {
-  const previousRecord = await (prisma as any).accountingDay.findFirst({
+async function getAccountingDaySnapshot(accountingDate: string): Promise<AccountingDaySnapshot | null> {
+  const record = await (prisma as any).accountingDay.findUnique({
+    where: { accountingDate: toAccountingDate(accountingDate) },
+    select: {
+      accountingDate: true,
+      receipts: true,
+      payments: true,
+      dailyExpenses: true,
+      encoderOverrideAllowed: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!record) return null;
+
+  return {
+    accountingDate: dateToYmd(record.accountingDate),
+    receipts: record.receipts,
+    payments: record.payments,
+    dailyExpenses: record.dailyExpenses,
+    encoderOverrideAllowed: record.encoderOverrideAllowed ?? false,
+    closingBalance: extractClosingBalance(record.payments),
+    updatedAt: record.updatedAt?.toISOString?.() ?? null,
+  };
+}
+
+async function getPreviousSavedAccountingDay(accountingDate: string): Promise<AccountingDaySnapshot | null> {
+  const record = await (prisma as any).accountingDay.findFirst({
     where: {
       accountingDate: {
         lt: toAccountingDate(accountingDate),
@@ -286,12 +326,84 @@ async function getPreviousAccountingDate(accountingDate: string): Promise<string
     },
     select: {
       accountingDate: true,
+      receipts: true,
+      payments: true,
+      dailyExpenses: true,
+      encoderOverrideAllowed: true,
+      updatedAt: true,
     },
   });
 
-  return previousRecord?.accountingDate
-    ? new Date(previousRecord.accountingDate).toISOString().slice(0, 10)
-    : null;
+  if (!record) return null;
+
+  return {
+    accountingDate: dateToYmd(record.accountingDate),
+    receipts: record.receipts,
+    payments: record.payments,
+    dailyExpenses: record.dailyExpenses,
+    encoderOverrideAllowed: record.encoderOverrideAllowed ?? false,
+    closingBalance: extractClosingBalance(record.payments),
+    updatedAt: record.updatedAt?.toISOString?.() ?? null,
+  };
+}
+
+async function getStoredOrComputedClosingBalance(accountingDate: string): Promise<number | null> {
+  const target = await getAccountingDaySnapshot(accountingDate);
+  if (!target) return null;
+  if (target.closingBalance != null) return target.closingBalance;
+
+  const toCompute: AccountingDaySnapshot[] = [target];
+  let baseClosingBalance: number | null = null;
+
+  while (true) {
+    const cursor = toCompute[toCompute.length - 1];
+    const prev = await getPreviousSavedAccountingDay(cursor.accountingDate);
+    if (!prev) {
+      baseClosingBalance = null;
+      break;
+    }
+    if (prev.closingBalance != null) {
+      baseClosingBalance = prev.closingBalance;
+      break;
+    }
+    toCompute.push(prev);
+  }
+
+  let previousClosing = baseClosingBalance;
+  for (let i = toCompute.length - 1; i >= 0; i -= 1) {
+    const snapshot = toCompute[i];
+    const computedTotals = await getAccountingComputedTotals(snapshot.accountingDate);
+    const manualData = sanitizeAccountingManualData({
+      receipts: snapshot.receipts as any,
+      payments: snapshot.payments as any,
+      dailyExpenses: snapshot.dailyExpenses as any,
+      encoderOverrideAllowed: snapshot.encoderOverrideAllowed,
+    });
+    const openingBalance =
+      manualData.openingBalanceOverride ?? (previousClosing ?? computedTotals.cashOnHand);
+    const resolvedComputedTotals = {
+      ...computedTotals,
+      loanRelease: manualData.loanReleaseOverride ?? computedTotals.loanRelease,
+    };
+    const view = buildAccountingView(manualData, resolvedComputedTotals, openingBalance);
+    previousClosing = view.closingBalance;
+  }
+
+  return previousClosing;
+}
+
+export async function getBaseOpeningBalance(
+  accountingDate: string,
+  computedTotals: AccountingComputedTotals,
+): Promise<number> {
+  const previousSavedDay = await getPreviousSavedAccountingDay(accountingDate);
+  if (!previousSavedDay) return computedTotals.cashOnHand;
+
+  const previousClosing =
+    previousSavedDay.closingBalance ??
+    (await getStoredOrComputedClosingBalance(previousSavedDay.accountingDate));
+
+  return previousClosing ?? computedTotals.cashOnHand;
 }
 
 export async function getAccountingComputedTotals(accountingDate: string): Promise<AccountingComputedTotals> {
@@ -410,43 +522,59 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   };
 }
 
-async function getAccountingReportDataInternal(
-  accountingDate: string,
-  cache: Map<string, Promise<AccountingReportData>>,
-): Promise<AccountingReportData> {
-  const cached = cache.get(accountingDate);
-  if (cached) return cached;
+async function getOffsetAmountForDate(accountingDate: string): Promise<number> {
+  const range = getManilaDateRange(accountingDate, accountingDate);
 
-  const reportPromise = (async () => {
-    const [{ manualData, lastUpdatedAt }, computedTotals, previousAccountingDate] = await Promise.all([
-      getAccountingManualDataForDate(accountingDate),
-      getAccountingComputedTotals(accountingDate),
-      getPreviousAccountingDate(accountingDate),
-    ]);
+  const offsetAgg = await prisma.savingsAdjustment.aggregate({
+    where: {
+      type: SavingsUpdateType.WITHDRAW,
+      createdAt: { gte: range.from, lte: range.to },
+      member: {
+        status: MemberStatus.ACTIVE,
+        notes: {
+          some: {
+            createdAt: { gte: range.from, lte: range.to },
+            content: { startsWith: "OFFSET", mode: "insensitive" },
+          },
+        },
+      },
+    },
+    _sum: { amount: true },
+  });
 
-    const openingBalance = previousAccountingDate
-      ? (await getAccountingReportDataInternal(getPreviousCalendarDate(accountingDate), cache)).view
-          .closingBalance
-      : computedTotals.cashOnHand;
-    const resolvedOpeningBalance = manualData.openingBalanceOverride ?? openingBalance;
-    const resolvedComputedTotals = {
-      ...computedTotals,
-      loanRelease: manualData.loanReleaseOverride ?? computedTotals.loanRelease,
-    };
-
-    return {
-      accountingDate,
-      manualData,
-      computedTotals: resolvedComputedTotals,
-      view: buildAccountingView(manualData, resolvedComputedTotals, resolvedOpeningBalance),
-      lastUpdatedAt,
-    };
-  })();
-
-  cache.set(accountingDate, reportPromise);
-  return reportPromise;
+  return Number(offsetAgg._sum.amount ?? 0);
 }
 
 export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
-  return getAccountingReportDataInternal(accountingDate, new Map());
+  const [{ manualData, lastUpdatedAt }, computedTotals, offsetAmount] = await Promise.all([
+    getAccountingManualDataForDate(accountingDate),
+    getAccountingComputedTotals(accountingDate),
+    getOffsetAmountForDate(accountingDate),
+  ]);
+
+  const resolvedManualData =
+    !lastUpdatedAt && Number(manualData.dailyExpenses.offset || 0) === 0 && offsetAmount > 0
+      ? {
+          ...manualData,
+          dailyExpenses: {
+            ...manualData.dailyExpenses,
+            offset: offsetAmount,
+          },
+        }
+      : manualData;
+
+  const baseOpeningBalance = await getBaseOpeningBalance(accountingDate, computedTotals);
+  const resolvedOpeningBalance = resolvedManualData.openingBalanceOverride ?? baseOpeningBalance;
+  const resolvedComputedTotals = {
+    ...computedTotals,
+    loanRelease: resolvedManualData.loanReleaseOverride ?? computedTotals.loanRelease,
+  };
+
+  return {
+    accountingDate,
+    manualData: resolvedManualData,
+    computedTotals: resolvedComputedTotals,
+    view: buildAccountingView(resolvedManualData, resolvedComputedTotals, resolvedOpeningBalance),
+    lastUpdatedAt,
+  };
 }
