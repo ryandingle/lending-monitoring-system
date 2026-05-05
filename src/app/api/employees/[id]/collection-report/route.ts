@@ -184,11 +184,32 @@ export async function GET(
     let offsetCount = 0;
     let offsetAmount = 0;
 
+    const offsetRows = await prisma.$queryRaw<{ offset_count: number; offset_amount: number }[]>`
+      SELECT
+        COALESCE(COUNT(DISTINCT sa."memberId"), 0)::int4 AS "offset_count",
+        COALESCE(SUM(sa."amount"), 0)::float8 AS "offset_amount"
+      FROM "savings_adjustments" sa
+      JOIN "members" m ON m."id" = sa."memberId"
+      WHERE m."groupId" = ${group.id}::uuid
+        AND sa."type" = 'WITHDRAW'
+        AND sa."createdAt" >= ${range.from}
+        AND sa."createdAt" <= ${range.to}
+        AND EXISTS (
+          SELECT 1
+          FROM "member_notes" mn
+          WHERE mn."memberId" = sa."memberId"
+            AND UPPER(TRIM(mn."content")) = 'OFFSET'
+            AND (mn."createdAt" AT TIME ZONE 'Asia/Manila')::date = (sa."createdAt" AT TIME ZONE 'Asia/Manila')::date
+        )
+    `;
+
+    offsetCount = Number(offsetRows?.[0]?.offset_count ?? 0);
+    offsetAmount = Number(offsetRows?.[0]?.offset_amount ?? 0);
+
     for (const member of group.members) {
       const latestNote = normalizeMemberNote(member.notes[0]?.content);
       let memberFullRepaymentAmount = 0;
       let hasFullRepayment = false;
-      let memberOffsetAmount = 0;
 
       for (const adj of member.balanceAdjustments) {
         const amount = toNumber(adj.amount);
@@ -203,9 +224,6 @@ export async function GET(
         const amount = toNumber(sav.amount);
         if (sav.type === SavingsUpdateType.INCREASE) {
           savings += amount;
-        }
-        if (sav.type === SavingsUpdateType.WITHDRAW) {
-          memberOffsetAmount += amount;
         }
       }
 
@@ -224,11 +242,6 @@ export async function GET(
       if (latestNote === "FULL" && hasFullRepayment) {
         fullRepaymentCount += 1;
         fullRepaymentAmount += memberFullRepaymentAmount;
-      }
-
-      if (latestNote.startsWith("OFFSET") && memberOffsetAmount > 0) {
-        offsetCount += 1;
-        offsetAmount += memberOffsetAmount;
       }
     }
 

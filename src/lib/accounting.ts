@@ -525,24 +525,22 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
 async function getOffsetAmountForDate(accountingDate: string): Promise<number> {
   const range = getManilaDateRange(accountingDate, accountingDate);
 
-  const offsetAgg = await prisma.savingsAdjustment.aggregate({
-    where: {
-      type: SavingsUpdateType.WITHDRAW,
-      createdAt: { gte: range.from, lte: range.to },
-      member: {
-        status: MemberStatus.ACTIVE,
-        notes: {
-          some: {
-            createdAt: { gte: range.from, lte: range.to },
-            content: { startsWith: "OFFSET", mode: "insensitive" },
-          },
-        },
-      },
-    },
-    _sum: { amount: true },
-  });
+  const rows = await prisma.$queryRaw<{ total: number }[]>`
+    SELECT COALESCE(SUM(sa."amount"), 0)::float8 AS "total"
+    FROM "savings_adjustments" sa
+    WHERE sa."type" = 'WITHDRAW'
+      AND sa."createdAt" >= ${range.from}
+      AND sa."createdAt" <= ${range.to}
+      AND EXISTS (
+        SELECT 1
+        FROM "member_notes" mn
+        WHERE mn."memberId" = sa."memberId"
+          AND UPPER(TRIM(mn."content")) = 'OFFSET'
+          AND (mn."createdAt" AT TIME ZONE 'Asia/Manila')::date = (sa."createdAt" AT TIME ZONE 'Asia/Manila')::date
+      )
+  `;
 
-  return Number(offsetAgg._sum.amount ?? 0);
+  return Number(rows?.[0]?.total ?? 0);
 }
 
 export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
