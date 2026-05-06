@@ -111,6 +111,7 @@ export interface OfficerGroupRow {
   loanInsurance: number;
   passbookFee: number;
   totalCollection: number;
+  cashOnHand: number;
   fullRepaymentCount: number;
   fullRepaymentAmount: number;
   offsetCount: number;
@@ -129,6 +130,7 @@ export interface OfficerReportData {
     loanInsurance: number;
     passbookFee: number;
     totalCollection: number;
+    cashOnHand: number;
     fullRepaymentCount: number;
     fullRepaymentAmount: number;
     offsetCount: number;
@@ -148,7 +150,7 @@ const formatMoney = (value: number) => {
 
 export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }) => {
   const companyName = data.companyName ?? process.env.LMS_COMPANY_NAME ?? "Triple E Microfinance";
-  const cof = (data.totals?.totalCollection ?? 0) - (data.totals?.fullRepaymentAmount ?? 0);
+  const cof = data.totals?.cashOnHand ?? 0;
   const widths = {
     no: "5%",
     group: "18%",
