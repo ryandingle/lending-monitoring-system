@@ -167,6 +167,7 @@ export async function GET(
     loanInsurance: 0,
     passbookFee: 0,
     totalCollection: 0,
+    cashOnHand: 0,
     fullRepaymentCount: 0,
     fullRepaymentAmount: 0,
     offsetCount: 0,
@@ -246,6 +247,7 @@ export async function GET(
     }
 
     const totalCollection = loanCollection + savings + processingFee + loanInsurance + passbookFee;
+    const cashOnHand = totalCollection - offsetAmount;
 
     groupRows.push({
       groupName: group.name,
@@ -255,6 +257,7 @@ export async function GET(
       loanInsurance,
       passbookFee,
       totalCollection,
+      cashOnHand,
       fullRepaymentCount,
       fullRepaymentAmount,
       offsetCount,
@@ -267,6 +270,7 @@ export async function GET(
     totals.loanInsurance += loanInsurance;
     totals.passbookFee += passbookFee;
     totals.totalCollection += totalCollection;
+    totals.cashOnHand += cashOnHand;
     totals.fullRepaymentCount += fullRepaymentCount;
     totals.fullRepaymentAmount += fullRepaymentAmount;
     totals.offsetCount += offsetCount;
