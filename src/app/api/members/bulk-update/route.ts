@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
               memberId: member.id,
               amount: activeReleaseAmount,
               releaseDate: businessDate,
+              createdAt: businessDate,
             },
           });
 
