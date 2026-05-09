@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
           memberId: member.id,
           amount,
           releaseDate,
+          createdAt: releaseDate,
         },
       });
 

@@ -440,7 +440,7 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
     }),
     (prisma as any).activeRelease.aggregate({
       where: {
-        releaseDate: { gte: range.from, lte: range.to },
+        createdAt: { gte: range.from, lte: range.to },
         member: {
           status: MemberStatus.ACTIVE,
         },
