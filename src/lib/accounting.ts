@@ -62,6 +62,7 @@ export type AccountingComputedTotals = {
   loanCollection: number;
   loanRelease: number;
   loanInsurance: number;
+  processingFee: number;
   passbook: number;
   membershipFee: number;
   savings: number;
@@ -102,12 +103,12 @@ function toNumber(value: unknown) {
 
 function toOptionalNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : null;
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return null;
     const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) ? Math.round(parsed) : null;
   }
   return null;
 }
@@ -140,7 +141,7 @@ export function sanitizeAccountingManualData(
     keys: readonly { key: string }[],
   ) =>
     Object.fromEntries(
-      keys.map(({ key }) => [key, toNumber(source?.[key])]),
+      keys.map(({ key }) => [key, roundWhole(source?.[key])]),
     ) as AccountingManualSection;
 
   return {
@@ -191,6 +192,12 @@ function sumSection(section: AccountingManualSection, keys: readonly { key: stri
   return keys.reduce((sum, field) => sum + toNumber(section[field.key]), 0);
 }
 
+function roundWhole(value: unknown) {
+  const n = toNumber(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n);
+}
+
 export function buildAccountingView(
   manual: AccountingManualData,
   computed: AccountingComputedTotals,
@@ -200,39 +207,40 @@ export function buildAccountingView(
     field.key.startsWith("bankDeposit"),
   ).reduce((sum, field) => sum + toNumber(manual.payments[field.key]), 0);
 
-  const dailyExpensesTotal = sumSection(manual.dailyExpenses, DAILY_EXPENSE_FIELDS);
+  const dailyExpensesTotal = roundWhole(sumSection(manual.dailyExpenses, DAILY_EXPENSE_FIELDS));
   const managementExpense = dailyExpensesTotal;
   const manualReceiptInflows =
-    toNumber(manual.receipts.cashAdvance) +
-    toNumber(manual.receipts.ftIn) +
-    toNumber(manual.receipts.bankWithdrawal1) +
-    toNumber(manual.receipts.bankWithdrawal2);
+    roundWhole(manual.receipts.cashAdvance) +
+    roundWhole(manual.receipts.ftIn) +
+    roundWhole(manual.receipts.bankWithdrawal1) +
+    roundWhole(manual.receipts.bankWithdrawal2);
   const receiptsTotal =
-    openingBalance +
-    computed.loanCollection +
-    computed.savings +
-    computed.passbook +
-    computed.membershipFee +
-    computed.loanInsurance +
+    roundWhole(openingBalance) +
+    roundWhole(computed.loanCollection) +
+    roundWhole(computed.savings) +
+    roundWhole(computed.processingFee) +
+    roundWhole(computed.passbook) +
+    roundWhole(computed.membershipFee) +
+    roundWhole(computed.loanInsurance) +
     manualReceiptInflows;
 
   const paymentBaseTotal =
-    computed.loanRelease +
+    roundWhole(computed.loanRelease) +
     managementExpense +
-    toNumber(manual.payments.otherPay) +
-    toNumber(manual.payments.ftOut) +
-    bankDepositTotal;
+    roundWhole(manual.payments.otherPay) +
+    roundWhole(manual.payments.ftOut) +
+    roundWhole(bankDepositTotal);
 
-  const closingBalance = receiptsTotal - paymentBaseTotal;
-  const totalPayments = paymentBaseTotal + closingBalance;
+  const closingBalance = roundWhole(receiptsTotal - paymentBaseTotal);
+  const totalPayments = roundWhole(paymentBaseTotal + closingBalance);
 
   return {
-    openingBalance,
-    receiptsTotal,
+    openingBalance: roundWhole(openingBalance),
+    receiptsTotal: roundWhole(receiptsTotal),
     managementExpense,
     dailyExpensesTotal,
-    bankDepositTotal,
-    paymentBaseTotal,
+    bankDepositTotal: roundWhole(bankDepositTotal),
+    paymentBaseTotal: roundWhole(paymentBaseTotal),
     closingBalance,
     totalPayments,
   };
@@ -413,6 +421,7 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
     loanCollectionAgg,
     loanReleaseAgg,
     loanInsuranceAgg,
+    processingFeeAgg,
     passbookAgg,
     membershipFeeAgg,
     savingsAgg,
@@ -439,6 +448,15 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
       _sum: { amount: true },
     }),
     (prisma as any).loanInsurance.aggregate({
+      where: {
+        createdAt: { gte: range.from, lte: range.to },
+        member: {
+          status: MemberStatus.ACTIVE,
+        },
+      },
+      _sum: { amount: true },
+    }),
+    (prisma as any).processingFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
         member: {
@@ -501,24 +519,27 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
   const loanCollection = Number(loanCollectionAgg._sum.amount ?? 0);
   const loanRelease = Number(loanReleaseAgg._sum.amount ?? 0);
   const loanInsurance = Number(loanInsuranceAgg._sum.amount ?? 0);
+  const processingFee = Number(processingFeeAgg._sum.amount ?? 0);
   const passbook = Number(passbookAgg._sum.amount ?? 0);
   const membershipFee = Number(membershipFeeAgg._sum.amount ?? 0);
   const savings = Number(savingsAgg._sum.amount ?? 0);
   const totalCollection =
-    loanCollection + loanInsurance + passbook + membershipFee + savings;
-  const cashOnHand = totalCollection - Number(fullRepaymentAmountAgg._sum.amount ?? 0);
+    loanCollection + loanInsurance + processingFee + passbook + membershipFee + savings;
+  const fullRepaymentAmount = Number(fullRepaymentAmountAgg._sum.amount ?? 0);
+  const cashOnHand = totalCollection - fullRepaymentAmount;
 
   return {
-    cashOnHand,
-    loanCollection,
-    loanRelease,
-    loanInsurance,
-    passbook,
-    membershipFee,
-    savings,
-    totalCollection,
+    cashOnHand: roundWhole(cashOnHand),
+    loanCollection: roundWhole(loanCollection),
+    loanRelease: roundWhole(loanRelease),
+    loanInsurance: roundWhole(loanInsurance),
+    processingFee: roundWhole(processingFee),
+    passbook: roundWhole(passbook),
+    membershipFee: roundWhole(membershipFee),
+    savings: roundWhole(savings),
+    totalCollection: roundWhole(totalCollection),
     fullRepaymentCount,
-    fullRepaymentAmount: Number(fullRepaymentAmountAgg._sum.amount ?? 0),
+    fullRepaymentAmount: roundWhole(fullRepaymentAmount),
   };
 }
 

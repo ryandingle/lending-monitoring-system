@@ -233,8 +233,8 @@ const styles = StyleSheet.create({
 function formatMoney(value: number) {
   if (!value) return "";
   return value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   });
 }
 
@@ -277,6 +277,7 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
     },
     { key: "loanCollection", label: "Loan Col. (Current)", value: data.computedTotals.loanCollection },
     { key: "savings", label: "Savings", value: data.computedTotals.savings },
+    { key: "processingFee", label: "PF", value: data.computedTotals.processingFee },
     { key: "passbook", label: "Passbook", value: data.computedTotals.passbook },
     { key: "membershipFee", label: "Mem Fee", value: data.computedTotals.membershipFee },
     { key: "cashAdvance", label: "CASH ADVANCE", value: data.manualData.receipts.cashAdvance, manual: true },
@@ -326,6 +327,7 @@ export function AccountingReportPdf({ data }: { data: AccountingPdfData }) {
   const computedSummaryRows = [
     { key: "loanCollection", label: "Loan Collection Current", value: data.computedTotals.loanCollection },
     { key: "savings", label: "Savings", value: data.computedTotals.savings },
+    { key: "processingFee", label: "PF", value: data.computedTotals.processingFee },
     { key: "passbook", label: "Passbook", value: data.computedTotals.passbook },
     { key: "membershipFee", label: "Mem Fee", value: data.computedTotals.membershipFee },
     { key: "totalCollection", label: "Total Collection", value: data.computedTotals.totalCollection },
