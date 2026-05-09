@@ -291,7 +291,17 @@ export function MemberList({
   // Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{
     isOpen: boolean;
-    type: 'DELETE_MEMBER' | 'REVERT_BALANCE' | 'REVERT_SAVINGS' | 'DELETE_NOTE' | 'DISCARD_DRAFT' | null;
+    type:
+      | 'DELETE_MEMBER'
+      | 'REVERT_BALANCE'
+      | 'REVERT_SAVINGS'
+      | 'REVERT_PROCESSING_FEE'
+      | 'REVERT_MEMBERSHIP_FEE'
+      | 'REVERT_LOAN_INSURANCE'
+      | 'REVERT_PASSBOOK_FEE'
+      | 'DELETE_NOTE'
+      | 'DISCARD_DRAFT'
+      | null;
     id: string | null;
     title: string;
     message: string;
@@ -317,6 +327,7 @@ export function MemberList({
   const canDelete = userRole === Role.SUPER_ADMIN;
   const canBulkUpdate = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
   const canManageActiveRelease = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
+  const canRevertFees = userRole === Role.SUPER_ADMIN || userRole === Role.ENCODER;
 
   const fetchMembers = async (p = page, q = search, g = groupId, s = sort, l = limit, d = daysFilter, stat = statusFilter, nm = newMemberFilter) => {
     // If fixedGroupId is set, always use it
@@ -644,6 +655,34 @@ export function MemberList({
                 // Also update the note count in the main list
                 fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
             }
+        } else if (
+            confirmation.type === 'REVERT_PROCESSING_FEE' ||
+            confirmation.type === 'REVERT_MEMBERSHIP_FEE' ||
+            confirmation.type === 'REVERT_LOAN_INSURANCE' ||
+            confirmation.type === 'REVERT_PASSBOOK_FEE'
+        ) {
+            if (!confirmation.id) return;
+            const feeType =
+                confirmation.type === 'REVERT_PROCESSING_FEE'
+                    ? 'processing'
+                    : confirmation.type === 'REVERT_MEMBERSHIP_FEE'
+                      ? 'membership'
+                      : confirmation.type === 'REVERT_LOAN_INSURANCE'
+                        ? 'loan-insurance'
+                        : 'passbook';
+            const res = await fetch(`/api/fees/${feeType}/${confirmation.id}`, { method: "DELETE" });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to revert");
+            }
+            if (viewMember) {
+                const memberRes = await fetch(`/api/members/${viewMember.id}`);
+                if (memberRes.ok) {
+                    const memberData = await memberRes.json();
+                    setViewMember(memberData);
+                }
+            }
+            fetchMembers(page, search, groupId, sort, limit, daysFilter, statusFilter, newMemberFilter);
         }
         
         setConfirmation({ ...confirmation, isOpen: false });
@@ -681,6 +720,46 @@ export function MemberList({
         id: noteId,
         title: "Delete Note",
         message: "Are you sure you want to permanently delete this note?"
+    });
+  };
+
+  const handleRevertProcessingFee = (id: string) => {
+    setConfirmation({
+      isOpen: true,
+      type: 'REVERT_PROCESSING_FEE',
+      id,
+      title: "Revert Processing Fee",
+      message: "Are you sure you want to revert this fee? This will remove the record.",
+    });
+  };
+
+  const handleRevertMembershipFee = (id: string) => {
+    setConfirmation({
+      isOpen: true,
+      type: 'REVERT_MEMBERSHIP_FEE',
+      id,
+      title: "Revert Membership Fee",
+      message: "Are you sure you want to revert this fee? This will remove the record.",
+    });
+  };
+
+  const handleRevertLoanInsurance = (id: string) => {
+    setConfirmation({
+      isOpen: true,
+      type: 'REVERT_LOAN_INSURANCE',
+      id,
+      title: "Revert Loan Insurance",
+      message: "Are you sure you want to revert this fee? This will remove the record.",
+    });
+  };
+
+  const handleRevertPassbookFee = (id: string) => {
+    setConfirmation({
+      isOpen: true,
+      type: 'REVERT_PASSBOOK_FEE',
+      id,
+      title: "Revert Passbook Fee",
+      message: "Are you sure you want to revert this fee? This will remove the record.",
     });
   };
 
@@ -1582,6 +1661,7 @@ export function MemberList({
                                                             <th className="px-3 py-2 font-medium">Date</th>
                                                             <th className="px-3 py-2 text-right font-medium">Amount</th>
                                                             <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                            <th className="px-3 py-2"></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1599,6 +1679,17 @@ export function MemberList({
                                                                 </td>
                                                                 <td className="px-3 py-2">
                                                                     {pf.encodedBy.name}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {canRevertFees && (
+                                                                        <button
+                                                                            onClick={() => handleRevertProcessingFee(pf.id)}
+                                                                            className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline"
+                                                                            title="Revert Fee"
+                                                                        >
+                                                                            REVERT
+                                                                        </button>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -1622,6 +1713,7 @@ export function MemberList({
                                                             <th className="px-3 py-2 font-medium">Date</th>
                                                             <th className="px-3 py-2 text-right font-medium">Amount</th>
                                                             <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                            <th className="px-3 py-2"></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1639,6 +1731,17 @@ export function MemberList({
                                                                 </td>
                                                                 <td className="px-3 py-2">
                                                                     {pf.encodedBy.name}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {canRevertFees && (
+                                                                        <button
+                                                                            onClick={() => handleRevertPassbookFee(pf.id)}
+                                                                            className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline"
+                                                                            title="Revert Fee"
+                                                                        >
+                                                                            REVERT
+                                                                        </button>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -1662,6 +1765,7 @@ export function MemberList({
                                                             <th className="px-3 py-2 font-medium">Date</th>
                                                             <th className="px-3 py-2 text-right font-medium">Amount</th>
                                                             <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                            <th className="px-3 py-2"></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1679,6 +1783,17 @@ export function MemberList({
                                                                 </td>
                                                                 <td className="px-3 py-2">
                                                                     {li.encodedBy.name}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {canRevertFees && (
+                                                                        <button
+                                                                            onClick={() => handleRevertLoanInsurance(li.id)}
+                                                                            className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline"
+                                                                            title="Revert Fee"
+                                                                        >
+                                                                            REVERT
+                                                                        </button>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -1702,6 +1817,7 @@ export function MemberList({
                                                             <th className="px-3 py-2 font-medium">Date</th>
                                                             <th className="px-3 py-2 text-right font-medium">Amount</th>
                                                             <th className="px-3 py-2 font-medium">Encoded By</th>
+                                                            <th className="px-3 py-2"></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1719,6 +1835,17 @@ export function MemberList({
                                                                 </td>
                                                                 <td className="px-3 py-2">
                                                                     {pf.encodedBy.name}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    {canRevertFees && (
+                                                                        <button
+                                                                            onClick={() => handleRevertMembershipFee(pf.id)}
+                                                                            className="text-xs font-medium text-slate-500 hover:text-red-600 hover:underline"
+                                                                            title="Revert Fee"
+                                                                        >
+                                                                            REVERT
+                                                                        </button>
+                                                                    )}
                                                                 </td>
                                                             </tr>
                                                         ))}

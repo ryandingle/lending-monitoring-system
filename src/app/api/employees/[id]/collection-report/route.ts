@@ -126,6 +126,17 @@ export async function GET(
                   amount: true,
                 },
               },
+              membershipFees: {
+                where: {
+                  createdAt: {
+                    gte: range.from,
+                    lte: range.to,
+                  },
+                },
+                select: {
+                  amount: true,
+                },
+              },
               loanInsurances: {
                 where: {
                   createdAt: {
@@ -164,6 +175,7 @@ export async function GET(
     loanCollection: 0,
     savings: 0,
     processingFee: 0,
+    membershipFee: 0,
     loanInsurance: 0,
     passbookFee: 0,
     totalCollection: 0,
@@ -178,6 +190,7 @@ export async function GET(
     let loanCollection = 0;
     let savings = 0;
     let processingFee = 0;
+    let membershipFee = 0;
     let loanInsurance = 0;
     let passbookFee = 0;
     let fullRepaymentCount = 0;
@@ -232,6 +245,10 @@ export async function GET(
         processingFee += toNumber(fee.amount);
       }
 
+      for (const fee of member.membershipFees) {
+        membershipFee += toNumber(fee.amount);
+      }
+
       for (const insurance of member.loanInsurances) {
         loanInsurance += toNumber(insurance.amount);
       }
@@ -246,7 +263,8 @@ export async function GET(
       }
     }
 
-    const totalCollection = loanCollection + savings + processingFee + loanInsurance + passbookFee;
+    const totalCollection =
+      loanCollection + savings + processingFee + membershipFee + loanInsurance + passbookFee;
     const cashOnHand = totalCollection - offsetAmount;
 
     groupRows.push({
@@ -254,6 +272,7 @@ export async function GET(
       loanCollection,
       savings,
       processingFee,
+      membershipFee,
       loanInsurance,
       passbookFee,
       totalCollection,
@@ -267,6 +286,7 @@ export async function GET(
     totals.loanCollection += loanCollection;
     totals.savings += savings;
     totals.processingFee += processingFee;
+    totals.membershipFee += membershipFee;
     totals.loanInsurance += loanInsurance;
     totals.passbookFee += passbookFee;
     totals.totalCollection += totalCollection;

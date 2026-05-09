@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest) {
     const view = buildAccountingView(manualData, resolvedComputedTotals, resolvedOpeningBalance);
     const paymentsWithClosingBalance = {
       ...serializedManualData.payments,
-      [CLOSING_BALANCE_KEY]: Number(view.closingBalance.toFixed(2)),
+      [CLOSING_BALANCE_KEY]: Math.round(view.closingBalance),
     };
 
     if (existing && user.role !== Role.SUPER_ADMIN && !existingManualData?.encoderOverrideAllowed) {
