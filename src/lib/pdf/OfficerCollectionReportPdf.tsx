@@ -108,6 +108,7 @@ export interface OfficerGroupRow {
   loanCollection: number;
   savings: number;
   processingFee: number;
+  membershipFee: number;
   loanInsurance: number;
   passbookFee: number;
   totalCollection: number;
@@ -127,6 +128,7 @@ export interface OfficerReportData {
     loanCollection: number;
     savings: number;
     processingFee: number;
+    membershipFee: number;
     loanInsurance: number;
     passbookFee: number;
     totalCollection: number;
@@ -153,15 +155,18 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
   const cof = data.totals?.cashOnHand ?? 0;
   const widths = {
     no: "5%",
-    group: "18%",
-    loan: "11%",
-    savings: "10%",
-    fee: "8%",
-    total: "11%",
+    group: "14%",
+    loan: "10%",
+    savings: "9%",
+    pf: "7%",
+    mf: "7%",
+    li: "7%",
+    pb: "7%",
+    total: "10%",
     fullNo: "6%",
-    fullAmount: "8%",
+    fullAmount: "6%",
     offsetNo: "5%",
-    offsetAmount: "10%",
+    offsetAmount: "7%",
   } as const;
   const totalsLabelWidth = "54%";
   const totalsValueWidth = "46%";
@@ -203,13 +208,16 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
             <View style={[styles.cell, { width: widths.savings }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>Savings</Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.pf }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>PF</Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.mf }]}>
+              <Text style={[styles.bold, styles.cellTextRight]}>MF</Text>
+            </View>
+            <View style={[styles.cell, { width: widths.li }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>LI</Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.pb }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>PB</Text>
             </View>
             <View style={[styles.cell, { width: widths.total }]}>
@@ -243,13 +251,16 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
               <View style={[styles.cell, { width: widths.savings }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.savings)}</Text>
               </View>
-              <View style={[styles.cell, { width: widths.fee }]}>
+              <View style={[styles.cell, { width: widths.pf }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.processingFee)}</Text>
               </View>
-              <View style={[styles.cell, { width: widths.fee }]}>
+              <View style={[styles.cell, { width: widths.mf }]}>
+                <Text style={styles.cellTextRight}>{formatMoney(row.membershipFee)}</Text>
+              </View>
+              <View style={[styles.cell, { width: widths.li }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.loanInsurance)}</Text>
               </View>
-              <View style={[styles.cell, { width: widths.fee }]}>
+              <View style={[styles.cell, { width: widths.pb }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.passbookFee)}</Text>
               </View>
               <View style={[styles.cell, { width: widths.total }]}>
@@ -291,17 +302,22 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
                 {formatMoney(data.totals.savings)}
               </Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.pf }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>
                 {formatMoney(data.totals.processingFee)}
               </Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.mf }]}>
+              <Text style={[styles.bold, styles.cellTextRight]}>
+                {formatMoney(data.totals.membershipFee)}
+              </Text>
+            </View>
+            <View style={[styles.cell, { width: widths.li }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>
                 {formatMoney(data.totals.loanInsurance)}
               </Text>
             </View>
-            <View style={[styles.cell, { width: widths.fee }]}>
+            <View style={[styles.cell, { width: widths.pb }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>
                 {formatMoney(data.totals.passbookFee)}
               </Text>

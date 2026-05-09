@@ -14,8 +14,8 @@ import { showAppToast } from "../_components/app-toast";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value || 0);
 }
 
@@ -42,12 +42,11 @@ function NumberInput({
   return (
     <input
       type="number"
-      inputMode="decimal"
-      min="0"
-      step="0.01"
+      inputMode="numeric"
+      step="1"
       readOnly={readOnly}
       value={value === 0 ? "" : value}
-      onChange={(e) => onChange?.(Number(e.target.value) || 0)}
+      onChange={(e) => onChange?.(Math.round(Number(e.target.value) || 0))}
       className={
         readOnly
           ? "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-right text-sm font-medium text-slate-700"
@@ -359,6 +358,7 @@ export function AccountingClient({
     },
     { key: "loanCollection", label: "Loan Col. (Current)", value: currentComputedTotals.loanCollection },
     { key: "savings", label: "Savings", value: currentComputedTotals.savings },
+    { key: "processingFee", label: "PF", value: currentComputedTotals.processingFee },
     { key: "passbook", label: "Passbook", value: currentComputedTotals.passbook },
     { key: "membershipFee", label: "Mem Fee", value: currentComputedTotals.membershipFee },
     {
