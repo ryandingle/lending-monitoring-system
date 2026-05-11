@@ -162,11 +162,11 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
     mf: "7%",
     li: "7%",
     pb: "7%",
-    total: "10%",
     fullNo: "6%",
     fullAmount: "6%",
     offsetNo: "5%",
     offsetAmount: "7%",
+    total: "10%",
   } as const;
   const totalsLabelWidth = "54%";
   const totalsValueWidth = "46%";
@@ -220,9 +220,6 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
             <View style={[styles.cell, { width: widths.pb }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>PB</Text>
             </View>
-            <View style={[styles.cell, { width: widths.total }]}>
-              <Text style={[styles.bold, styles.cellTextRight]}>Total Collection</Text>
-            </View>
             <View style={[styles.cell, { width: widths.fullNo }]}>
               <Text style={[styles.bold, styles.cellTextCenter]}>Full Repay No.</Text>
             </View>
@@ -232,8 +229,11 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
             <View style={[styles.cell, { width: widths.offsetNo }]}>
               <Text style={[styles.bold, styles.cellTextCenter]}>Offset No.</Text>
             </View>
-            <View style={[styles.cell, { width: widths.offsetAmount, borderRightWidth: 0 }]}>
+            <View style={[styles.cell, { width: widths.offsetAmount }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>Offset Amount</Text>
+            </View>
+            <View style={[styles.cell, { width: widths.total, borderRightWidth: 0 }]}>
+              <Text style={[styles.bold, styles.cellTextRight]}>Total Collection</Text>
             </View>
           </View>
 
@@ -263,9 +263,6 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
               <View style={[styles.cell, { width: widths.pb }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.passbookFee)}</Text>
               </View>
-              <View style={[styles.cell, { width: widths.total }]}>
-                <Text style={styles.cellTextRight}>{formatMoney(row.totalCollection)}</Text>
-              </View>
               <View style={[styles.cell, { width: widths.fullNo }]}>
                 <Text style={styles.cellTextCenter}>
                   {row.fullRepaymentCount ? String(row.fullRepaymentCount) : ""}
@@ -281,8 +278,11 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
                   {row.offsetCount ? String(row.offsetCount) : ""}
                 </Text>
               </View>
-              <View style={[styles.cell, { width: widths.offsetAmount, borderRightWidth: 0 }]}>
+              <View style={[styles.cell, { width: widths.offsetAmount }]}>
                 <Text style={styles.cellTextRight}>{formatMoney(row.offsetAmount)}</Text>
+              </View>
+              <View style={[styles.cell, { width: widths.total, borderRightWidth: 0 }]}>
+                <Text style={styles.cellTextRight}>{formatMoney(row.totalCollection)}</Text>
               </View>
             </View>
           ))}
@@ -322,11 +322,6 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
                 {formatMoney(data.totals.passbookFee)}
               </Text>
             </View>
-            <View style={[styles.cell, { width: widths.total }]}>
-              <Text style={[styles.bold, styles.cellTextRight]}>
-                {formatMoney(data.totals.totalCollection)}
-              </Text>
-            </View>
             <View style={[styles.cell, { width: widths.fullNo }]}>
               <Text style={[styles.bold, styles.cellTextCenter]}>
                 {data.totals.fullRepaymentCount
@@ -344,9 +339,14 @@ export const OfficerCollectionReportPdf = ({ data }: { data: OfficerReportData }
                 {data.totals.offsetCount ? String(data.totals.offsetCount) : ""}
               </Text>
             </View>
-            <View style={[styles.cell, { width: widths.offsetAmount, borderRightWidth: 0 }]}>
+            <View style={[styles.cell, { width: widths.offsetAmount }]}>
               <Text style={[styles.bold, styles.cellTextRight]}>
                 {formatMoney(data.totals.offsetAmount)}
+              </Text>
+            </View>
+            <View style={[styles.cell, { width: widths.total, borderRightWidth: 0 }]}>
+              <Text style={[styles.bold, styles.cellTextRight]}>
+                {formatMoney(data.totals.totalCollection)}
               </Text>
             </View>
           </View>
