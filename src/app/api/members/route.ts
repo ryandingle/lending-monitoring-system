@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
             take: 1,
           },
         },
-        orderBy: { lastName: sort },
+        orderBy: [{ lastName: sort }, { firstName: sort }],
         skip: (page - 1) * limit,
         take: limit,
       }),

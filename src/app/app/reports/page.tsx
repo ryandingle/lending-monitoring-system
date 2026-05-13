@@ -37,7 +37,7 @@ export default async function ReportsPage({
     prisma.group.count(),
     prisma.member.findMany({
       where: { status: "ACTIVE" },
-      orderBy: { lastName: "asc" },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: { id: true, firstName: true, lastName: true },
       skip: 0,
       take: limit,
@@ -49,7 +49,7 @@ export default async function ReportsPage({
           some: {},
         },
       },
-      orderBy: { lastName: "asc" },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       select: {
         id: true,
         firstName: true,

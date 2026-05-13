@@ -129,7 +129,7 @@ export default async function MembersPage({
           take: 1,
         },
       } as any,
-      orderBy: { lastName: sort },
+      orderBy: [{ lastName: sort }, { firstName: sort }],
       skip: (page - 1) * limit,
       take: limit,
     }),
