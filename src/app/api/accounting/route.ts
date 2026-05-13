@@ -30,7 +30,7 @@ const EncoderOverrideSchema = z.object({
 });
 
 function toDateOnly(date: string) {
-  return new Date(`${date}T00:00:00.000+08:00`);
+  return new Date(`${date}T12:00:00.000+08:00`);
 }
 
 export async function GET(req: NextRequest) {

@@ -279,7 +279,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
 }
 
 function toAccountingDate(accountingDate: string) {
-  return new Date(`${accountingDate}T00:00:00.000+08:00`);
+  return new Date(`${accountingDate}T12:00:00.000+08:00`);
 }
 
 type AccountingDaySnapshot = {
@@ -432,54 +432,36 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
       where: {
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).activeRelease.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).loanInsurance.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).processingFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).passbookFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
     (prisma as any).membershipFee.aggregate({
       where: {
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
@@ -487,9 +469,6 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
       where: {
         type: SavingsUpdateType.INCREASE,
         createdAt: { gte: range.from, lte: range.to },
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
@@ -498,9 +477,6 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
         balanceAfter: new Prisma.Decimal(0),
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
     }),
     prisma.balanceAdjustment.aggregate({
@@ -508,9 +484,6 @@ export async function getAccountingComputedTotals(accountingDate: string): Promi
         type: BalanceUpdateType.DEDUCT,
         createdAt: { gte: range.from, lte: range.to },
         balanceAfter: new Prisma.Decimal(0),
-        member: {
-          status: MemberStatus.ACTIVE,
-        },
       },
       _sum: { amount: true },
     }),
