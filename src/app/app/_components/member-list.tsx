@@ -1147,15 +1147,15 @@ export function MemberList({
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
             <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-emerald-300 bg-emerald-200" />
+                <span className="h-3 w-3 rounded-sm border border-emerald-700 bg-emerald-300" />
                 <span>Updated today</span>
             </div>
             <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-blue-300 bg-blue-200" />
+                <span className="h-3 w-3 rounded-sm border border-blue-700 bg-blue-300" />
                 <span>New member</span>
             </div>
             <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-red-300 bg-red-200" />
+                <span className="h-3 w-3 rounded-sm border border-red-700 bg-red-300" />
                 <span>Zero balance</span>
             </div>
         </div>
@@ -1219,11 +1219,11 @@ export function MemberList({
                                   Number(member.balance) === Number(member.latestActiveReleaseAmount);
 
                                 const rowClass = hasZeroBalance
-                                  ? "bg-red-50 hover:bg-red-100"
+                                  ? "bg-red-300 hover:bg-red-200"
                                   : hasTodayUpdate
-                                    ? "bg-emerald-50 hover:bg-emerald-100"
+                                    ? "bg-emerald-300 hover:bg-emerald-200"
                                     : isNewMember
-                                      ? "bg-blue-50 hover:bg-blue-100"
+                                      ? "bg-blue-300 hover:bg-blue-200"
                                       : "hover:bg-slate-50";
 
                                 return (

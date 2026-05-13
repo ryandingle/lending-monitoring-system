@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     prisma.member.findMany({
       // @ts-ignore
       where,
-      orderBy: { lastName: sort },
+      orderBy: [{ lastName: sort }, { firstName: sort }],
       select: { id: true, firstName: true, lastName: true },
       skip: (page - 1) * limit,
       take: limit,
