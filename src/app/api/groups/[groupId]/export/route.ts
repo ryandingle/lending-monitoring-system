@@ -115,6 +115,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
             },
             select: { amount: true, createdAt: true },
           },
+          loanInsurances: {
+            where: {
+              createdAt: {
+                gte: getManilaDateRange(dateFrom, dateTo).from,
+                lte: getManilaDateRange(dateFrom, dateTo).to,
+              },
+            },
+            select: { amount: true, createdAt: true },
+          },
         },
       },
     },
@@ -134,6 +143,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     processingFee: 0,
     passbookFee: 0,
     membershipFee: 0,
+    loanInsurance: 0,
     totalPayments: 0,
     totalSavings: 0,
   };
@@ -167,6 +177,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     const mfSum = Array.isArray(m.membershipFees)
       ? m.membershipFees.reduce((s: number, pf: any) => s + toNumber(pf.amount), 0)
       : 0;
+    const liSum = Array.isArray(m.loanInsurances)
+      ? m.loanInsurances.reduce((s: number, li: any) => s + toNumber(li.amount), 0)
+      : 0;
 
     dayColumns.forEach((dateStr) => {
       const payments = m.balanceAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
@@ -193,6 +206,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     totals.processingFee += pfSum;
     totals.passbookFee += pbSum;
     totals.membershipFee += mfSum;
+    totals.loanInsurance += liSum;
 
     return {
       name: `${m.lastName}, ${m.firstName}`,
@@ -204,6 +218,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       processingFee: pfSum,
       passbookFee: pbSum,
       membershipFee: mfSum,
+      loanInsurance: liSum,
       totalPayments: memberTotalPayments,
       totalSavings: memberTotalSavings,
     };
