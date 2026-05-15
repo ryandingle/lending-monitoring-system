@@ -121,6 +121,7 @@ interface ReportData {
     processingFee: number;
     passbookFee: number;
     membershipFee: number;
+    loanInsurance: number;
     totalPayments: number;
     totalSavings: number;
   }>;
@@ -133,6 +134,7 @@ interface ReportData {
     processingFee: number;
     passbookFee: number;
     membershipFee: number;
+    loanInsurance: number;
     totalPayments: number;
     totalSavings: number;
   };
@@ -163,7 +165,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
   const dayWeight = 1;
   const feeWeight = 0.8;
   const fwdWeight = 1.2;
-  const totalWeight = (numDayCols * dayWeight) + (3 * feeWeight) + (2 * fwdWeight);
+  const totalWeight = (numDayCols * dayWeight) + (4 * feeWeight) + (2 * fwdWeight);
   const dayWidth = totalWeight > 0 ? (remaining * dayWeight) / totalWeight : 0;
   const feeWidth = totalWeight > 0 ? (remaining * feeWeight) / totalWeight : 0;
   const fwdWidth = totalWeight > 0 ? (remaining * fwdWeight) / totalWeight : 0;
@@ -228,6 +230,7 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
               <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
+              <View style={[styles.tableCell, { width: colWidths.fee, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fwd, borderBottomWidth: 0 }]} />
               <View style={[styles.tableCell, { width: colWidths.fwd, borderBottomWidth: 0 }]} />
             </View>
@@ -269,6 +272,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
               </View>
               <View style={[styles.tableCell, { width: colWidths.fee }]}>
                 <Text style={{ fontSize: 6.5, ...styles.bold }}>MF</Text>
+              </View>
+              <View style={[styles.tableCell, { width: colWidths.fee }]}>
+                <Text style={{ fontSize: 6.5, ...styles.bold }}>LI</Text>
               </View>
               <View style={[styles.tableCell, { width: colWidths.fwd }]}>
                 <Text style={{ fontSize: 6.5, ...styles.bold }}>Bal Fwd</Text>
@@ -323,6 +329,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                   <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
                     <Text>{formatMoney(member.membershipFee)}</Text>
                   </View>
+                  <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                    <Text>{formatMoney(member.loanInsurance)}</Text>
+                  </View>
                   <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
                     <Text>{formatMoney(member.totalPayments)}</Text>
                   </View>
@@ -361,6 +370,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                   </React.Fragment>
                 ))}
 
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text />
+                </View>
                 <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
                   <Text />
                 </View>
@@ -417,6 +429,9 @@ export const CollectionReportPdf = ({ data }: { data: ReportData }) => {
                 </View>
                 <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.membershipFee)}</Text>
+                </View>
+                <View style={[styles.tableCell, { width: colWidths.fee, textAlign: 'right', paddingRight: 2 }]}>
+                  <Text style={styles.bold}>{formatMoney(totals.loanInsurance)}</Text>
                 </View>
                 <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
                   <Text style={styles.bold}>{formatMoney(totals.totalPayments)}</Text>
