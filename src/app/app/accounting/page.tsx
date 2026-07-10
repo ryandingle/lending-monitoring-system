@@ -30,6 +30,7 @@ export default async function AccountingPage({
       initialManualData={reportData.manualData}
       computedTotals={reportData.computedTotals}
       initialOpeningBalance={reportData.view.openingBalance}
+      initialNote={reportData.note}
       lastUpdatedAt={reportData.lastUpdatedAt}
     />
   );

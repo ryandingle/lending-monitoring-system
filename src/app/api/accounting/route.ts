@@ -9,6 +9,7 @@ import {
   getBaseOpeningBalance,
   getAccountingReportData,
   serializeAccountingManualData,
+  sanitizeAccountingNote,
   sanitizeAccountingManualData,
   type AccountingManualData,
 } from "@/lib/accounting";
@@ -27,6 +28,11 @@ const SaveAccountingSchema = z.object({
 const EncoderOverrideSchema = z.object({
   accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   encoderOverrideAllowed: z.boolean(),
+});
+
+const AccountingNoteSchema = z.object({
+  accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().max(5000).nullable(),
 });
 
 function toDateOnly(date: string) {
@@ -86,6 +92,7 @@ export async function PUT(req: NextRequest) {
         receipts: true,
         payments: true,
         dailyExpenses: true,
+        note: true,
         encoderOverrideAllowed: true,
       },
     });
@@ -135,6 +142,7 @@ export async function PUT(req: NextRequest) {
               receipts: serializedManualData.receipts,
               payments: paymentsWithClosingBalance,
               dailyExpenses: serializedManualData.dailyExpenses,
+              note: sanitizeAccountingNote(existing.note),
               encoderOverrideAllowed: manualData.encoderOverrideAllowed,
               updatedById: user.id,
             },
@@ -145,6 +153,7 @@ export async function PUT(req: NextRequest) {
               receipts: serializedManualData.receipts,
               payments: paymentsWithClosingBalance,
               dailyExpenses: serializedManualData.dailyExpenses,
+              note: null,
               encoderOverrideAllowed: manualData.encoderOverrideAllowed,
               createdById: user.id,
               updatedById: user.id,
@@ -169,6 +178,7 @@ export async function PUT(req: NextRequest) {
       data: {
         ...serializedManualData,
         payments: paymentsWithClosingBalance,
+        note: saved.note ?? null,
         encoderOverrideAllowed: manualData.encoderOverrideAllowed,
         lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
       },
@@ -183,92 +193,158 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const user = await requireUser();
-  requireRole(user, [Role.SUPER_ADMIN]);
-
   const body = await req.json();
-  const parsed = EncoderOverrideSchema.safeParse(body);
+  if ("encoderOverrideAllowed" in body) {
+    const user = await requireUser();
+    requireRole(user, [Role.SUPER_ADMIN]);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input" },
-      { status: 400 },
-    );
-  }
-
-  const { accountingDate, encoderOverrideAllowed } = parsed.data;
-  const request = await tryGetAuditRequestContext();
-
-  try {
-    const existing = await (prisma as any).accountingDay.findUnique({
-      where: { accountingDate: toDateOnly(accountingDate) },
-      select: {
-        id: true,
-        receipts: true,
-        payments: true,
-        dailyExpenses: true,
-        encoderOverrideAllowed: true,
-        updatedAt: true,
-      },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Save the accounting day first before granting encoder override." },
-        { status: 404 },
-      );
+    const parsed = EncoderOverrideSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
-    const manualData = sanitizeAccountingManualData({
-      receipts: existing.receipts,
-      payments: existing.payments,
-      dailyExpenses: existing.dailyExpenses,
-      encoderOverrideAllowed,
-    });
-    const serializedManualData = serializeAccountingManualData(manualData);
-    const existingClosingBalance = (existing.payments as any)?.[CLOSING_BALANCE_KEY];
-    const nextPayments = {
-      ...serializedManualData.payments,
-      ...(existingClosingBalance === undefined ? {} : { [CLOSING_BALANCE_KEY]: existingClosingBalance }),
-    };
+    const { accountingDate, encoderOverrideAllowed } = parsed.data;
+    const request = await tryGetAuditRequestContext();
 
-    const saved = await prisma.$transaction(async (tx) => {
-      const result = await (tx as any).accountingDay.update({
+    try {
+      const existing = await (prisma as any).accountingDay.findUnique({
         where: { accountingDate: toDateOnly(accountingDate) },
-        data: {
-          receipts: serializedManualData.receipts,
-          payments: nextPayments,
-          dailyExpenses: serializedManualData.dailyExpenses,
-          encoderOverrideAllowed,
-          updatedById: user.id,
+        select: {
+          id: true,
+          receipts: true,
+          payments: true,
+          dailyExpenses: true,
+          note: true,
+          encoderOverrideAllowed: true,
+          updatedAt: true,
         },
       });
 
-      await createAuditLog(tx, {
-        actorUserId: user.id,
-        action: encoderOverrideAllowed
-          ? "ACCOUNTING_ENCODER_OVERRIDE_GRANTED"
-          : "ACCOUNTING_ENCODER_OVERRIDE_REVOKED",
-        entityType: "AccountingDay",
-        entityId: result.id,
-        metadata: { accountingDate, encoderOverrideAllowed },
-        request,
+      if (!existing) {
+        return NextResponse.json(
+          { error: "Save the accounting day first before granting encoder override." },
+          { status: 404 },
+        );
+      }
+
+      const manualData = sanitizeAccountingManualData({
+        receipts: existing.receipts,
+        payments: existing.payments,
+        dailyExpenses: existing.dailyExpenses,
+        encoderOverrideAllowed,
+      });
+      const serializedManualData = serializeAccountingManualData(manualData);
+      const existingClosingBalance = (existing.payments as any)?.[CLOSING_BALANCE_KEY];
+      const nextPayments = {
+        ...serializedManualData.payments,
+        ...(existingClosingBalance === undefined
+          ? {}
+          : { [CLOSING_BALANCE_KEY]: existingClosingBalance }),
+      };
+
+      const saved = await prisma.$transaction(async (tx) => {
+        const result = await (tx as any).accountingDay.update({
+          where: { accountingDate: toDateOnly(accountingDate) },
+          data: {
+            receipts: serializedManualData.receipts,
+            payments: nextPayments,
+            dailyExpenses: serializedManualData.dailyExpenses,
+            note: sanitizeAccountingNote(existing.note),
+            encoderOverrideAllowed,
+            updatedById: user.id,
+          },
+        });
+
+        await createAuditLog(tx, {
+          actorUserId: user.id,
+          action: encoderOverrideAllowed
+            ? "ACCOUNTING_ENCODER_OVERRIDE_GRANTED"
+            : "ACCOUNTING_ENCODER_OVERRIDE_REVOKED",
+          entityType: "AccountingDay",
+          entityId: result.id,
+          metadata: { accountingDate, encoderOverrideAllowed },
+          request,
+        });
+
+        return result;
       });
 
-      return result;
-    });
-
-    return NextResponse.json({
-      success: true,
-      accountingDate,
-      encoderOverrideAllowed,
-      lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
-    });
-  } catch (error) {
-    console.error("Error updating encoder override permission:", error);
-    return NextResponse.json(
-      { error: "Failed to update encoder override permission" },
-      { status: 500 },
-    );
+      return NextResponse.json({
+        success: true,
+        accountingDate,
+        encoderOverrideAllowed,
+        lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
+      });
+    } catch (error) {
+      console.error("Error updating encoder override permission:", error);
+      return NextResponse.json(
+        { error: "Failed to update encoder override permission" },
+        { status: 500 },
+      );
+    }
   }
+
+  if ("note" in body) {
+    const user = await requireUser();
+    requireRole(user, [Role.SUPER_ADMIN, Role.ENCODER]);
+
+    const parsed = AccountingNoteSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+
+    const { accountingDate, note } = parsed.data;
+    const request = await tryGetAuditRequestContext();
+
+    try {
+      const existing = await (prisma as any).accountingDay.findUnique({
+        where: { accountingDate: toDateOnly(accountingDate) },
+        select: {
+          id: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { error: "Save the accounting day first before adding a note." },
+          { status: 404 },
+        );
+      }
+
+      const sanitizedNote = sanitizeAccountingNote(note);
+      const saved = await prisma.$transaction(async (tx) => {
+        const result = await (tx as any).accountingDay.update({
+          where: { accountingDate: toDateOnly(accountingDate) },
+          data: {
+            note: sanitizedNote,
+            updatedById: user.id,
+          },
+        });
+
+        await createAuditLog(tx, {
+          actorUserId: user.id,
+          action: "ACCOUNTING_DAY_NOTE_SAVE",
+          entityType: "AccountingDay",
+          entityId: result.id,
+          metadata: { accountingDate, hasNote: Boolean(sanitizedNote) },
+          request,
+        });
+
+        return result;
+      });
+
+      return NextResponse.json({
+        success: true,
+        accountingDate,
+        note: saved.note ?? null,
+        lastUpdatedAt: saved.updatedAt?.toISOString?.() ?? null,
+      });
+    } catch (error) {
+      console.error("Error updating accounting note:", error);
+      return NextResponse.json({ error: "Failed to update accounting note" }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 }

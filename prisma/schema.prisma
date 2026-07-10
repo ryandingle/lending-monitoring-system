@@ -316,6 +316,7 @@ model AccountingDay {
   receipts       Json
   payments       Json
   dailyExpenses  Json
+  note           String?  @db.Text
   encoderOverrideAllowed Boolean @default(false)
   createdById    String   @db.Uuid
   updatedById    String   @db.Uuid
