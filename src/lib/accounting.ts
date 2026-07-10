@@ -87,6 +87,7 @@ export type AccountingReportData = {
   manualData: AccountingManualData;
   computedTotals: AccountingComputedTotals;
   view: AccountingView;
+  note: string | null;
   lastUpdatedAt: string | null;
 };
 
@@ -111,6 +112,12 @@ function toOptionalNumber(value: unknown) {
     return Number.isFinite(parsed) ? Math.round(parsed) : null;
   }
   return null;
+}
+
+export function sanitizeAccountingNote(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function extractClosingBalance(payments: unknown): number | null {
@@ -248,6 +255,7 @@ export function buildAccountingView(
 
 export async function getAccountingManualDataForDate(accountingDate: string): Promise<{
   manualData: AccountingManualData;
+  note: string | null;
   lastUpdatedAt: string | null;
 }> {
   const record = await (prisma as any).accountingDay.findUnique({
@@ -258,6 +266,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
       receipts: true,
       payments: true,
       dailyExpenses: true,
+      note: true,
       encoderOverrideAllowed: true,
       updatedAt: true,
     },
@@ -274,6 +283,7 @@ export async function getAccountingManualDataForDate(accountingDate: string): Pr
 
   return {
     manualData,
+    note: sanitizeAccountingNote(record?.note),
     lastUpdatedAt: record?.updatedAt?.toISOString() ?? null,
   };
 }
@@ -538,7 +548,7 @@ async function getOffsetAmountForDate(accountingDate: string): Promise<number> {
 }
 
 export async function getAccountingReportData(accountingDate: string): Promise<AccountingReportData> {
-  const [{ manualData, lastUpdatedAt }, computedTotals, offsetAmount] = await Promise.all([
+  const [{ manualData, note, lastUpdatedAt }, computedTotals, offsetAmount] = await Promise.all([
     getAccountingManualDataForDate(accountingDate),
     getAccountingComputedTotals(accountingDate),
     getOffsetAmountForDate(accountingDate),
@@ -567,6 +577,7 @@ export async function getAccountingReportData(accountingDate: string): Promise<A
     manualData: resolvedManualData,
     computedTotals: resolvedComputedTotals,
     view: buildAccountingView(resolvedManualData, resolvedComputedTotals, resolvedOpeningBalance),
+    note,
     lastUpdatedAt,
   };
 }
