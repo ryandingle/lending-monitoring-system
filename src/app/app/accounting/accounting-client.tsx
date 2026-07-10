@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IconEye, IconFileText, IconX } from "../_components/icons";
+import { IconEye, IconFileText, IconNote, IconX } from "../_components/icons";
 import { Role } from "@prisma/client";
 import {
   buildAccountingView,
@@ -11,6 +11,7 @@ import {
   type AccountingManualData,
 } from "@/lib/accounting";
 import { showAppToast } from "../_components/app-toast";
+import { Modal } from "../_components/modal";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -59,12 +60,14 @@ function NumberInput({
 function SectionCard({
   title,
   description,
+  headerAction,
   rows,
   totalLabel,
   totalValue,
 }: {
   title: string;
   description: string;
+  headerAction?: React.ReactNode;
   rows: Array<{
     key: string;
     label: string;
@@ -77,9 +80,12 @@ function SectionCard({
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-5 py-4">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        </div>
+        {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </div>
       <div className="space-y-3 p-5">
         {rows.map((row) => (
@@ -97,42 +103,53 @@ function SectionCard({
   );
 }
 
+export type AccountingClientProps = {
+  selectedDate: string;
+  userRole: Role | "COLLECTOR";
+  initialManualData: AccountingManualData;
+  computedTotals: AccountingComputedTotals;
+  initialOpeningBalance: number;
+  initialNote: string | null;
+  lastUpdatedAt: string | null;
+};
+
 export function AccountingClient({
   selectedDate,
   userRole,
   initialManualData,
   computedTotals,
   initialOpeningBalance,
+  initialNote,
   lastUpdatedAt,
-}: {
-  selectedDate: string;
-  userRole: Role | "COLLECTOR";
-  initialManualData: AccountingManualData;
-  computedTotals: AccountingComputedTotals;
-  initialOpeningBalance: number;
-  lastUpdatedAt: string | null;
-}) {
+}: AccountingClientProps) {
   const [currentDate, setCurrentDate] = useState(selectedDate);
   const [manualData, setManualData] = useState(initialManualData);
   const [currentComputedTotals, setCurrentComputedTotals] = useState(computedTotals);
   const [openingBalance, setOpeningBalance] = useState(initialOpeningBalance);
+  const [note, setNote] = useState<string | null>(initialNote);
+  const [noteDraft, setNoteDraft] = useState(initialNote ?? "");
   const [currentLastUpdatedAt, setCurrentLastUpdatedAt] = useState(lastUpdatedAt);
   const [saving, setSaving] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
   const [loadingDate, setLoadingDate] = useState(false);
   const [updatingEncoderOverride, setUpdatingEncoderOverride] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isOverrideMode, setIsOverrideMode] = useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
   useEffect(() => {
     setCurrentDate(selectedDate);
     setManualData(initialManualData);
     setCurrentComputedTotals(computedTotals);
     setOpeningBalance(initialOpeningBalance);
+    setNote(initialNote);
+    setNoteDraft(initialNote ?? "");
     setCurrentLastUpdatedAt(lastUpdatedAt);
     setIsOverrideMode(false);
-  }, [selectedDate, initialManualData, computedTotals, initialOpeningBalance, lastUpdatedAt]);
+    setIsNoteModalOpen(false);
+  }, [selectedDate, initialManualData, computedTotals, initialOpeningBalance, initialNote, lastUpdatedAt]);
 
   const isSavedDay = Boolean(currentLastUpdatedAt);
   const isSuperAdmin = userRole === Role.SUPER_ADMIN;
@@ -225,6 +242,7 @@ export function AccountingClient({
         manualData: AccountingManualData;
         computedTotals: AccountingComputedTotals;
         view: { openingBalance: number };
+        note: string | null;
         lastUpdatedAt: string | null;
       };
 
@@ -232,6 +250,8 @@ export function AccountingClient({
       setManualData(reportData.manualData);
       setCurrentComputedTotals(reportData.computedTotals);
       setOpeningBalance(reportData.view.openingBalance);
+      setNote(reportData.note);
+      setNoteDraft(reportData.note ?? "");
       setCurrentLastUpdatedAt(reportData.lastUpdatedAt);
       setIsOverrideMode(false);
 
@@ -346,6 +366,63 @@ export function AccountingClient({
 
   const closePreview = () => {
     setPreviewUrl(null);
+  };
+
+  const canManageNote = isSavedDay;
+  const hasNote = Boolean(note);
+
+  const openNoteModal = () => {
+    setNoteDraft(note ?? "");
+    setError(null);
+    setMessage(null);
+    setIsNoteModalOpen(true);
+  };
+
+  const closeNoteModal = () => {
+    if (savingNote) return;
+    setIsNoteModalOpen(false);
+    setNoteDraft(note ?? "");
+  };
+
+  const handleSaveNote = async () => {
+    if (!canManageNote) {
+      showAppToast("error", "Save the accounting day first before adding a note.");
+      return;
+    }
+
+    setSavingNote(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/accounting", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountingDate: currentDate,
+          note: noteDraft,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save accounting note");
+      }
+
+      setNote(result.note ?? null);
+      setNoteDraft(result.note ?? "");
+      setCurrentLastUpdatedAt(result.lastUpdatedAt ?? currentLastUpdatedAt);
+      setMessage(`Updated accounting note for ${currentDate}.`);
+      setIsNoteModalOpen(false);
+      showAppToast("success", `Updated accounting note for ${currentDate}.`);
+    } catch (err: any) {
+      setError(err.message || "Failed to save accounting note");
+      showAppToast("error", err.message || "Failed to save accounting note");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const receiptsRows = [
@@ -596,11 +673,83 @@ export function AccountingClient({
         <SectionCard
           title="Daily Expenses"
           description="Manual daily expenses saved for the selected accounting date."
+          headerAction={
+            <button
+              type="button"
+              onClick={openNoteModal}
+              disabled={!canManageNote}
+              title={
+                canManageNote
+                  ? hasNote
+                    ? "View or edit accounting note"
+                    : "Add accounting note"
+                  : "Save the accounting day first before adding a note"
+              }
+              className={
+                hasNote
+                  ? "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  : "inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              }
+            >
+              <span className="sr-only">
+                {hasNote ? "Edit accounting note" : "Add accounting note"}
+              </span>
+              <IconNote className="h-5 w-5" />
+            </button>
+          }
           rows={dailyExpenseRows}
           totalLabel="Total Daily Expenses"
           totalValue={view.dailyExpensesTotal}
         />
       </div>
+
+      <Modal
+        open={isNoteModalOpen}
+        title="Accounting Note"
+        description={`Add or update the note for ${currentDate}.`}
+        onClose={closeNoteModal}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeNoteModal}
+              disabled={savingNote}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveNote()}
+              disabled={savingNote || !canManageNote}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingNote ? "Saving..." : "Save Note"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {!canManageNote ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Save the accounting day first before adding a note.
+            </div>
+          ) : null}
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            disabled={!canManageNote || savingNote}
+            rows={8}
+            maxLength={5000}
+            placeholder="Add note for this accounting record..."
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+          />
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>This note is saved for the current accounting record only.</span>
+            <span>{noteDraft.length}/5000</span>
+          </div>
+        </div>
+      </Modal>
 
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
