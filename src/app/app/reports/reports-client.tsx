@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText } from "../_components/icons";
+import { Role } from "@prisma/client";
 
 type Group = { id: string; name: string; activeMemberCount: number };
 type Member = { id: string; firstName: string; lastName: string };
@@ -21,6 +22,7 @@ interface ReportsClientProps {
   initialOfficers: Officer[];
   from: string;
   to: string;
+  userRole: Role | "COLLECTOR";
 }
 
 function PaginationControls({
@@ -79,6 +81,7 @@ export function ReportsClient({
   initialOfficers,
   from,
   to,
+  userRole,
 }: ReportsClientProps) {
   const [groups, setGroups] = useState(initialGroups);
   const [totalGroups, setTotalGroups] = useState(initialTotalGroups);
@@ -95,12 +98,20 @@ export function ReportsClient({
 
   const [officerDate, setOfficerDate] = useState(to);
 
+  const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+  const canAccessGroupReport = isSuperAdmin;
+  const canAccessOfficerReport = isSuperAdmin || userRole === Role.ENCODER;
+  const canAccessMemberReport = isSuperAdmin;
+
   // Preview Modal State
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<"group" | "officer" | "member" | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const handleView = async (type: "group" | "officer" | "member", id: string) => {
+    if (type === "group" && !canAccessGroupReport) return;
+    if (type === "officer" && !canAccessOfficerReport) return;
+    if (type === "member" && !canAccessMemberReport) return;
     setPreviewType(type);
     let url = "";
     if (type === "group") {
@@ -250,21 +261,27 @@ export function ReportsClient({
                     {g.activeMemberCount || 0}
                   </td>
                   <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => handleView("group", g.id)}
-                      disabled={isPreviewLoading}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      <IconEye className="h-4 w-4" />
-                      View
-                    </button>
-                    <a
-                      href={`/api/groups/${g.id}/export?${query}`}
-                      title="Download group report (PDF)"
-                      className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Download
-                    </a>
+                    {canAccessGroupReport ? (
+                      <>
+                        <button
+                          onClick={() => handleView("group", g.id)}
+                          disabled={isPreviewLoading}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <IconEye className="h-4 w-4" />
+                          View
+                        </button>
+                        <a
+                          href={`/api/groups/${g.id}/export?${query}`}
+                          title="Download group report (PDF)"
+                          className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Download
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Restricted</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -345,21 +362,27 @@ export function ReportsClient({
                       </div>
                     </td>
                     <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                      <button
-                        onClick={() => handleView("officer", o.id)}
-                        disabled={isPreviewLoading}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        <IconEye className="h-4 w-4" />
-                        View
-                      </button>
-                      <a
-                        href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
-                        title="Download daily collection report (PDF)"
-                        className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Download
-                      </a>
+                      {canAccessOfficerReport ? (
+                        <>
+                          <button
+                            onClick={() => handleView("officer", o.id)}
+                            disabled={isPreviewLoading}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            <IconEye className="h-4 w-4" />
+                            View
+                          </button>
+                          <a
+                            href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
+                            title="Download daily collection report (PDF)"
+                            className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            Download
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Restricted</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -434,21 +457,27 @@ export function ReportsClient({
                     </Link>
                   </td>
                   <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => handleView("member", m.id)}
-                      disabled={isPreviewLoading}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      <IconEye className="h-4 w-4" />
-                      View
-                    </button>
-                    <a
-                      href={`/api/members/${m.id}/export?${query}`}
-                      title="Download member report (PDF)"
-                      className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Download
-                    </a>
+                    {canAccessMemberReport ? (
+                      <>
+                        <button
+                          onClick={() => handleView("member", m.id)}
+                          disabled={isPreviewLoading}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <IconEye className="h-4 w-4" />
+                          View
+                        </button>
+                        <a
+                          href={`/api/members/${m.id}/export?${query}`}
+                          title="Download member report (PDF)"
+                          className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Download
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Restricted</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -520,7 +549,12 @@ export function ReportsClient({
               >
                 Close
               </button>
-              {previewUrl && (
+              {previewUrl &&
+                (
+                  (previewType === "group" && canAccessGroupReport) ||
+                  (previewType === "officer" && canAccessOfficerReport) ||
+                  (previewType === "member" && canAccessMemberReport)
+                ) ? (
                 <a
                   href={previewUrl.replace("&preview=true", "")}
                   target="_blank"
@@ -530,7 +564,7 @@ export function ReportsClient({
                   <IconFileText className="h-4 w-4" />
                   Download PDF
                 </a>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

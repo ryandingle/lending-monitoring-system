@@ -36,7 +36,7 @@ export async function GET(
   ctx: { params: Promise<{ memberId: string }> },
 ) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(actor, [Role.SUPER_ADMIN]);
 
   const { memberId } = await ctx.params;
   const { from: dateFromStr, to: dateToStr } = parseDateRange(req);

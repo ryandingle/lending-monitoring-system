@@ -107,6 +107,7 @@ export default async function ReportsPage({
         initialOfficers={officers}
         from={from}
         to={to}
+        userRole={user.role}
       />
     </div>
   );
