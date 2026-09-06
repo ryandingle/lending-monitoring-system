@@ -43,7 +43,7 @@ function parseDateRange(req: Request): { from: string | null; to: string | null 
 
 export async function GET(req: Request, ctx: { params: Promise<{ groupId: string }> }) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+  requireRole(actor, [Role.SUPER_ADMIN]);
 
   const { groupId } = await ctx.params;
   const { from: dateFromRaw, to: dateTo } = parseDateRange(req);
