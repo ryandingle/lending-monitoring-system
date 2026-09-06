@@ -359,8 +359,10 @@ export function AccountingClient({
   };
 
   const basePdfUrl = `/api/accounting/export?date=${encodeURIComponent(currentDate)}`;
+  const canPrintAccounting = isSuperAdmin;
 
   const handlePreview = () => {
+    if (!canPrintAccounting) return;
     setPreviewUrl(`${basePdfUrl}&preview=true`);
   };
 
@@ -549,22 +551,26 @@ export function AccountingClient({
                 className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
-            <button
-              type="button"
-              onClick={handlePreview}
-              disabled={loadingDate}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <IconEye className="h-4 w-4" />
-              Preview Print
-            </button>
-            <a
-              href={basePdfUrl}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <IconFileText className="h-4 w-4" />
-              Download PDF
-            </a>
+            {canPrintAccounting ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePreview}
+                  disabled={loadingDate}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <IconEye className="h-4 w-4" />
+                  Preview Print
+                </button>
+                <a
+                  href={basePdfUrl}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <IconFileText className="h-4 w-4" />
+                  Download PDF
+                </a>
+              </>
+            ) : null}
             {canOverride ? (
               <button
                 type="button"
@@ -780,15 +786,17 @@ export function AccountingClient({
               >
                 Close
               </button>
-              <a
-                href={basePdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
-              >
-                <IconFileText className="h-4 w-4" />
-                Download PDF
-              </a>
+              {canPrintAccounting ? (
+                <a
+                  href={basePdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+                >
+                  <IconFileText className="h-4 w-4" />
+                  Download PDF
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
