@@ -4,6 +4,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { LoginButton } from "./login-button";
 import { LoginToast } from "./login-toast";
 
@@ -53,7 +54,9 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      <LoginToast />
+      <Suspense fallback={null}>
+        <LoginToast />
+      </Suspense>
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* Left: Sign-in form */}
         <div className="relative flex items-center justify-center px-6 py-16">
