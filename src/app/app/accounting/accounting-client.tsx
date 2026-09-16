@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconEye, IconFileText, IconNote, IconX } from "../_components/icons";
-import { Role } from "@prisma/client";
 import {
   buildAccountingView,
   DAILY_EXPENSE_FIELDS,
@@ -12,6 +11,9 @@ import {
 } from "@/lib/accounting";
 import { showAppToast } from "../_components/app-toast";
 import { Modal } from "../_components/modal";
+
+const ROLE_SUPER_ADMIN = "SUPER_ADMIN";
+const ROLE_ENCODER = "ENCODER";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -105,7 +107,7 @@ function SectionCard({
 
 export type AccountingClientProps = {
   selectedDate: string;
-  userRole: Role | "COLLECTOR";
+  userRole: string;
   initialManualData: AccountingManualData;
   computedTotals: AccountingComputedTotals;
   initialOpeningBalance: number;
@@ -152,8 +154,8 @@ export function AccountingClient({
   }, [selectedDate, initialManualData, computedTotals, initialOpeningBalance, initialNote, lastUpdatedAt]);
 
   const isSavedDay = Boolean(currentLastUpdatedAt);
-  const isSuperAdmin = userRole === Role.SUPER_ADMIN;
-  const isEncoder = userRole === Role.ENCODER;
+  const isSuperAdmin = userRole === ROLE_SUPER_ADMIN;
+  const isEncoder = userRole === ROLE_ENCODER;
   const canOverride = isSavedDay && isSuperAdmin;
   const canEncoderOverride = isSavedDay && isEncoder && manualData.encoderOverrideAllowed;
   const canEditManualInputs =
@@ -359,10 +361,8 @@ export function AccountingClient({
   };
 
   const basePdfUrl = `/api/accounting/export?date=${encodeURIComponent(currentDate)}`;
-  const canPrintAccounting = isSuperAdmin;
 
   const handlePreview = () => {
-    if (!canPrintAccounting) return;
     setPreviewUrl(`${basePdfUrl}&preview=true`);
   };
 
@@ -551,26 +551,22 @@ export function AccountingClient({
                 className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
-            {canPrintAccounting ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePreview}
-                  disabled={loadingDate}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <IconEye className="h-4 w-4" />
-                  Preview Print
-                </button>
-                <a
-                  href={basePdfUrl}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <IconFileText className="h-4 w-4" />
-                  Download PDF
-                </a>
-              </>
-            ) : null}
+            <button
+              type="button"
+              onClick={handlePreview}
+              disabled={loadingDate}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <IconEye className="h-4 w-4" />
+              Preview Print
+            </button>
+            <a
+              href={basePdfUrl}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <IconFileText className="h-4 w-4" />
+              Download PDF
+            </a>
             {canOverride ? (
               <button
                 type="button"
@@ -786,17 +782,15 @@ export function AccountingClient({
               >
                 Close
               </button>
-              {canPrintAccounting ? (
-                <a
-                  href={basePdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
-                >
-                  <IconFileText className="h-4 w-4" />
-                  Download PDF
-                </a>
-              ) : null}
+              <a
+                href={basePdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-700"
+              >
+                <IconFileText className="h-4 w-4" />
+                Download PDF
+              </a>
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ function safeFilePart(s: string) {
 
 export async function GET(req: Request) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
 
   const url = new URL(req.url);
   const rawDate = url.searchParams.get("date")?.trim() ?? "";

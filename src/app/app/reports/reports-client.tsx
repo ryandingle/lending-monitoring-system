@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText } from "../_components/icons";
-import { Role } from "@prisma/client";
 
 type Group = { id: string; name: string; activeMemberCount: number };
 type Member = { id: string; firstName: string; lastName: string };
@@ -14,6 +13,9 @@ type Officer = {
   groupsAsCollectionOfficer: { id: string; name: string }[];
 };
 
+const ROLE_SUPER_ADMIN = "SUPER_ADMIN";
+const ROLE_ENCODER = "ENCODER";
+
 interface ReportsClientProps {
   initialGroups: Group[];
   initialTotalGroups: number;
@@ -22,7 +24,7 @@ interface ReportsClientProps {
   initialOfficers: Officer[];
   from: string;
   to: string;
-  userRole: Role | "COLLECTOR";
+  userRole: string;
 }
 
 function PaginationControls({
@@ -98,9 +100,9 @@ export function ReportsClient({
 
   const [officerDate, setOfficerDate] = useState(to);
 
-  const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+  const isSuperAdmin = userRole === ROLE_SUPER_ADMIN;
   const canAccessGroupReport = isSuperAdmin;
-  const canAccessOfficerReport = isSuperAdmin || userRole === Role.ENCODER;
+  const canAccessOfficerReport = isSuperAdmin || userRole === ROLE_ENCODER;
   const canAccessMemberReport = isSuperAdmin;
 
   // Preview Modal State
