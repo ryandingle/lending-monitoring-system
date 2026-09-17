@@ -4,6 +4,7 @@ import { getReportPreset2Weeks } from "@/lib/date";
 import { Role } from "@prisma/client";
 import { DateRangeFilter } from "./date-filter";
 import { ReportsClient } from "./reports-client";
+import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
 
 export default async function ReportsPage({
   searchParams,
@@ -27,42 +28,44 @@ export default async function ReportsPage({
 
   const limit = 20;
 
-  const [groupsRaw, totalGroups, members, totalMembers, officers] = await Promise.all([
-    prisma.group.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-      skip: 0,
-      take: limit,
-    }),
-    prisma.group.count(),
-    prisma.member.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      select: { id: true, firstName: true, lastName: true },
-      skip: 0,
-      take: limit,
-    }),
-    prisma.member.count({ where: { status: "ACTIVE" } }),
-    prisma.employee.findMany({
-      where: {
-        groupsAsCollectionOfficer: {
-          some: {},
-        },
-      },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        groupsAsCollectionOfficer: {
-          select: {
-            id: true,
-            name: true,
+  const [groupsRaw, totalGroups, members, totalMembers, officers, exportControl] =
+    await Promise.all([
+      prisma.group.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+        skip: 0,
+        take: limit,
+      }),
+      prisma.group.count(),
+      prisma.member.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        select: { id: true, firstName: true, lastName: true },
+        skip: 0,
+        take: limit,
+      }),
+      prisma.member.count({ where: { status: "ACTIVE" } }),
+      prisma.employee.findMany({
+        where: {
+          groupsAsCollectionOfficer: {
+            some: {},
           },
         },
-      },
-    }),
-  ]);
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          groupsAsCollectionOfficer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      resolveAppControl(APP_CONTROL_KEYS.REPORT_VIEW_DOWNLOAD_ENABLED),
+    ]);
 
   const groupIds = groupsRaw.map((g) => g.id);
   const activeMemberCounts =
@@ -89,11 +92,13 @@ export default async function ReportsPage({
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Generate and download report exports (group data, member data).
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Generate and download report exports (group data, member data).
+            </p>
+          </div>
         </div>
 
         <DateRangeFilter from={from} to={to} />
@@ -108,6 +113,12 @@ export default async function ReportsPage({
         from={from}
         to={to}
         userRole={user.role}
+        initialExportControl={{
+          key: exportControl.key,
+          enabled: exportControl.enabled,
+          expiresAtIso: exportControl.expiresAt ? exportControl.expiresAt.toISOString() : null,
+          isExpired: exportControl.isExpired,
+        }}
       />
     </div>
   );
