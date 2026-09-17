@@ -7,6 +7,7 @@ import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit
 import { getMonday, formatDateYMD, getManilaDateRange, getWeekdaysInRange } from "@/lib/date";
 import { renderToStream } from "@react-pdf/renderer";
 import { CollectionReportPdf } from "@/lib/pdf/CollectionReportPdf";
+import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
 import fs from "fs";
 import path from "path";
 
@@ -41,9 +42,19 @@ function parseDateRange(req: Request): { from: string | null; to: string | null 
   }
 }
 
+async function checkReportViewDownloadAllowed(actor: { id: string; role: string }): Promise<boolean> {
+  if (actor.role === Role.SUPER_ADMIN) return true;
+  const control = await resolveAppControl(APP_CONTROL_KEYS.REPORT_VIEW_DOWNLOAD_ENABLED);
+  return control.enabled && !control.isExpired;
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ groupId: string }> }) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+  const allowed = await checkReportViewDownloadAllowed(actor);
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { groupId } = await ctx.params;
   const { from: dateFromRaw, to: dateTo } = parseDateRange(req);
