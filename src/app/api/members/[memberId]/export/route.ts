@@ -7,6 +7,7 @@ import { getManilaDateRange, getMonday, formatDateYMD, getWeekdaysInRange } from
 import React from "react";
 import { renderToStream } from "@react-pdf/renderer";
 import { MemberReportPdf } from "@/lib/pdf/MemberReportPdf";
+import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
 import fs from "fs";
 import path from "path";
 
@@ -30,13 +31,23 @@ function parseDateRange(req: Request): { from: string | null; to: string | null 
   }
 }
 
+async function checkReportViewDownloadAllowed(actor: { id: string; role: string }): Promise<boolean> {
+  if (actor.role === Role.SUPER_ADMIN) return true;
+  const control = await resolveAppControl(APP_CONTROL_KEYS.REPORT_VIEW_DOWNLOAD_ENABLED);
+  return control.enabled && !control.isExpired;
+}
+
 // Reimplementation of GET to match Group Export Design
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ memberId: string }> },
 ) {
   const actor = await requireUser();
-  requireRole(actor, [Role.SUPER_ADMIN]);
+  requireRole(actor, [Role.SUPER_ADMIN, Role.ENCODER]);
+  const allowed = await checkReportViewDownloadAllowed(actor);
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { memberId } = await ctx.params;
   const { from: dateFromStr, to: dateToStr } = parseDateRange(req);

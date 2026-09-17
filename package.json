@@ -42,6 +42,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "caniuse-lite": "^1.0.30001810",
     "husky": "^9.1.7"
   }
 }

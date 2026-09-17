@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText } from "../_components/icons";
+import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText, IconShield } from "../_components/icons";
 
 type Group = { id: string; name: string; activeMemberCount: number };
 type Member = { id: string; firstName: string; lastName: string };
@@ -13,8 +13,16 @@ type Officer = {
   groupsAsCollectionOfficer: { id: string; name: string }[];
 };
 
+type ExportControlState = {
+  key: string;
+  enabled: boolean;
+  expiresAtIso: string | null;
+  isExpired: boolean;
+};
+
 const ROLE_SUPER_ADMIN = "SUPER_ADMIN";
 const ROLE_ENCODER = "ENCODER";
+const REPORT_CONTROL_KEY = "REPORT_VIEW_DOWNLOAD_ENABLED";
 
 interface ReportsClientProps {
   initialGroups: Group[];
@@ -25,6 +33,7 @@ interface ReportsClientProps {
   from: string;
   to: string;
   userRole: string;
+  initialExportControl: ExportControlState;
 }
 
 function PaginationControls({
@@ -84,6 +93,7 @@ export function ReportsClient({
   from,
   to,
   userRole,
+  initialExportControl,
 }: ReportsClientProps) {
   const [groups, setGroups] = useState(initialGroups);
   const [totalGroups, setTotalGroups] = useState(initialTotalGroups);
@@ -100,10 +110,75 @@ export function ReportsClient({
 
   const [officerDate, setOfficerDate] = useState(to);
 
+  const [exportControl, setExportControl] = useState<ExportControlState>(initialExportControl);
+  const [isToggleLoading, setIsToggleLoading] = useState(false);
+
   const isSuperAdmin = userRole === ROLE_SUPER_ADMIN;
-  const canAccessGroupReport = isSuperAdmin;
-  const canAccessOfficerReport = isSuperAdmin || userRole === ROLE_ENCODER;
-  const canAccessMemberReport = isSuperAdmin;
+
+  const nonAdminControlEnabled = exportControl.enabled && !exportControl.isExpired;
+
+  const canAccessGroupReport = isSuperAdmin || nonAdminControlEnabled;
+  const canAccessOfficerReport = isSuperAdmin || userRole === ROLE_ENCODER || nonAdminControlEnabled;
+  const canAccessMemberReport = isSuperAdmin || nonAdminControlEnabled;
+
+  const refreshExportControl = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/app-controls?keys=${REPORT_CONTROL_KEY}`);
+      if (res.ok) {
+        const body = await res.json();
+        const c = body.data?.[REPORT_CONTROL_KEY];
+        if (c) {
+          setExportControl({
+            key: c.key,
+            enabled: c.enabled,
+            expiresAtIso: c.expiresAt ? new Date(c.expiresAt).toISOString() : null,
+            isExpired: c.isExpired,
+          });
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setExportControl((prev) => {
+        if (!prev.expiresAtIso) return prev;
+        const expired = new Date(prev.expiresAtIso).getTime() <= Date.now();
+        if (expired !== prev.isExpired) {
+          return { ...prev, isExpired: expired, enabled: expired ? false : prev.enabled };
+        }
+        return prev;
+      });
+    }, 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleToggleControl = async () => {
+    if (!isSuperAdmin) return;
+    setIsToggleLoading(true);
+    try {
+      const action = exportControl.enabled && !exportControl.isExpired ? "disable" : "enable";
+      const res = await fetch("/api/app-controls", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: REPORT_CONTROL_KEY, action }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        const c = body.data;
+        setExportControl({
+          key: c.key,
+          enabled: c.enabled,
+          expiresAtIso: c.expiresAt ? new Date(c.expiresAt).toISOString() : null,
+          isExpired: c.isExpired,
+        });
+      }
+    } finally {
+      setIsToggleLoading(false);
+    }
+  };
 
   // Preview Modal State
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -210,6 +285,48 @@ export function ReportsClient({
 
   return (
     <div className="space-y-6">
+      {isSuperAdmin ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                Report export access control
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {exportControl.enabled && !exportControl.isExpired
+                  ? "Encoders can view/download reports today. Access will automatically disable at end of day in Asia/Manila timezone."
+                  : "Encoders cannot view/download reports. SUPER_ADMIN is always allowed."}
+                {exportControl.expiresAtIso && exportControl.enabled && !exportControl.isExpired ? (
+                  <span className="block mt-1 text-[11px] text-slate-400">
+                    Auto-disables at{" "}
+                    {new Date(exportControl.expiresAtIso).toLocaleString("en-PH", {
+                      timeZone: "Asia/Manila",
+                    })}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleControl}
+              disabled={isToggleLoading}
+              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                exportControl.enabled && !exportControl.isExpired
+                  ? "border-red-100 bg-red-50 text-red-700 hover:bg-red-100"
+                  : "border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              <IconShield className="h-4 w-4" />
+              {isToggleLoading
+                ? "Saving..."
+                : exportControl.enabled && !exportControl.isExpired
+                ? "Disable access (today only)"
+                : "Enable access until end of day"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
