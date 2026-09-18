@@ -399,7 +399,7 @@ export function ReportsClient({
                         </a>
                       </>
                     ) : (
-                      <span className="text-xs text-slate-400 italic">Restricted</span>
+                      <span className="text-xs text-slate-400 italic">Disabled — please inform admin</span>
                     )}
                   </td>
                 </tr>
@@ -500,7 +500,7 @@ export function ReportsClient({
                           </a>
                         </>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">Restricted</span>
+                        <span className="text-xs text-slate-400 italic">Disabled — please inform admin</span>
                       )}
                     </td>
                   </tr>
@@ -595,7 +595,7 @@ export function ReportsClient({
                         </a>
                       </>
                     ) : (
-                      <span className="text-xs text-slate-400 italic">Restricted</span>
+                      <span className="text-xs text-slate-400 italic">Disabled — please inform admin</span>
                     )}
                   </td>
                 </tr>
