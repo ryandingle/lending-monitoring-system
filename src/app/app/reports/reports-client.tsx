@@ -2,15 +2,37 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { IconSearch, IconChevronUp, IconChevronDown, IconEye, IconX, IconFileText, IconShield } from "../_components/icons";
+import { showAppToast } from "../_components/app-toast";
+import {
+  IconSearch,
+  IconChevronUp,
+  IconChevronDown,
+  IconEye,
+  IconX,
+  IconFileText,
+  IconShield,
+  IconDownload,
+} from "../_components/icons";
+import { useReportsRange } from "./reports-range";
 
-type Group = { id: string; name: string; activeMemberCount: number };
-type Member = { id: string; firstName: string; lastName: string };
+type ReportActionInfo = {
+  locked: boolean;
+  createdAtIso: string | null;
+  actedByName: string | null;
+};
+
+type ReportActionStatus = {
+  download: ReportActionInfo;
+};
+
+type Group = { id: string; name: string; activeMemberCount: number; reportActions: ReportActionStatus };
+type Member = { id: string; firstName: string; lastName: string; reportActions: ReportActionStatus };
 type Officer = {
   id: string;
   firstName: string;
   lastName: string;
   groupsAsCollectionOfficer: { id: string; name: string }[];
+  reportActions: ReportActionStatus;
 };
 
 type ExportControlState = {
@@ -30,11 +52,12 @@ interface ReportsClientProps {
   initialMembers: Member[];
   initialTotalMembers: number;
   initialOfficers: Officer[];
-  from: string;
-  to: string;
   userRole: string;
   initialExportControl: ExportControlState;
 }
+
+type ReportKind = "group" | "officer" | "member";
+type ReportActionKind = "download";
 
 function PaginationControls({
   currentPage,
@@ -90,11 +113,12 @@ export function ReportsClient({
   initialMembers,
   initialTotalMembers,
   initialOfficers,
-  from,
-  to,
   userRole,
   initialExportControl,
 }: ReportsClientProps) {
+  // Range comes from the date filter's live state, so View/Download always use
+  // whatever the user has selected without needing an Apply step.
+  const { from, to } = useReportsRange();
   const [groups, setGroups] = useState(initialGroups);
   const [totalGroups, setTotalGroups] = useState(initialTotalGroups);
   const [groupPage, setGroupPage] = useState(1);
@@ -108,10 +132,11 @@ export function ReportsClient({
   const [isMembersLoading, setIsMembersLoading] = useState(false);
   const [memberSort, setMemberSort] = useState<"asc" | "desc">("asc");
 
-  const [officerDate, setOfficerDate] = useState(to);
+  const [officers, setOfficers] = useState(initialOfficers);
 
   const [exportControl, setExportControl] = useState<ExportControlState>(initialExportControl);
   const [isToggleLoading, setIsToggleLoading] = useState(false);
+  const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
 
   const isSuperAdmin = userRole === ROLE_SUPER_ADMIN;
 
@@ -120,26 +145,6 @@ export function ReportsClient({
   const canAccessGroupReport = isSuperAdmin || nonAdminControlEnabled;
   const canAccessOfficerReport = isSuperAdmin || userRole === ROLE_ENCODER || nonAdminControlEnabled;
   const canAccessMemberReport = isSuperAdmin || nonAdminControlEnabled;
-
-  const refreshExportControl = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/app-controls?keys=${REPORT_CONTROL_KEY}`);
-      if (res.ok) {
-        const body = await res.json();
-        const c = body.data?.[REPORT_CONTROL_KEY];
-        if (c) {
-          setExportControl({
-            key: c.key,
-            enabled: c.enabled,
-            expiresAtIso: c.expiresAt ? new Date(c.expiresAt).toISOString() : null,
-            isExpired: c.isExpired,
-          });
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -182,34 +187,203 @@ export function ReportsClient({
 
   // Preview Modal State
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<"group" | "officer" | "member" | null>(null);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewType, setPreviewType] = useState<ReportKind | null>(null);
+  const [previewEntityId, setPreviewEntityId] = useState<string | null>(null);
 
-  const handleView = async (type: "group" | "officer" | "member", id: string) => {
+  useEffect(() => {
+    setGroups(initialGroups);
+    setTotalGroups(initialTotalGroups);
+    setGroupPage(1);
+  }, [initialGroups, initialTotalGroups]);
+
+  useEffect(() => {
+    setMembers(initialMembers);
+    setTotalMembers(initialTotalMembers);
+    setMemberPage(1);
+  }, [initialMembers, initialTotalMembers]);
+
+  useEffect(() => {
+    setOfficers(initialOfficers);
+  }, [initialOfficers]);
+
+  const buildReportBaseUrl = useCallback(
+    (type: ReportKind, id: string) => {
+      if (type === "group") {
+        return `/api/groups/${id}/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+      }
+      if (type === "officer") {
+        return `/api/employees/${id}/collection-report?from=${encodeURIComponent(
+          from,
+        )}&to=${encodeURIComponent(to)}`;
+      }
+      return `/api/members/${id}/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    },
+    [from, to],
+  );
+
+  const getLockedTitle = useCallback((info: ReportActionInfo, label: string) => {
+    if (!info.locked) return label;
+
+    const when = info.createdAtIso
+      ? new Date(info.createdAtIso).toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+        })
+      : "today";
+
+    return info.actedByName ? `${label} already used by ${info.actedByName} on ${when}` : `${label} already used on ${when}`;
+  }, []);
+
+  const updateReportActions = useCallback(
+    (type: ReportKind, id: string, action: ReportActionKind, createdAtIso: string) => {
+      const nextInfo = {
+        locked: true,
+        createdAtIso,
+        actedByName: null,
+      };
+
+      if (type === "group") {
+        setGroups((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, reportActions: { ...item.reportActions, [action]: nextInfo } }
+              : item,
+          ),
+        );
+        return;
+      }
+
+      if (type === "officer") {
+        setOfficers((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, reportActions: { ...item.reportActions, [action]: nextInfo } }
+              : item,
+          ),
+        );
+        return;
+      }
+
+      setMembers((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, reportActions: { ...item.reportActions, [action]: nextInfo } }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleView = async (type: ReportKind, id: string) => {
     if (type === "group" && !canAccessGroupReport) return;
     if (type === "officer" && !canAccessOfficerReport) return;
     if (type === "member" && !canAccessMemberReport) return;
     setPreviewType(type);
-    let url = "";
-    if (type === "group") {
-      url = `/api/groups/${id}/export?from=${from}&to=${to}&preview=true`;
-    } else if (type === "officer") {
-      url = `/api/employees/${id}/collection-report?from=${officerDate}&to=${officerDate}&preview=true`;
-    } else if (type === "member") {
-      url = `/api/members/${id}/export?from=${from}&to=${to}&preview=true`;
-    }
-    setPreviewUrl(url);
+    setPreviewEntityId(id);
+    setPreviewUrl(`${buildReportBaseUrl(type, id)}&preview=true`);
   };
 
   const closePreview = () => {
     setPreviewUrl(null);
     setPreviewType(null);
+    setPreviewEntityId(null);
   };
 
-  const query = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-  const officerQuery = `from=${encodeURIComponent(officerDate)}&to=${encodeURIComponent(
-    officerDate,
-  )}`;
+  const getReportActions = useCallback(
+    (type: ReportKind, id: string): ReportActionStatus | null => {
+      if (type === "group") {
+        return groups.find((item) => item.id === id)?.reportActions ?? null;
+      }
+      if (type === "officer") {
+        return officers.find((item) => item.id === id)?.reportActions ?? null;
+      }
+      return members.find((item) => item.id === id)?.reportActions ?? null;
+    },
+    [groups, members, officers],
+  );
+
+  const getActionButtonKey = useCallback(
+    (type: ReportKind, id: string, action: ReportActionKind) => `${type}:${id}:${action}`,
+    [],
+  );
+
+  const extractFilename = useCallback((header: string | null, fallback: string) => {
+    if (!header) return fallback;
+    const utfMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utfMatch?.[1]) {
+      return decodeURIComponent(utfMatch[1]);
+    }
+    const plainMatch = header.match(/filename=\"?([^\";]+)\"?/i);
+    return plainMatch?.[1] ?? fallback;
+  }, []);
+
+  const handleReportAction = useCallback(
+    async (type: ReportKind, id: string, action: ReportActionKind) => {
+      const status = getReportActions(type, id);
+      if (status?.[action].locked) {
+        showAppToast("warning", getLockedTitle(status[action], "Download already used today."));
+        return;
+      }
+
+      const requestUrl = `${buildReportBaseUrl(type, id)}&action=${action}`;
+      const loadingKey = getActionButtonKey(type, id, action);
+      setActionLoadingKey(loadingKey);
+
+      try {
+        const res = await fetch(requestUrl, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (res.status === 409) {
+          const body = await res.json().catch(() => null);
+          const message = body?.error ?? "Download has already been used for this report today.";
+          showAppToast("warning", message);
+
+          const createdAtIso =
+            typeof body?.lock?.createdAt === "string" ? body.lock.createdAt : new Date().toISOString();
+          updateReportActions(type, id, action, createdAtIso);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const fallbackName = `${type}-report-${id}.pdf`;
+        const filename = extractFilename(res.headers.get("content-disposition"), fallbackName);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showAppToast("success", "Report downloaded.");
+
+        updateReportActions(type, id, action, new Date().toISOString());
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      } catch (error) {
+        console.error(error);
+        showAppToast("error", `Failed to ${action} report.`);
+      } finally {
+        setActionLoadingKey(null);
+      }
+    },
+    [
+      buildReportBaseUrl,
+      extractFilename,
+      getActionButtonKey,
+      getLockedTitle,
+      getReportActions,
+      updateReportActions,
+    ],
+  );
+
+  const previewActions =
+    previewType && previewEntityId ? getReportActions(previewType, previewEntityId) : null;
   const limit = 20;
   const totalGroupPages = Math.ceil(totalGroups / limit);
   const totalMemberPages = Math.ceil(totalMembers / limit);
@@ -384,19 +558,22 @@ export function ReportsClient({
                       <>
                         <button
                           onClick={() => handleView("group", g.id)}
-                          disabled={isPreviewLoading}
+                          disabled={actionLoadingKey !== null}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                           <IconEye className="h-4 w-4" />
                           View
                         </button>
-                        <a
-                          href={`/api/groups/${g.id}/export?${query}`}
-                          title="Download group report (PDF)"
-                          className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        <button
+                          type="button"
+                          onClick={() => handleReportAction("group", g.id, "download")}
+                          disabled={g.reportActions.download.locked || actionLoadingKey === getActionButtonKey("group", g.id, "download")}
+                          title={getLockedTitle(g.reportActions.download, "Download group report")}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
-                          Download
-                        </a>
+                          <IconDownload className="h-4 w-4" />
+                          {actionLoadingKey === getActionButtonKey("group", g.id, "download") ? "Downloading..." : "Download"}
+                        </button>
                       </>
                     ) : (
                       <span className="text-xs text-slate-400 italic">Disabled</span>
@@ -406,7 +583,7 @@ export function ReportsClient({
               ))}
               {groups.length === 0 && !isGroupsLoading ? (
                 <tr key="empty-groups">
-                  <td className="py-4 text-slate-500" colSpan={2}>
+                  <td className="py-4 text-slate-500" colSpan={3}>
                     No groups found.
                   </td>
                 </tr>
@@ -428,22 +605,12 @@ export function ReportsClient({
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Daily collection report (per officer)
+                Collection report (per officer)
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Download a daily collection summary per collection officer and their groups.
+                Download a collection summary per collection officer and their groups for the
+                selected date range.
               </p>
-            </div>
-            <div className="flex flex-col items-start gap-1 text-sm text-slate-600">
-              <span className="text-xs uppercase tracking-wide text-slate-500">
-                Report date
-              </span>
-              <input
-                type="date"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-                value={officerDate}
-                onChange={(e) => setOfficerDate(e.target.value)}
-              />
             </div>
           </div>
 
@@ -456,7 +623,7 @@ export function ReportsClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {initialOfficers.map((o) => (
+                {officers.map((o) => (
                   <tr key={o.id} className="hover:bg-slate-50">
                     <td className="py-2 pr-4 font-medium text-slate-900">
                       <div>
@@ -485,19 +652,22 @@ export function ReportsClient({
                         <>
                           <button
                             onClick={() => handleView("officer", o.id)}
-                            disabled={isPreviewLoading}
+                            disabled={actionLoadingKey !== null}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
                           >
                             <IconEye className="h-4 w-4" />
                             View
                           </button>
-                          <a
-                            href={`/api/employees/${o.id}/collection-report?${officerQuery}`}
-                            title="Download daily collection report (PDF)"
-                            className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                          <button
+                            type="button"
+                            onClick={() => handleReportAction("officer", o.id, "download")}
+                            disabled={o.reportActions.download.locked || actionLoadingKey === getActionButtonKey("officer", o.id, "download")}
+                            title={getLockedTitle(o.reportActions.download, "Download officer report")}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                           >
-                            Download
-                          </a>
+                            <IconDownload className="h-4 w-4" />
+                            {actionLoadingKey === getActionButtonKey("officer", o.id, "download") ? "Downloading..." : "Download"}
+                          </button>
                         </>
                       ) : (
                         <span className="text-xs text-slate-400 italic">Disabled</span>
@@ -505,7 +675,7 @@ export function ReportsClient({
                     </td>
                   </tr>
                 ))}
-                {initialOfficers.length === 0 ? (
+                {officers.length === 0 ? (
                   <tr key="empty-officers">
                     <td className="py-4 text-slate-500" colSpan={2}>
                       No collection officers found.
@@ -580,19 +750,22 @@ export function ReportsClient({
                       <>
                         <button
                           onClick={() => handleView("member", m.id)}
-                          disabled={isPreviewLoading}
+                          disabled={actionLoadingKey !== null}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                           <IconEye className="h-4 w-4" />
                           View
                         </button>
-                        <a
-                          href={`/api/members/${m.id}/export?${query}`}
-                          title="Download member report (PDF)"
-                          className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        <button
+                          type="button"
+                          onClick={() => handleReportAction("member", m.id, "download")}
+                          disabled={m.reportActions.download.locked || actionLoadingKey === getActionButtonKey("member", m.id, "download")}
+                          title={getLockedTitle(m.reportActions.download, "Download member report")}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
-                          Download
-                        </a>
+                          <IconDownload className="h-4 w-4" />
+                          {actionLoadingKey === getActionButtonKey("member", m.id, "download") ? "Downloading..." : "Download"}
+                        </button>
                       </>
                     ) : (
                       <span className="text-xs text-slate-400 italic">Disabled</span>
@@ -629,11 +802,11 @@ export function ReportsClient({
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
                   {previewType === "group" && "Group Report Preview"}
-                  {previewType === "officer" && "Daily Collection Preview"}
+                  {previewType === "officer" && "Collection Report Preview"}
                   {previewType === "member" && "Member Ledger Preview"}
                 </h3>
                 <p className="text-sm text-slate-500">
-                  {previewType === "officer" ? officerDate : `${from} - ${to}`}
+                  {from} - {to}
                 </p>
               </div>
               <button
@@ -648,7 +821,7 @@ export function ReportsClient({
             <div className="flex-1 bg-slate-100 p-4">
               {previewUrl ? (
                 <iframe
-                  src={previewUrl}
+                  src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
                   className="h-full w-full rounded-lg border border-slate-200 bg-white shadow-sm"
                   title="Report Preview"
                 />
@@ -668,21 +841,28 @@ export function ReportsClient({
               >
                 Close
               </button>
-              {previewUrl &&
-                (
-                  (previewType === "group" && canAccessGroupReport) ||
-                  (previewType === "officer" && canAccessOfficerReport) ||
-                  (previewType === "member" && canAccessMemberReport)
-                ) ? (
-                <a
-                  href={previewUrl.replace("&preview=true", "")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
-                >
-                  <IconFileText className="h-4 w-4" />
-                  Download PDF
-                </a>
+              {previewUrl && previewType && previewEntityId &&
+              (
+                (previewType === "group" && canAccessGroupReport) ||
+                (previewType === "officer" && canAccessOfficerReport) ||
+                (previewType === "member" && canAccessMemberReport)
+              ) ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleReportAction(previewType, previewEntityId, "download")}
+                    disabled={Boolean(previewActions?.download.locked) || actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")}
+                    title={
+                      previewActions
+                        ? getLockedTitle(previewActions.download, "Download report")
+                        : "Download report"
+                    }
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
+                  >
+                    <IconFileText className="h-4 w-4" />
+                    {actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download") ? "Downloading..." : "Download PDF"}
+                  </button>
+                </>
               ) : null}
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import { getTodayReportActionStatusMap } from "@/lib/report-actions";
 
 export async function GET(req: NextRequest) {
   await requireUser();
@@ -45,10 +46,15 @@ export async function GET(req: NextRequest) {
     activeMemberCounts.map((row) => [row.groupId as string, row._count._all]),
   );
 
+  const reportActions = await getTodayReportActionStatusMap(
+    items.map((group) => ({ reportType: "GROUP", reportAreaId: group.id })),
+  );
+
   return NextResponse.json({
     items: items.map((g) => ({
       ...g,
       activeMemberCount: activeCountByGroupId[g.id] ?? 0,
+      reportActions: reportActions[`GROUP:${g.id}`],
     })),
     total,
     pages: Math.ceil(total / limit),

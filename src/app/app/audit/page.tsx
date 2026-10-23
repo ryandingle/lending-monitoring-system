@@ -2,9 +2,58 @@ import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
 import Link from "next/link";
+import { AuditPageSizeSelect } from "./audit-pagination";
 
 function clampInt(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
+}
+
+function PaginationBar({
+  total,
+  page,
+  totalPages,
+  prevHref,
+  nextHref,
+  className = "",
+}: {
+  total: number;
+  page: number;
+  totalPages: number;
+  prevHref?: string;
+  nextHref?: string;
+  className?: string;
+}) {
+  const buttonClass = (enabled: boolean) =>
+    `rounded-lg border px-3 py-2 text-sm ${
+      enabled
+        ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+        : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
+    }`;
+
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
+      <div className="text-sm text-slate-600">
+        Page <span className="font-semibold text-slate-900">{page}</span> of {totalPages} ·{" "}
+        {total.toLocaleString()} log(s)
+      </div>
+      <div className="flex items-center gap-2">
+        <Link
+          href={prevHref ?? "#"}
+          aria-disabled={!prevHref}
+          className={buttonClass(Boolean(prevHref))}
+        >
+          Prev
+        </Link>
+        <Link
+          href={nextHref ?? "#"}
+          aria-disabled={!nextHref}
+          className={buttonClass(Boolean(nextHref))}
+        >
+          Next
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export default async function AuditTrailPage({
@@ -26,14 +75,39 @@ export default async function AuditTrailPage({
 
   const terms = q.split(/\s+/).filter(Boolean).slice(0, 8);
 
+  // Member names live on the linked member record (not on the log row), so each
+  // term is also resolved against member names and matched via the log's entityId.
+  const nameMatches =
+    terms.length > 0
+      ? await prisma.member.findMany({
+        where: {
+          OR: terms.flatMap((t) => [
+            { firstName: { contains: t, mode: "insensitive" as const } },
+            { lastName: { contains: t, mode: "insensitive" as const } },
+          ]),
+        },
+        select: { id: true, firstName: true, lastName: true },
+      })
+      : [];
+
+  const memberIdsByTerm = terms.map((t) =>
+    nameMatches
+      .filter((m) =>
+        `${m.firstName} ${m.lastName}`.toLowerCase().includes(t.toLowerCase())
+      )
+      .map((m) => m.id)
+  );
+
   const where =
     terms.length > 0
       ? {
-        AND: terms.map((t) => ({
+        AND: terms.map((t, index) => ({
           OR: [
             { action: { contains: t, mode: "insensitive" as const } },
             { entityType: { contains: t, mode: "insensitive" as const } },
             { entityId: { contains: t, mode: "insensitive" as const } },
+            { entityValue: { contains: t, mode: "insensitive" as const } },
+            { entityId: { in: memberIdsByTerm[index] } },
             { actorUser: { is: { email: { contains: t, mode: "insensitive" as const } } } },
             { actorUser: { is: { name: { contains: t, mode: "insensitive" as const } } } },
           ],
@@ -86,49 +160,30 @@ export default async function AuditTrailPage({
               Records every mutating action performed by logged-in users.
             </p>
           </div>
-          <form action="/app/audit" method="get" className="flex gap-2">
+          <form action="/app/audit" method="get" className="flex items-center gap-2">
             <input type="hidden" name="pageSize" value={String(pageSize)} />
             <input
               name="q"
               defaultValue={q}
-              placeholder="Search action/user/entity…"
+              placeholder="Search action, user, entity, or value…"
               className="w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
             <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
               Search
             </button>
+            <AuditPageSizeSelect pageSize={pageSize} q={q} />
           </form>
         </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900">
-            {total.toLocaleString()} log(s)
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={prevHref ?? "#"}
-              aria-disabled={!prevHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${prevHref
-                  ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
-                }`}
-            >
-              Prev
-            </Link>
-            <Link
-              href={nextHref ?? "#"}
-              aria-disabled={!nextHref}
-              className={`rounded-lg border px-3 py-2 text-sm ${nextHref
-                  ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
-                }`}
-            >
-              Next
-            </Link>
-          </div>
-        </div>
+        <PaginationBar
+          total={total}
+          page={safePage}
+          totalPages={totalPages}
+          prevHref={prevHref}
+          nextHref={nextHref}
+        />
 
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -203,7 +258,7 @@ export default async function AuditTrailPage({
                           })()
                         ) : (
                           <div className="text-xs text-slate-500 break-all">
-                            {l.entityId ?? "-"}
+                            {l.entityValue ?? l.entityId ?? "-"}
                           </div>
                         )}
                       </div>
@@ -227,8 +282,16 @@ export default async function AuditTrailPage({
             </tbody>
           </table>
         </div>
+
+        <PaginationBar
+          total={total}
+          page={safePage}
+          totalPages={totalPages}
+          prevHref={prevHref}
+          nextHref={nextHref}
+          className="mt-4 border-t border-slate-200 pt-4"
+        />
       </div>
     </div>
   );
 }
-

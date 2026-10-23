@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
-import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit";
+import { tryGetAuditRequestContext } from "@/lib/audit";
 import { getMonday, formatDateYMD, getManilaDateRange, getWeekdaysInRange } from "@/lib/date";
 import { renderToStream } from "@react-pdf/renderer";
 import { CollectionReportPdf } from "@/lib/pdf/CollectionReportPdf";
 import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
+import { consumeReportAction, ReportActionLockedError } from "@/lib/report-actions";
 import fs from "fs";
 import path from "path";
 
@@ -61,6 +62,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   const url = new URL(req.url);
   const format = url.searchParams.get("format")?.toLowerCase();
   const isPreview = url.searchParams.get("preview") === "true";
+  const shouldConsumeDownload = !isPreview && format !== "json";
 
   if (!dateFromRaw || !dateTo) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -72,6 +74,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
 
   // Determine report columns (days)
   const dayColumns = getWeekdaysInRange(dateFrom, dateTo);
+  const range = getManilaDateRange(dateFrom, dateTo);
 
   const group = (await (prisma as any).group.findUnique({
     where: { id: groupId },
@@ -80,59 +83,34 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
         where: { status: "ACTIVE" },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
         include: {
+          // All types/time: the period columns use the in-range rows, and the
+          // balances are rebuilt from the rows that happened after the range.
           balanceAdjustments: {
-            where: { type: BalanceUpdateType.DEDUCT },
-            select: { amount: true, createdAt: true },
+            select: { amount: true, createdAt: true, type: true },
           },
           savingsAdjustments: {
-            where: {
-              type: SavingsUpdateType.INCREASE,
-              createdAt: {
-                gte: getManilaDateRange(dateFrom, dateTo).from,
-                lte: getManilaDateRange(dateFrom, dateTo).to,
-              },
-            },
-            select: { amount: true, createdAt: true },
+            select: { amount: true, createdAt: true, type: true },
           },
           activeReleases: {
+            where: { releaseDate: { lte: range.to } },
             orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
             take: 1,
             select: { amount: true },
           },
           processingFees: {
-            where: {
-              createdAt: {
-                gte: getManilaDateRange(dateFrom, dateTo).from,
-                lte: getManilaDateRange(dateFrom, dateTo).to,
-              },
-            },
+            where: { createdAt: { gte: range.from, lte: range.to } },
             select: { amount: true, createdAt: true },
           },
           passbookFees: {
-            where: {
-              createdAt: {
-                gte: getManilaDateRange(dateFrom, dateTo).from,
-                lte: getManilaDateRange(dateFrom, dateTo).to,
-              },
-            },
+            where: { createdAt: { gte: range.from, lte: range.to } },
             select: { amount: true, createdAt: true },
           },
           membershipFees: {
-            where: {
-              createdAt: {
-                gte: getManilaDateRange(dateFrom, dateTo).from,
-                lte: getManilaDateRange(dateFrom, dateTo).to,
-              },
-            },
+            where: { createdAt: { gte: range.from, lte: range.to } },
             select: { amount: true, createdAt: true },
           },
           loanInsurances: {
-            where: {
-              createdAt: {
-                gte: getManilaDateRange(dateFrom, dateTo).from,
-                lte: getManilaDateRange(dateFrom, dateTo).to,
-              },
-            },
+            where: { createdAt: { gte: range.from, lte: range.to } },
             select: { amount: true, createdAt: true },
           },
         },
@@ -160,13 +138,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   };
 
   const membersData = group.members.map((m: any) => {
-    const currentBal = toNumber(m.balance);
-    const savingsBalance = toNumber(m.savings);
-    const totalPaymentsAllTime = m.balanceAdjustments.reduce(
-      (sum: number, adj: any) => sum + toNumber(adj.amount),
-      0
-    );
-    const loanBalance = currentBal;
+    // Balances as of the end of the selected range: walk back from the current
+    // balance by undoing everything that happened after the range.
+    const loanBalance = m.balanceAdjustments.reduce((value: number, adj: any) => {
+      if (adj.createdAt <= range.to) return value;
+      const amount = toNumber(adj.amount);
+      const signedAmount = adj.type === BalanceUpdateType.INCREASE ? amount : -amount;
+      return value - signedAmount;
+    }, toNumber(m.balance));
+
+    const savingsBalance = m.savingsAdjustments.reduce((value: number, adj: any) => {
+      if (adj.createdAt <= range.to) return value;
+      const amount = toNumber(adj.amount);
+      const signedAmount = adj.type === SavingsUpdateType.INCREASE ? amount : -amount;
+      return value - signedAmount;
+    }, toNumber(m.savings));
+
     const latestActiveReleaseAmount =
       m.activeReleases[0] != null ? toNumber(m.activeReleases[0].amount) : 0;
     
@@ -193,8 +180,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       : 0;
 
     dayColumns.forEach((dateStr) => {
-      const payments = m.balanceAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
-      const savings = m.savingsAdjustments.filter((adj: any) => formatDateYMD(new Date(adj.createdAt)) === dateStr);
+      const payments = m.balanceAdjustments.filter(
+        (adj: any) =>
+          adj.type === BalanceUpdateType.DEDUCT &&
+          formatDateYMD(new Date(adj.createdAt)) === dateStr
+      );
+      const savings = m.savingsAdjustments.filter(
+        (adj: any) =>
+          adj.type === SavingsUpdateType.INCREASE &&
+          formatDateYMD(new Date(adj.createdAt)) === dateStr
+      );
 
       const paymentSum = payments.reduce((s: number, a: any) => s + toNumber(a.amount), 0);
       const savingsSum = savings.reduce((s: number, a: any) => s + toNumber(a.amount), 0);
@@ -258,6 +253,39 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     return NextResponse.json(reportData);
   }
 
+  if (shouldConsumeDownload) {
+    try {
+      const request = await tryGetAuditRequestContext();
+      await consumeReportAction({
+        actorUserId: actor.id,
+        reportType: "GROUP",
+        reportAreaId: groupId,
+        reportAreaName: group.name,
+        reportLabel: "Group Report",
+        from: dateFrom,
+        to: dateTo,
+        request,
+      });
+    } catch (error) {
+      if (error instanceof ReportActionLockedError) {
+        return NextResponse.json(
+          {
+            error: "Download already used for this area today.",
+            code: error.message,
+            lock: {
+              reportAreaName: error.lock.reportAreaName,
+              createdAt: error.lock.createdAt.toISOString(),
+              actedByName: error.lock.actedByName,
+            },
+          },
+          { status: 409 },
+        );
+      }
+
+      throw error;
+    }
+  }
+
   // --- RENDER PDF ---
   const stream = await renderToStream(React.createElement(CollectionReportPdf, { data: reportData }) as any);
   
@@ -268,21 +296,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     chunks.push(Buffer.from(chunk));
   }
   const pdfBuffer = Buffer.concat(chunks);
-
-  // Audit
-  try {
-    const request = await tryGetAuditRequestContext();
-    await createAuditLogStandalone({
-      actorUserId: actor.id,
-      action: "GROUP_EXPORT",
-      entityType: "Group",
-      entityId: groupId,
-      metadata: { format: "pdf", memberCount: group.members.length },
-      request,
-    });
-  } catch {
-    // ignore audit failures for export
-  }
 
   const datePart = new Date().toISOString().slice(0, 10);
   const filename = `collection-report-${safeFilePart(group.name)}-${datePart}.pdf`;

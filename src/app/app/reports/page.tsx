@@ -3,8 +3,10 @@ import { requireRole, requireUser } from "@/lib/auth/session";
 import { getReportPreset2Weeks } from "@/lib/date";
 import { Role } from "@prisma/client";
 import { DateRangeFilter } from "./date-filter";
+import { ReportsRangeProvider } from "./reports-range";
 import { ReportsClient } from "./reports-client";
 import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
+import { getTodayReportActionStatusMap } from "@/lib/report-actions";
 
 export default async function ReportsPage({
   searchParams,
@@ -89,37 +91,52 @@ export default async function ReportsPage({
     activeMemberCount: activeCountByGroupId[g.id] ?? 0,
   }));
 
+  const reportActions = await getTodayReportActionStatusMap([
+    ...groups.map((group) => ({ reportType: "GROUP" as const, reportAreaId: group.id })),
+    ...members.map((member) => ({ reportType: "MEMBER" as const, reportAreaId: member.id })),
+    ...officers.map((officer) => ({ reportType: "OFFICER" as const, reportAreaId: officer.id })),
+  ]);
+
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Generate and download report exports (group data, member data).
-            </p>
+      <ReportsRangeProvider initialFrom={from} initialTo={to}>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Generate and download report exports (group data, member data).
+              </p>
+            </div>
           </div>
+
+          <DateRangeFilter />
         </div>
 
-        <DateRangeFilter from={from} to={to} />
-      </div>
-
-      <ReportsClient
-        initialGroups={groups}
-        initialTotalGroups={totalGroups}
-        initialMembers={members}
-        initialTotalMembers={totalMembers}
-        initialOfficers={officers}
-        from={from}
-        to={to}
-        userRole={user.role}
-        initialExportControl={{
-          key: exportControl.key,
-          enabled: exportControl.enabled,
-          expiresAtIso: exportControl.expiresAt ? exportControl.expiresAt.toISOString() : null,
-          isExpired: exportControl.isExpired,
-        }}
-      />
+        <ReportsClient
+          initialGroups={groups.map((group) => ({
+            ...group,
+            reportActions: reportActions[`GROUP:${group.id}`],
+          }))}
+          initialTotalGroups={totalGroups}
+          initialMembers={members.map((member) => ({
+            ...member,
+            reportActions: reportActions[`MEMBER:${member.id}`],
+          }))}
+          initialTotalMembers={totalMembers}
+          initialOfficers={officers.map((officer) => ({
+            ...officer,
+            reportActions: reportActions[`OFFICER:${officer.id}`],
+          }))}
+          userRole={user.role}
+          initialExportControl={{
+            key: exportControl.key,
+            enabled: exportControl.enabled,
+            expiresAtIso: exportControl.expiresAt ? exportControl.expiresAt.toISOString() : null,
+            isExpired: exportControl.isExpired,
+          }}
+        />
+      </ReportsRangeProvider>
     </div>
   );
 }

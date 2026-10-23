@@ -31,6 +31,7 @@ export async function createAuditLog(
     action: string;
     entityType?: string | null;
     entityId?: string | null;
+    entityValue?: string | null;
     metadata?: Prisma.InputJsonValue;
     request?: AuditRequestContext;
   },
@@ -43,6 +44,7 @@ export async function createAuditLog(
       action: rest.action,
       entityType: rest.entityType ?? null,
       entityId: rest.entityId ?? null,
+      entityValue: rest.entityValue ?? null,
       ip: request?.ip ?? null,
       userAgent: request?.userAgent ?? null,
       referer: request?.referer ?? null,
@@ -57,4 +59,3 @@ export async function createAuditLogStandalone(
 ) {
   return prisma.$transaction((tx) => createAuditLog(tx, input));
 }
-
