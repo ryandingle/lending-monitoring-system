@@ -8,6 +8,8 @@ type NotificationItem = {
   action: string;
   entityType: string | null;
   entityId: string | null;
+  entityValue: string | null;
+  reportLabel: string | null;
   createdAt: string;
   actorName: string | null;
   actorEmail: string | null;
@@ -64,6 +66,15 @@ export async function GET() {
     action: r.action,
     entityType: r.entityType ?? null,
     entityId: r.entityId ?? null,
+    entityValue: r.entityValue ?? null,
+    reportLabel:
+      r.metadata &&
+      typeof r.metadata === "object" &&
+      !Array.isArray(r.metadata) &&
+      "reportLabel" in r.metadata &&
+      typeof (r.metadata as Record<string, unknown>).reportLabel === "string"
+        ? ((r.metadata as Record<string, unknown>).reportLabel as string)
+        : null,
     createdAt: r.createdAt.toISOString(),
     actorName: r.actorUser?.name ?? null,
     actorEmail: r.actorUser?.email ?? null,

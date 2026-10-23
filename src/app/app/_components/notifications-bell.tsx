@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AuthUser } from "@/lib/auth/session";
 
@@ -10,6 +9,8 @@ type NotificationItem = {
   action: string;
   entityType: string | null;
   entityId: string | null;
+  entityValue: string | null;
+  reportLabel: string | null;
   createdAt: string;
   actorName: string | null;
   actorEmail: string | null;
@@ -37,6 +38,15 @@ function formatTitle(n: NotificationItem) {
   const who = n.actorName || n.actorEmail || "Encoder";
   const what = n.action.replaceAll("_", " ").toLowerCase();
   return `${who} · ${what}`;
+}
+
+function formatEntityLine(n: NotificationItem) {
+  if (n.reportLabel && n.entityValue) return `${n.reportLabel} · ${n.entityValue}`;
+  if (n.reportLabel) return n.reportLabel;
+  if (n.entityType && n.entityValue) return `${n.entityType} · ${n.entityValue}`;
+  if (n.entityType && n.entityId) return `${n.entityType} · ${n.entityId}`;
+  if (n.entityValue) return n.entityValue;
+  return "—";
 }
 
 export function NotificationsBell({ user }: { user: AuthUser }) {
@@ -246,7 +256,7 @@ export function NotificationsBell({ user }: { user: AuthUser }) {
                     >
                       <div className="truncate text-sm text-slate-900">{formatTitle(n)}</div>
                       <div className="mt-1 text-xs text-slate-500">
-                        {n.entityType ? `${n.entityType}${n.entityId ? ` · ${n.entityId}` : ""}` : "—"}
+                        {formatEntityLine(n)}
                       </div>
                     </button>
 

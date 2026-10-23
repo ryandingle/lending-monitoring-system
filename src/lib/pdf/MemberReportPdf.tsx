@@ -101,6 +101,7 @@ interface MemberReportData {
   activeReleaseAmount?: number | null;
   payments: Record<string, number>; // date -> amount
   savings: Record<string, number>; // date -> amount
+  totalBalance: number;
   totalPayments: number;
   totalSavings: number;
   companyName?: string;
@@ -126,6 +127,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
     activeReleaseAmount,
     payments,
     savings,
+    totalBalance,
     totalPayments,
     totalSavings,
   } = data;
@@ -133,7 +135,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
   const logoUrl = data.logoUrl ?? (process.env.LMS_COMPANY_LOGO_URL || '');
 
   const numDayCols = dayColumns.length * 2;
-  const fixedParts = [4, 12, 8, 8, 8, 8];
+  const fixedParts = [4, 12, 8, 8, 8, 8, 8];
   const fixedTotal = fixedParts.reduce((a, b) => a + b, 0);
   const dynamicWidthPerCol = numDayCols > 0 ? ((100 - fixedTotal) / numDayCols) : 0;
 
@@ -142,18 +144,10 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
     balance: '12%',
     savingsBalance: '8%',
     currentRelease: '8%',
+    totalBalance: '8%',
     day: `${dynamicWidthPerCol}%`,
     fwd: '8%',
   };
-
-  // Calculate totals for columns
-  const totals: Record<string, { payment: number; savings: number }> = {};
-  dayColumns.forEach(day => {
-    totals[day] = {
-      payment: payments[day] || 0,
-      savings: savings[day] || 0
-    };
-  });
 
   return (
     <Document>
@@ -202,6 +196,7 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
               </View>
             ))}
 
+            <View style={[styles.tableCell, { width: colWidths.totalBalance, borderBottomWidth: 0 }]} />
             <View style={[styles.tableCell, { width: colWidths.fwd, borderBottomWidth: 0 }]} />
             <View style={[styles.tableCell, { width: colWidths.fwd, borderRightWidth: 0, borderBottomWidth: 0 }]} />
           </View>
@@ -232,6 +227,9 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
               </React.Fragment>
             ))}
 
+            <View style={[styles.tableCell, { width: colWidths.totalBalance }]}>
+              <Text style={{ fontSize: 8, ...styles.bold }}>TB</Text>
+            </View>
             <View style={[styles.tableCell, { width: colWidths.fwd }]}>
               <Text style={{ fontSize: 8, ...styles.bold }}>Bal Fwd</Text>
             </View>
@@ -266,6 +264,9 @@ export const MemberReportPdf = ({ data }: { data: MemberReportData }) => {
               </React.Fragment>
             ))}
 
+            <View style={[styles.tableCell, { width: colWidths.totalBalance, textAlign: 'right', paddingRight: 2 }]}>
+              <Text>{formatMoney(totalBalance)}</Text>
+            </View>
             <View style={[styles.tableCell, { width: colWidths.fwd, textAlign: 'right', paddingRight: 2 }]}>
               <Text>{formatMoney(totalPayments)}</Text>
             </View>

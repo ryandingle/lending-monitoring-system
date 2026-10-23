@@ -1,58 +1,62 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
+    formatDateYMD,
+    getFriday,
+    getMonday,
     getReportPreset1Week,
     getReportPreset2Weeks,
     getReportPreset1Month,
 } from "@/lib/date";
+import { useReportsRange } from "./reports-range";
 
-interface DateRangeFilterProps {
-    from: string;
-    to: string;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function getTwoWeekWorkingRange(anchorYmd: string) {
+    const anchorDate = new Date(`${anchorYmd}T00:00:00`);
+    const currentWeekMonday = getMonday(anchorDate);
+    const previousWeekMonday = new Date(currentWeekMonday);
+    previousWeekMonday.setDate(previousWeekMonday.getDate() - 7);
+    const currentWeekFriday = getFriday(anchorDate);
+
+    return {
+        from: formatDateYMD(previousWeekMonday),
+        to: formatDateYMD(currentWeekFriday),
+    };
 }
 
-export function DateRangeFilter({ from, to }: DateRangeFilterProps) {
-    const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+export function DateRangeFilter() {
+    const { from, to, setRange } = useReportsRange();
+    const [customAnchorDate, setCustomAnchorDate] = useState(to);
 
     const preset1 = getReportPreset1Week();
     const preset2 = getReportPreset2Weeks();
     const presetMonth = getReportPreset1Month();
 
-    const getInitialPreset = () => {
+    const getInitialMode = () => {
         if (from === preset1.from && to === preset1.to) return "1week";
         if (from === preset2.from && to === preset2.to) return "2weeks";
         if (from === presetMonth.from && to === presetMonth.to) return "1month";
         return "custom";
     };
 
-    const [selectedPreset, setSelectedPreset] = useState<string>(getInitialPreset());
-    const [customRange, setCustomRange] = useState({ from, to });
+    const [mode, setMode] = useState<string>(getInitialMode);
 
-    const handleApply = (e: React.FormEvent) => {
-        e.preventDefault();
-        let targetFrom = customRange.from;
-        let targetTo = customRange.to;
+    const handlePresetChange = (value: string) => {
+        setMode(value);
 
-        if (selectedPreset === "1week") {
-            targetFrom = preset1.from;
-            targetTo = preset1.to;
-        } else if (selectedPreset === "2weeks") {
-            targetFrom = preset2.from;
-            targetTo = preset2.to;
-        } else if (selectedPreset === "1month") {
-            targetFrom = presetMonth.from;
-            targetTo = presetMonth.to;
-        }
+        if (value === "1week") setRange(preset1.from, preset1.to);
+        else if (value === "2weeks") setRange(preset2.from, preset2.to);
+        else if (value === "1month") setRange(presetMonth.from, presetMonth.to);
+        else if (value === "custom") setCustomAnchorDate(to);
+    };
 
-        startTransition(() => {
-            const params = new URLSearchParams();
-            params.set("from", targetFrom);
-            params.set("to", targetTo);
-            router.push(`/app/reports?${params.toString()}`);
-        });
+    const handleAnchorDateChange = (value: string) => {
+        if (!DATE_PATTERN.test(value)) return;
+        setCustomAnchorDate(value);
+        const range = getTwoWeekWorkingRange(value);
+        setRange(range.from, range.to);
     };
 
     return (
@@ -62,12 +66,12 @@ export function DateRangeFilter({ from, to }: DateRangeFilterProps) {
                 Exports will include data within the selected from and to dates.
             </p>
 
-            <form onSubmit={handleApply} className="mt-4 grid gap-3 sm:grid-cols-4 items-end">
+            <div className="mt-4 grid gap-3 sm:grid-cols-4 items-end">
                 <div className="sm:col-span-1">
                     <label className="text-sm font-medium text-slate-700">Range</label>
                     <select
-                        value={selectedPreset}
-                        onChange={(e) => setSelectedPreset(e.target.value)}
+                        value={mode}
+                        onChange={(e) => handlePresetChange(e.target.value)}
                         className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     >
                         <option value="1week">1 Week (Mon-Fri)</option>
@@ -77,41 +81,45 @@ export function DateRangeFilter({ from, to }: DateRangeFilterProps) {
                     </select>
                 </div>
 
-                {selectedPreset === "custom" && (
+                {mode === "custom" && (
                     <>
+                        <div>
+                            <label className="text-sm font-medium text-slate-700">
+                                Selected date
+                            </label>
+                            <input
+                                type="date"
+                                value={customAnchorDate}
+                                onChange={(e) => handleAnchorDateChange(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                            />
+                        </div>
                         <div>
                             <label className="text-sm font-medium text-slate-700">From</label>
                             <input
                                 type="date"
-                                value={customRange.from}
-                                onChange={(e) => setCustomRange({ ...customRange, from: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                                required
+                                value={from}
+                                readOnly
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none"
                             />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-slate-700">To</label>
                             <input
                                 type="date"
-                                value={customRange.to}
-                                onChange={(e) => setCustomRange({ ...customRange, to: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                                required
+                                value={to}
+                                readOnly
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none"
                             />
                         </div>
+                        <p className="text-xs text-slate-500 sm:col-span-4">
+                            Selecting any date uses the same 2-week working window as the
+                            default preset: previous Monday through the Friday of the selected
+                            date&apos;s week.
+                        </p>
                     </>
                 )}
-
-                <div className={selectedPreset === "custom" ? "" : "sm:col-start-2"}>
-                    <button
-                        type="submit"
-                        disabled={isPending}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isPending ? "Applying..." : "Apply"}
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     );
 }

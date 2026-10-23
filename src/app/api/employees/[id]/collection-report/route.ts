@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { BalanceUpdateType, Role, SavingsUpdateType } from "@prisma/client";
+import { tryGetAuditRequestContext } from "@/lib/audit";
 import { getManilaDateRange } from "@/lib/date";
 import { renderToStream } from "@react-pdf/renderer";
 import {
@@ -10,6 +11,7 @@ import {
   OfficerGroupRow,
   OfficerReportData,
 } from "@/lib/pdf/OfficerCollectionReportPdf";
+import { consumeReportAction, ReportActionLockedError } from "@/lib/report-actions";
 import fs from "fs";
 import path from "path";
 
@@ -63,6 +65,7 @@ export async function GET(
   const url = new URL(req.url);
   const format = url.searchParams.get("format")?.toLowerCase();
   const isPreview = url.searchParams.get("preview") === "true";
+  const shouldConsumeDownload = !isPreview && format !== "json";
 
   if (!dateFrom || !dateTo) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -109,6 +112,9 @@ export async function GET(
                 },
               },
               notes: {
+                // Latest note as of the end of the selected range (not the
+                // member's current note) so the report reflects the chosen dates.
+                where: { createdAt: { lte: range.to } },
                 orderBy: { createdAt: "desc" },
                 take: 1,
                 select: {
@@ -334,6 +340,39 @@ export async function GET(
 
   if (format === "json") {
     return NextResponse.json(reportData);
+  }
+
+  if (shouldConsumeDownload) {
+    try {
+      const request = await tryGetAuditRequestContext();
+      await consumeReportAction({
+        actorUserId: actor.id,
+        reportType: "OFFICER",
+        reportAreaId: employee.id,
+        reportAreaName: `${employee.lastName}, ${employee.firstName}`,
+        reportLabel: "Officer Collection Report",
+        from: dateFrom,
+        to: dateTo,
+        request,
+      });
+    } catch (error) {
+      if (error instanceof ReportActionLockedError) {
+        return NextResponse.json(
+          {
+            error: "Download already used for this officer report today.",
+            code: error.message,
+            lock: {
+              reportAreaName: error.lock.reportAreaName,
+              createdAt: error.lock.createdAt.toISOString(),
+              actedByName: error.lock.actedByName,
+            },
+          },
+          { status: 409 },
+        );
+      }
+
+      throw error;
+    }
   }
 
   const stream = await renderToStream(
