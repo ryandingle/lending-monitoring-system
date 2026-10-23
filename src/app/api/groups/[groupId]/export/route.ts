@@ -253,7 +253,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
     return NextResponse.json(reportData);
   }
 
-  if (shouldConsumeDownload) {
+  if (shouldConsumeDownload && actor.role !== Role.SUPER_ADMIN) {
     try {
       const request = await tryGetAuditRequestContext();
       await consumeReportAction({

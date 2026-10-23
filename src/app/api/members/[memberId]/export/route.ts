@@ -217,7 +217,7 @@ export async function GET(
     return NextResponse.json(reportData);
   }
 
-  if (shouldConsumeDownload) {
+  if (shouldConsumeDownload && actor.role !== Role.SUPER_ADMIN) {
     try {
       const request = await tryGetAuditRequestContext();
       await consumeReportAction({
