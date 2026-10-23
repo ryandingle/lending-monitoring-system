@@ -320,7 +320,7 @@ export function ReportsClient({
   const handleReportAction = useCallback(
     async (type: ReportKind, id: string, action: ReportActionKind) => {
       const status = getReportActions(type, id);
-      if (status?.[action].locked) {
+      if (!isSuperAdmin && status?.[action].locked) {
         showAppToast("warning", getLockedTitle(status[action], "Download already used today."));
         return;
       }
@@ -378,6 +378,7 @@ export function ReportsClient({
       getActionButtonKey,
       getLockedTitle,
       getReportActions,
+      isSuperAdmin,
       updateReportActions,
     ],
   );
@@ -567,8 +568,12 @@ export function ReportsClient({
                         <button
                           type="button"
                           onClick={() => handleReportAction("group", g.id, "download")}
-                          disabled={g.reportActions.download.locked || actionLoadingKey === getActionButtonKey("group", g.id, "download")}
-                          title={getLockedTitle(g.reportActions.download, "Download group report")}
+                          disabled={actionLoadingKey === getActionButtonKey("group", g.id, "download")}
+                          title={
+                            isSuperAdmin
+                              ? "Download group report"
+                              : getLockedTitle(g.reportActions.download, "Download group report")
+                          }
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
                           <IconDownload className="h-4 w-4" />
@@ -661,8 +666,12 @@ export function ReportsClient({
                           <button
                             type="button"
                             onClick={() => handleReportAction("officer", o.id, "download")}
-                            disabled={o.reportActions.download.locked || actionLoadingKey === getActionButtonKey("officer", o.id, "download")}
-                            title={getLockedTitle(o.reportActions.download, "Download officer report")}
+                            disabled={actionLoadingKey === getActionButtonKey("officer", o.id, "download")}
+                            title={
+                              isSuperAdmin
+                                ? "Download officer report"
+                                : getLockedTitle(o.reportActions.download, "Download officer report")
+                            }
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                           >
                             <IconDownload className="h-4 w-4" />
@@ -759,8 +768,12 @@ export function ReportsClient({
                         <button
                           type="button"
                           onClick={() => handleReportAction("member", m.id, "download")}
-                          disabled={m.reportActions.download.locked || actionLoadingKey === getActionButtonKey("member", m.id, "download")}
-                          title={getLockedTitle(m.reportActions.download, "Download member report")}
+                          disabled={actionLoadingKey === getActionButtonKey("member", m.id, "download")}
+                          title={
+                            isSuperAdmin
+                              ? "Download member report"
+                              : getLockedTitle(m.reportActions.download, "Download member report")
+                          }
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
                           <IconDownload className="h-4 w-4" />
@@ -851,9 +864,9 @@ export function ReportsClient({
                   <button
                     type="button"
                     onClick={() => handleReportAction(previewType, previewEntityId, "download")}
-                    disabled={Boolean(previewActions?.download.locked) || actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")}
+                    disabled={actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")}
                     title={
-                      previewActions
+                      !isSuperAdmin && previewActions
                         ? getLockedTitle(previewActions.download, "Download report")
                         : "Download report"
                     }
