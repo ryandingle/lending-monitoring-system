@@ -30,6 +30,11 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum ReportActionType {
+  DOWNLOAD
+  PRINT
+}
+
 enum EmployeePosition {
   COLLECTION_OFFICER
   OFFICE_CLERK
@@ -78,6 +83,7 @@ model User {
   auditLogs    AuditLog[]
   notificationReads NotificationRead[]
   updatedAppControls AppControl[]
+  reportActionLocks ReportActionLock[]
   employee     Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
   @@index([employeeId])
@@ -296,6 +302,7 @@ model AuditLog {
   action      String
   entityType  String?
   entityId    String?
+  entityValue String?        @db.Text
   ip          String?
   userAgent   String?
   referer     String?
@@ -304,6 +311,7 @@ model AuditLog {
 
   actorUser User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
   notificationReads NotificationRead[]
+  reportActionLock ReportActionLock?
 
   @@index([createdAt])
   @@index([actorUserId, createdAt])
@@ -374,4 +382,24 @@ model AppControl {
   @@index([key])
   @@index([expiresAt])
   @@map("app_controls")
+}
+
+model ReportActionLock {
+  id           String           @id @default(uuid()) @db.Uuid
+  reportDate   DateTime         @db.Date
+  reportType   String
+  reportAreaId String
+  reportAreaName String?        @db.Text
+  actionType   ReportActionType
+  actedByUserId String          @db.Uuid
+  auditLogId   String?          @unique @db.Uuid
+  createdAt    DateTime         @default(now()) @db.Timestamptz
+
+  actedBy   User     @relation(fields: [actedByUserId], references: [id], onDelete: Restrict)
+  auditLog  AuditLog? @relation(fields: [auditLogId], references: [id], onDelete: SetNull)
+
+  @@unique([reportDate, reportType, reportAreaId, actionType])
+  @@index([reportType, reportAreaId, reportDate])
+  @@index([actedByUserId, createdAt])
+  @@map("report_action_locks")
 }

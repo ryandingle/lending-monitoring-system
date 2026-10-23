@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { Role, BalanceUpdateType, SavingsUpdateType } from "@prisma/client";
-import { createAuditLogStandalone, tryGetAuditRequestContext } from "@/lib/audit";
+import { tryGetAuditRequestContext } from "@/lib/audit";
 import { getManilaDateRange, getMonday, formatDateYMD, getWeekdaysInRange } from "@/lib/date";
 import React from "react";
 import { renderToStream } from "@react-pdf/renderer";
 import { MemberReportPdf } from "@/lib/pdf/MemberReportPdf";
 import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
+import { consumeReportAction, ReportActionLockedError } from "@/lib/report-actions";
 import fs from "fs";
 import path from "path";
 
@@ -54,6 +55,7 @@ export async function GET(
   const url = new URL(req.url, "http://localhost");
   const format = url.searchParams.get("format")?.toLowerCase();
   const isPreview = url.searchParams.get("preview") === "true";
+  const shouldConsumeDownload = !isPreview && format !== "json";
 
   if (!dateFromStr || !dateToStr) {
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
@@ -72,6 +74,11 @@ export async function GET(
     include: {
       group: { select: { id: true, name: true } },
       activeReleases: {
+        where: {
+          releaseDate: {
+            lte: range.to,
+          },
+        },
         orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
         take: 1,
         select: { amount: true },
@@ -85,26 +92,18 @@ export async function GET(
 
   // Fetch adjustments separate from finding member to keep logic clean?
   const [balanceAdjustments, savingsAdjustments] = await Promise.all([
-    // All DEDUCT adjustments for "Loan Balance" calculation
     prisma.balanceAdjustment.findMany({
       where: {
         memberId: member.id,
-        type: BalanceUpdateType.DEDUCT,
       },
-      select: { amount: true, createdAt: true },
+      select: { amount: true, createdAt: true, type: true },
     }),
-    // Savings INCREASES within range
     prisma.savingsAdjustment.findMany({
       where: {
         memberId: member.id,
-        type: SavingsUpdateType.INCREASE,
-        createdAt: {
-          gte: range.from,
-          lte: range.to,
-        }
       },
-      select: { amount: true, createdAt: true },
-    })
+      select: { amount: true, createdAt: true, type: true },
+    }),
   ]);
 
   // Helper
@@ -119,8 +118,6 @@ export async function GET(
     }
   }
 
-  // Determine report columns (days)
-  // NOTE: getWeekdaysInRange strictly returns Mon-Fri only, excluding weekends as required.
   const dayColumns = getWeekdaysInRange(dateFromGroupStyle, dateToStr);
 
   // --- PREPARE DATA FOR PDF ---
@@ -136,23 +133,50 @@ export async function GET(
     reportDate: reportDateStr,
   };
 
-  // Loan/Savings Balance Calculation (aligned with group report)
   const currentBal = toNumber(member.balance);
-  const savingsBalance = toNumber(member.savings);
-  const totalPaymentsAllTime = balanceAdjustments.reduce((sum, adj) => sum + toNumber(adj.amount), 0);
-  const loanBalance = currentBal;
+  const currentSavings = toNumber(member.savings);
+  const balanceAdjustmentsAfterRange = balanceAdjustments.filter((adjustment) => adjustment.createdAt > range.to);
+  const savingsAdjustmentsAfterRange = savingsAdjustments.filter((adjustment) => adjustment.createdAt > range.to);
+
+  const loanBalance = balanceAdjustmentsAfterRange.reduce((value, adjustment) => {
+    const amount = toNumber(adjustment.amount);
+    const signedAmount =
+      adjustment.type === BalanceUpdateType.INCREASE ? amount : -amount;
+    return value - signedAmount;
+  }, currentBal);
+
+  const savingsBalance = savingsAdjustmentsAfterRange.reduce((value, adjustment) => {
+    const amount = toNumber(adjustment.amount);
+    const signedAmount =
+      adjustment.type === SavingsUpdateType.INCREASE ? amount : -amount;
+    return value - signedAmount;
+  }, currentSavings);
+
   const latestActiveReleaseAmount =
     member.activeReleases[0] != null ? toNumber(member.activeReleases[0].amount) : 0;
 
-  // Daily Data
+  const inSelectedRange = (createdAt: Date) => createdAt >= range.from && createdAt <= range.to;
+  const paymentAdjustmentsInRange = balanceAdjustments.filter(
+    (adjustment) =>
+      adjustment.type === BalanceUpdateType.DEDUCT && inSelectedRange(adjustment.createdAt),
+  );
+  const savingsAdjustmentsInRange = savingsAdjustments.filter(
+    (adjustment) =>
+      adjustment.type === SavingsUpdateType.INCREASE && inSelectedRange(adjustment.createdAt),
+  );
+
   const paymentsMap: Record<string, number> = {};
   const savingsMap: Record<string, number> = {};
   let totalPaymentsPeriod = 0;
   let totalSavingsPeriod = 0;
 
   dayColumns.forEach(dateStr => {
-    const payments = balanceAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
-    const savings = savingsAdjustments.filter(adj => formatDateYMD(new Date(adj.createdAt)) === dateStr);
+    const payments = paymentAdjustmentsInRange.filter(
+      (adjustment) => formatDateYMD(new Date(adjustment.createdAt)) === dateStr,
+    );
+    const savings = savingsAdjustmentsInRange.filter(
+      (adjustment) => formatDateYMD(new Date(adjustment.createdAt)) === dateStr,
+    );
 
     const paymentSum = payments.reduce((s, a) => s + toNumber(a.amount), 0);
     const savingsSum = savings.reduce((s, a) => s + toNumber(a.amount), 0);
@@ -164,6 +188,8 @@ export async function GET(
     totalSavingsPeriod += savingsSum;
   });
 
+  const totalBalance = loanBalance - totalPaymentsPeriod;
+
   const reportData = {
     memberInfo,
     dayColumns,
@@ -172,6 +198,7 @@ export async function GET(
     activeReleaseAmount: latestActiveReleaseAmount,
     payments: paymentsMap,
     savings: savingsMap,
+    totalBalance,
     totalPayments: totalPaymentsPeriod,
     totalSavings: totalSavingsPeriod,
     companyName: "Triple E Microfinance",
@@ -190,23 +217,41 @@ export async function GET(
     return NextResponse.json(reportData);
   }
 
+  if (shouldConsumeDownload) {
+    try {
+      const request = await tryGetAuditRequestContext();
+      await consumeReportAction({
+        actorUserId: actor.id,
+        reportType: "MEMBER",
+        reportAreaId: member.id,
+        reportAreaName: `${member.lastName}, ${member.firstName}`,
+        reportLabel: "Member Report",
+        from: dateFromGroupStyle,
+        to: dateToStr,
+        request,
+      });
+    } catch (error) {
+      if (error instanceof ReportActionLockedError) {
+        return NextResponse.json(
+          {
+            error: "Download already used for this report today.",
+            code: error.message,
+            lock: {
+              reportAreaName: error.lock.reportAreaName,
+              createdAt: error.lock.createdAt.toISOString(),
+              actedByName: error.lock.actedByName,
+            },
+          },
+          { status: 409 },
+        );
+      }
+
+      throw error;
+    }
+  }
+
   // --- GENERATE PDF ---
   const stream = await renderToStream(React.createElement(MemberReportPdf, { data: reportData }) as any);
-
-  // Audit Log
-  const auditCtx = await tryGetAuditRequestContext();
-  await createAuditLogStandalone({
-    actorUserId: actor.id,
-    action: "EXPORT_MEMBER_REPORT_PDF",
-    entityType: "MEMBER",
-    entityId: member.id,
-    metadata: {
-      from: dateFromStr,
-      to: dateToStr,
-      ip: auditCtx?.ip,
-      userAgent: auditCtx?.userAgent,
-    }
-  });
 
   const filename = `Report-${safeFilePart(member.firstName)}-${safeFilePart(member.lastName)}-${dateFromStr}.pdf`;
 
