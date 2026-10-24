@@ -228,7 +228,7 @@ export function ReportsClient({
       ? new Date(info.createdAtIso).toLocaleString("en-PH", {
           timeZone: "Asia/Manila",
         })
-      : "today";
+      : "this week";
 
     return info.actedByName ? `${label} already used by ${info.actedByName} on ${when}` : `${label} already used on ${when}`;
   }, []);
@@ -321,7 +321,7 @@ export function ReportsClient({
     async (type: ReportKind, id: string, action: ReportActionKind) => {
       const status = getReportActions(type, id);
       if (!isSuperAdmin && status?.[action].locked) {
-        showAppToast("warning", getLockedTitle(status[action], "Download already used today."));
+        showAppToast("warning", getLockedTitle(status[action], "Download already used this week."));
         return;
       }
 
@@ -337,7 +337,7 @@ export function ReportsClient({
 
         if (res.status === 409) {
           const body = await res.json().catch(() => null);
-          const message = body?.error ?? "Download has already been used for this report today.";
+          const message = body?.error ?? "Download has already been used for this report this week.";
           showAppToast("warning", message);
 
           const createdAtIso =
