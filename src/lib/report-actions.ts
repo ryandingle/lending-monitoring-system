@@ -1,5 +1,5 @@
 import { createAuditLog, type AuditRequestContext } from "@/lib/audit";
-import { formatDateYMD, getManilaToday } from "@/lib/date";
+import { formatDateYMD, getManilaToday, getMonday } from "@/lib/date";
 import { prisma } from "@/lib/db";
 import { Prisma, ReportActionType } from "@prisma/client";
 
@@ -32,14 +32,20 @@ export class ReportActionLockedError extends Error {
   };
 
   constructor(lock: ReportActionLockedError["lock"]) {
-    super("REPORT_ACTION_ALREADY_USED_TODAY");
+    super("REPORT_ACTION_ALREADY_USED_THIS_WEEK");
     this.name = "ReportActionLockedError";
     this.lock = lock;
   }
 }
 
-function getTodayReportDate() {
-  return new Date(`${formatDateYMD(getManilaToday())}T00:00:00.000+08:00`);
+/**
+ * Start of the current report week (Monday, Asia/Manila).
+ * A report area can only be downloaded once per week, so the lock row is keyed
+ * on the week start instead of the current day.
+ */
+function getCurrentReportWeekStart() {
+  const weekStart = getMonday(getManilaToday());
+  return new Date(`${formatDateYMD(weekStart)}T00:00:00.000+08:00`);
 }
 
 function emptyStatus(): ReportActionStatus {
@@ -60,7 +66,7 @@ export function createEmptyStatusMap(
   );
 }
 
-export async function getTodayReportActionStatusMap(
+export async function getReportActionStatusMap(
   items: Array<{ reportType: ReportAreaType; reportAreaId: string }>,
 ): Promise<ReportActionStatusMap> {
   if (items.length === 0) {
@@ -68,10 +74,10 @@ export async function getTodayReportActionStatusMap(
   }
 
   const initial = createEmptyStatusMap(items);
-  const today = getTodayReportDate();
+  const weekStart = getCurrentReportWeekStart();
   const rows = await prisma.reportActionLock.findMany({
     where: {
-      reportDate: today,
+      reportDate: weekStart,
       actionType: ReportActionType.DOWNLOAD,
       OR: items.map((item) => ({
         reportType: item.reportType,
@@ -112,7 +118,7 @@ export async function consumeReportAction(input: {
   to?: string | null;
   request?: AuditRequestContext;
 }) {
-  const reportDate = getTodayReportDate();
+  const reportWeekStart = getCurrentReportWeekStart();
   // Reports are only distributable via the app-owned Download action.
   const actionType = ReportActionType.DOWNLOAD;
 
@@ -121,7 +127,7 @@ export async function consumeReportAction(input: {
       const existing = await tx.reportActionLock.findUnique({
         where: {
           reportDate_reportType_reportAreaId_actionType: {
-            reportDate,
+            reportDate: reportWeekStart,
             reportType: input.reportType,
             reportAreaId: input.reportAreaId,
             actionType,
@@ -156,7 +162,7 @@ export async function consumeReportAction(input: {
           reportType: input.reportType,
           reportLabel: input.reportLabel,
           reportAreaName: input.reportAreaName,
-          reportDate: formatDateYMD(reportDate),
+          reportWeekOf: formatDateYMD(reportWeekStart),
           from: input.from ?? null,
           to: input.to ?? null,
         },
@@ -165,7 +171,7 @@ export async function consumeReportAction(input: {
 
       return tx.reportActionLock.create({
         data: {
-          reportDate,
+          reportDate: reportWeekStart,
           reportType: input.reportType,
           reportAreaId: input.reportAreaId,
           reportAreaName: input.reportAreaName,
@@ -187,7 +193,7 @@ export async function consumeReportAction(input: {
       const existing = await prisma.reportActionLock.findUnique({
         where: {
           reportDate_reportType_reportAreaId_actionType: {
-            reportDate,
+            reportDate: reportWeekStart,
             reportType: input.reportType,
             reportAreaId: input.reportAreaId,
             actionType,

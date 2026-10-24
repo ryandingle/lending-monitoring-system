@@ -6,7 +6,7 @@ import { DateRangeFilter } from "./date-filter";
 import { ReportsRangeProvider } from "./reports-range";
 import { ReportsClient } from "./reports-client";
 import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
-import { getTodayReportActionStatusMap } from "@/lib/report-actions";
+import { getReportActionStatusMap } from "@/lib/report-actions";
 
 export default async function ReportsPage({
   searchParams,
@@ -91,7 +91,7 @@ export default async function ReportsPage({
     activeMemberCount: activeCountByGroupId[g.id] ?? 0,
   }));
 
-  const reportActions = await getTodayReportActionStatusMap([
+  const reportActions = await getReportActionStatusMap([
     ...groups.map((group) => ({ reportType: "GROUP" as const, reportAreaId: group.id })),
     ...members.map((member) => ({ reportType: "MEMBER" as const, reportAreaId: member.id })),
     ...officers.map((officer) => ({ reportType: "OFFICER" as const, reportAreaId: officer.id })),
