@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
-import { getTodayReportActionStatusMap } from "@/lib/report-actions";
+import { getReportActionStatusMap } from "@/lib/report-actions";
 
 export async function GET(req: NextRequest) {
   await requireUser();
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     prisma.member.count({ where }),
   ]);
 
-  const reportActions = await getTodayReportActionStatusMap(
+  const reportActions = await getReportActionStatusMap(
     items.map((member) => ({ reportType: "MEMBER", reportAreaId: member.id })),
   );
 
