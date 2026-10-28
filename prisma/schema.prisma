@@ -398,7 +398,7 @@ model ReportActionLock {
   actedBy   User     @relation(fields: [actedByUserId], references: [id], onDelete: Restrict)
   auditLog  AuditLog? @relation(fields: [auditLogId], references: [id], onDelete: SetNull)
 
-  @@unique([reportDate, reportType, reportAreaId, actionType])
+  @@unique([reportDate, reportType, reportAreaId, actionType, actedByUserId])
   @@index([reportType, reportAreaId, reportDate])
   @@index([actedByUserId, createdAt])
   @@map("report_action_locks")

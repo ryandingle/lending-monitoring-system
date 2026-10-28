@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getReportActionStatusMap } from "@/lib/report-actions";
 
 export async function GET(req: NextRequest) {
-  await requireUser();
+  const user = await requireUser();
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1") || 1);
   const limit = Math.max(1, parseInt(searchParams.get("limit") ?? "20") || 20);
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
 
   const reportActions = await getReportActionStatusMap(
     items.map((member) => ({ reportType: "MEMBER", reportAreaId: member.id })),
+    user.id,
   );
 
   return NextResponse.json({

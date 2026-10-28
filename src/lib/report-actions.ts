@@ -40,8 +40,8 @@ export class ReportActionLockedError extends Error {
 
 /**
  * Start of the current report week (Monday, Asia/Manila).
- * A report area can only be downloaded once per week, so the lock row is keyed
- * on the week start instead of the current day.
+ * A report area can only be downloaded once per week *per user*, so the lock row
+ * is keyed on the week start instead of the current day.
  */
 function getCurrentReportWeekStart() {
   const weekStart = getMonday(getManilaToday());
@@ -68,6 +68,7 @@ export function createEmptyStatusMap(
 
 export async function getReportActionStatusMap(
   items: Array<{ reportType: ReportAreaType; reportAreaId: string }>,
+  actorUserId: string,
 ): Promise<ReportActionStatusMap> {
   if (items.length === 0) {
     return {};
@@ -78,6 +79,7 @@ export async function getReportActionStatusMap(
   const rows = await prisma.reportActionLock.findMany({
     where: {
       reportDate: weekStart,
+      actedByUserId: actorUserId,
       actionType: ReportActionType.DOWNLOAD,
       OR: items.map((item) => ({
         reportType: item.reportType,
@@ -126,11 +128,12 @@ export async function consumeReportAction(input: {
     return await prisma.$transaction(async (tx) => {
       const existing = await tx.reportActionLock.findUnique({
         where: {
-          reportDate_reportType_reportAreaId_actionType: {
+          reportDate_reportType_reportAreaId_actionType_actedByUserId: {
             reportDate: reportWeekStart,
             reportType: input.reportType,
             reportAreaId: input.reportAreaId,
             actionType,
+            actedByUserId: input.actorUserId,
           },
         },
         include: {
@@ -192,11 +195,12 @@ export async function consumeReportAction(input: {
     ) {
       const existing = await prisma.reportActionLock.findUnique({
         where: {
-          reportDate_reportType_reportAreaId_actionType: {
+          reportDate_reportType_reportAreaId_actionType_actedByUserId: {
             reportDate: reportWeekStart,
             reportType: input.reportType,
             reportAreaId: input.reportAreaId,
             actionType,
+            actedByUserId: input.actorUserId,
           },
         },
         include: {
