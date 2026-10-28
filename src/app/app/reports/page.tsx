@@ -91,11 +91,14 @@ export default async function ReportsPage({
     activeMemberCount: activeCountByGroupId[g.id] ?? 0,
   }));
 
-  const reportActions = await getReportActionStatusMap([
-    ...groups.map((group) => ({ reportType: "GROUP" as const, reportAreaId: group.id })),
-    ...members.map((member) => ({ reportType: "MEMBER" as const, reportAreaId: member.id })),
-    ...officers.map((officer) => ({ reportType: "OFFICER" as const, reportAreaId: officer.id })),
-  ]);
+  const reportActions = await getReportActionStatusMap(
+    [
+      ...groups.map((group) => ({ reportType: "GROUP" as const, reportAreaId: group.id })),
+      ...members.map((member) => ({ reportType: "MEMBER" as const, reportAreaId: member.id })),
+      ...officers.map((officer) => ({ reportType: "OFFICER" as const, reportAreaId: officer.id })),
+    ],
+    user.id,
+  );
 
   return (
     <div className="space-y-6">
