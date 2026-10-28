@@ -233,12 +233,24 @@ export function ReportsClient({
     return info.actedByName ? `${label} already used by ${info.actedByName} on ${when}` : `${label} already used on ${when}`;
   }, []);
 
+  const isActionLocked = useCallback(
+    (status: ReportActionStatus | null, action: ReportActionKind) =>
+      !isSuperAdmin && Boolean(status?.[action].locked),
+    [isSuperAdmin],
+  );
+
   const updateReportActions = useCallback(
-    (type: ReportKind, id: string, action: ReportActionKind, createdAtIso: string) => {
+    (
+      type: ReportKind,
+      id: string,
+      action: ReportActionKind,
+      createdAtIso: string,
+      actedByName: string | null = null,
+    ) => {
       const nextInfo = {
         locked: true,
         createdAtIso,
-        actedByName: null,
+        actedByName,
       };
 
       if (type === "group") {
@@ -320,8 +332,9 @@ export function ReportsClient({
   const handleReportAction = useCallback(
     async (type: ReportKind, id: string, action: ReportActionKind) => {
       const status = getReportActions(type, id);
-      if (!isSuperAdmin && status?.[action].locked) {
-        showAppToast("warning", getLockedTitle(status[action], "Download already used this week."));
+      const actionInfo = status?.[action] ?? null;
+      if (actionInfo && isActionLocked(status, action)) {
+        showAppToast("warning", getLockedTitle(actionInfo, "Download already used this week."));
         return;
       }
 
@@ -342,7 +355,8 @@ export function ReportsClient({
 
           const createdAtIso =
             typeof body?.lock?.createdAt === "string" ? body.lock.createdAt : new Date().toISOString();
-          updateReportActions(type, id, action, createdAtIso);
+          const actedByName = typeof body?.lock?.actedByName === "string" ? body.lock.actedByName : null;
+          updateReportActions(type, id, action, createdAtIso, actedByName);
           return;
         }
 
@@ -378,7 +392,7 @@ export function ReportsClient({
       getActionButtonKey,
       getLockedTitle,
       getReportActions,
-      isSuperAdmin,
+      isActionLocked,
       updateReportActions,
     ],
   );
@@ -568,7 +582,10 @@ export function ReportsClient({
                         <button
                           type="button"
                           onClick={() => handleReportAction("group", g.id, "download")}
-                          disabled={actionLoadingKey === getActionButtonKey("group", g.id, "download")}
+                          disabled={
+                            actionLoadingKey === getActionButtonKey("group", g.id, "download") ||
+                            isActionLocked(g.reportActions, "download")
+                          }
                           title={
                             isSuperAdmin
                               ? "Download group report"
@@ -577,7 +594,11 @@ export function ReportsClient({
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
                           <IconDownload className="h-4 w-4" />
-                          {actionLoadingKey === getActionButtonKey("group", g.id, "download") ? "Downloading..." : "Download"}
+                          {actionLoadingKey === getActionButtonKey("group", g.id, "download")
+                            ? "Downloading..."
+                            : isActionLocked(g.reportActions, "download")
+                              ? "Used this week"
+                              : "Download"}
                         </button>
                       </>
                     ) : (
@@ -666,7 +687,10 @@ export function ReportsClient({
                           <button
                             type="button"
                             onClick={() => handleReportAction("officer", o.id, "download")}
-                            disabled={actionLoadingKey === getActionButtonKey("officer", o.id, "download")}
+                            disabled={
+                              actionLoadingKey === getActionButtonKey("officer", o.id, "download") ||
+                              isActionLocked(o.reportActions, "download")
+                            }
                             title={
                               isSuperAdmin
                                 ? "Download officer report"
@@ -675,7 +699,11 @@ export function ReportsClient({
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                           >
                             <IconDownload className="h-4 w-4" />
-                            {actionLoadingKey === getActionButtonKey("officer", o.id, "download") ? "Downloading..." : "Download"}
+                            {actionLoadingKey === getActionButtonKey("officer", o.id, "download")
+                              ? "Downloading..."
+                              : isActionLocked(o.reportActions, "download")
+                                ? "Used this week"
+                                : "Download"}
                           </button>
                         </>
                       ) : (
@@ -768,7 +796,10 @@ export function ReportsClient({
                         <button
                           type="button"
                           onClick={() => handleReportAction("member", m.id, "download")}
-                          disabled={actionLoadingKey === getActionButtonKey("member", m.id, "download")}
+                          disabled={
+                            actionLoadingKey === getActionButtonKey("member", m.id, "download") ||
+                            isActionLocked(m.reportActions, "download")
+                          }
                           title={
                             isSuperAdmin
                               ? "Download member report"
@@ -777,7 +808,11 @@ export function ReportsClient({
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
                           <IconDownload className="h-4 w-4" />
-                          {actionLoadingKey === getActionButtonKey("member", m.id, "download") ? "Downloading..." : "Download"}
+                          {actionLoadingKey === getActionButtonKey("member", m.id, "download")
+                            ? "Downloading..."
+                            : isActionLocked(m.reportActions, "download")
+                              ? "Used this week"
+                              : "Download"}
                         </button>
                       </>
                     ) : (
@@ -864,7 +899,10 @@ export function ReportsClient({
                   <button
                     type="button"
                     onClick={() => handleReportAction(previewType, previewEntityId, "download")}
-                    disabled={actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")}
+                    disabled={
+                      actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download") ||
+                      isActionLocked(previewActions, "download")
+                    }
                     title={
                       !isSuperAdmin && previewActions
                         ? getLockedTitle(previewActions.download, "Download report")
@@ -873,7 +911,11 @@ export function ReportsClient({
                     className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
                   >
                     <IconFileText className="h-4 w-4" />
-                    {actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download") ? "Downloading..." : "Download PDF"}
+                    {actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")
+                      ? "Downloading..."
+                      : isActionLocked(previewActions, "download")
+                        ? "Used this week"
+                        : "Download PDF"}
                   </button>
                 </>
               ) : null}
