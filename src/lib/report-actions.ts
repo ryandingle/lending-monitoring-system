@@ -10,6 +10,7 @@ const REPORT_ACTION_ENTITY = {
 } as const;
 
 export type ReportAreaType = keyof typeof REPORT_ACTION_ENTITY;
+type ReportLockScope = "day" | "week";
 
 export type ReportActionStatus = {
   download: {
@@ -32,20 +33,33 @@ export class ReportActionLockedError extends Error {
   };
 
   constructor(lock: ReportActionLockedError["lock"]) {
-    super("REPORT_ACTION_ALREADY_USED_THIS_WEEK");
+    super("REPORT_ACTION_ALREADY_USED_IN_PERIOD");
     this.name = "ReportActionLockedError";
     this.lock = lock;
   }
 }
 
+function getCurrentReportDayStart() {
+  return new Date(`${formatDateYMD(getManilaToday())}T00:00:00.000+08:00`);
+}
+
 /**
- * Start of the current report week (Monday, Asia/Manila).
- * A report area can only be downloaded once per week *per user*, so the lock row
- * is keyed on the week start instead of the current day.
+ * Group reports remain daily, while the other reports stay weekly.
+ * Locks are still per user via the unique key that includes actedByUserId.
  */
 function getCurrentReportWeekStart() {
   const weekStart = getMonday(getManilaToday());
   return new Date(`${formatDateYMD(weekStart)}T00:00:00.000+08:00`);
+}
+
+function getReportLockScope(reportType: ReportAreaType): ReportLockScope {
+  return reportType === "GROUP" ? "day" : "week";
+}
+
+function getReportLockDate(reportType: ReportAreaType) {
+  return getReportLockScope(reportType) === "day"
+    ? getCurrentReportDayStart()
+    : getCurrentReportWeekStart();
 }
 
 function emptyStatus(): ReportActionStatus {
@@ -75,13 +89,12 @@ export async function getReportActionStatusMap(
   }
 
   const initial = createEmptyStatusMap(items);
-  const weekStart = getCurrentReportWeekStart();
   const rows = await prisma.reportActionLock.findMany({
     where: {
-      reportDate: weekStart,
       actedByUserId: actorUserId,
       actionType: ReportActionType.DOWNLOAD,
       OR: items.map((item) => ({
+        reportDate: getReportLockDate(item.reportType),
         reportType: item.reportType,
         reportAreaId: item.reportAreaId,
       })),
@@ -120,21 +133,20 @@ export async function consumeReportAction(input: {
   to?: string | null;
   request?: AuditRequestContext;
 }) {
-  const reportWeekStart = getCurrentReportWeekStart();
+  const reportLockScope = getReportLockScope(input.reportType);
+  const reportLockDate = getReportLockDate(input.reportType);
   // Reports are only distributable via the app-owned Download action.
   const actionType = ReportActionType.DOWNLOAD;
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const existing = await tx.reportActionLock.findUnique({
+      const existing = await tx.reportActionLock.findFirst({
         where: {
-          reportDate_reportType_reportAreaId_actionType_actedByUserId: {
-            reportDate: reportWeekStart,
-            reportType: input.reportType,
-            reportAreaId: input.reportAreaId,
-            actionType,
-            actedByUserId: input.actorUserId,
-          },
+          reportDate: reportLockDate,
+          reportType: input.reportType,
+          reportAreaId: input.reportAreaId,
+          actionType,
+          actedByUserId: input.actorUserId,
         },
         include: {
           actedBy: {
@@ -163,9 +175,10 @@ export async function consumeReportAction(input: {
         metadata: {
           actionType,
           reportType: input.reportType,
+          reportLockScope,
           reportLabel: input.reportLabel,
           reportAreaName: input.reportAreaName,
-          reportWeekOf: formatDateYMD(reportWeekStart),
+          reportLockDate: formatDateYMD(reportLockDate),
           from: input.from ?? null,
           to: input.to ?? null,
         },
@@ -174,7 +187,7 @@ export async function consumeReportAction(input: {
 
       return tx.reportActionLock.create({
         data: {
-          reportDate: reportWeekStart,
+          reportDate: reportLockDate,
           reportType: input.reportType,
           reportAreaId: input.reportAreaId,
           reportAreaName: input.reportAreaName,
@@ -193,15 +206,13 @@ export async function consumeReportAction(input: {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      const existing = await prisma.reportActionLock.findUnique({
+      const existing = await prisma.reportActionLock.findFirst({
         where: {
-          reportDate_reportType_reportAreaId_actionType_actedByUserId: {
-            reportDate: reportWeekStart,
-            reportType: input.reportType,
-            reportAreaId: input.reportAreaId,
-            actionType,
-            actedByUserId: input.actorUserId,
-          },
+          reportDate: reportLockDate,
+          reportType: input.reportType,
+          reportAreaId: input.reportAreaId,
+          actionType,
+          actedByUserId: input.actorUserId,
         },
         include: {
           actedBy: {
