@@ -221,17 +221,22 @@ export function ReportsClient({
     [from, to],
   );
 
-  const getLockedTitle = useCallback((info: ReportActionInfo, label: string) => {
+  const getLockPeriodLabel = useCallback(
+    (type: ReportKind) => (type === "group" ? "today" : "this week"),
+    [],
+  );
+
+  const getLockedTitle = useCallback((info: ReportActionInfo, label: string, type: ReportKind) => {
     if (!info.locked) return label;
 
     const when = info.createdAtIso
       ? new Date(info.createdAtIso).toLocaleString("en-PH", {
           timeZone: "Asia/Manila",
         })
-      : "this week";
+      : getLockPeriodLabel(type);
 
     return info.actedByName ? `${label} already used by ${info.actedByName} on ${when}` : `${label} already used on ${when}`;
-  }, []);
+  }, [getLockPeriodLabel]);
 
   const isActionLocked = useCallback(
     (status: ReportActionStatus | null, action: ReportActionKind) =>
@@ -334,7 +339,7 @@ export function ReportsClient({
       const status = getReportActions(type, id);
       const actionInfo = status?.[action] ?? null;
       if (actionInfo && isActionLocked(status, action)) {
-        showAppToast("warning", getLockedTitle(actionInfo, "Download already used this week."));
+        showAppToast("warning", getLockedTitle(actionInfo, `Download already used ${getLockPeriodLabel(type)}.`, type));
         return;
       }
 
@@ -350,7 +355,7 @@ export function ReportsClient({
 
         if (res.status === 409) {
           const body = await res.json().catch(() => null);
-          const message = body?.error ?? "Download has already been used for this report this week.";
+          const message = body?.error ?? `Download has already been used for this report ${getLockPeriodLabel(type)}.`;
           showAppToast("warning", message);
 
           const createdAtIso =
@@ -390,6 +395,7 @@ export function ReportsClient({
       buildReportBaseUrl,
       extractFilename,
       getActionButtonKey,
+      getLockPeriodLabel,
       getLockedTitle,
       getReportActions,
       isActionLocked,
@@ -589,7 +595,7 @@ export function ReportsClient({
                           title={
                             isSuperAdmin
                               ? "Download group report"
-                              : getLockedTitle(g.reportActions.download, "Download group report")
+                              : getLockedTitle(g.reportActions.download, "Download group report", "group")
                           }
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
@@ -597,7 +603,7 @@ export function ReportsClient({
                           {actionLoadingKey === getActionButtonKey("group", g.id, "download")
                             ? "Downloading..."
                             : isActionLocked(g.reportActions, "download")
-                              ? "Used this week"
+                              ? "Used today"
                               : "Download"}
                         </button>
                       </>
@@ -694,7 +700,7 @@ export function ReportsClient({
                             title={
                               isSuperAdmin
                                 ? "Download officer report"
-                                : getLockedTitle(o.reportActions.download, "Download officer report")
+                                : getLockedTitle(o.reportActions.download, "Download officer report", "officer")
                             }
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                           >
@@ -803,7 +809,7 @@ export function ReportsClient({
                           title={
                             isSuperAdmin
                               ? "Download member report"
-                              : getLockedTitle(m.reportActions.download, "Download member report")
+                              : getLockedTitle(m.reportActions.download, "Download member report", "member")
                           }
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                         >
@@ -905,7 +911,7 @@ export function ReportsClient({
                     }
                     title={
                       !isSuperAdmin && previewActions
-                        ? getLockedTitle(previewActions.download, "Download report")
+                        ? getLockedTitle(previewActions.download, "Download report", previewType)
                         : "Download report"
                     }
                     className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
@@ -914,7 +920,9 @@ export function ReportsClient({
                     {actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")
                       ? "Downloading..."
                       : isActionLocked(previewActions, "download")
-                        ? "Used this week"
+                        ? previewType === "group"
+                          ? "Used today"
+                          : "Used this week"
                         : "Download PDF"}
                   </button>
                 </>
