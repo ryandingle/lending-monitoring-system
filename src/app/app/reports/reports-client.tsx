@@ -222,7 +222,7 @@ export function ReportsClient({
   );
 
   const getLockPeriodLabel = useCallback(
-    (type: ReportKind) => (type === "group" ? "today" : "this week"),
+    (type: ReportKind) => (type === "officer" ? "today" : "this week"),
     [],
   );
 
@@ -603,7 +603,7 @@ export function ReportsClient({
                           {actionLoadingKey === getActionButtonKey("group", g.id, "download")
                             ? "Downloading..."
                             : isActionLocked(g.reportActions, "download")
-                              ? "Used today"
+                              ? "Downloaded already this week"
                               : "Download"}
                         </button>
                       </>
@@ -708,7 +708,7 @@ export function ReportsClient({
                             {actionLoadingKey === getActionButtonKey("officer", o.id, "download")
                               ? "Downloading..."
                               : isActionLocked(o.reportActions, "download")
-                                ? "Used this week"
+                                ? "Downloaded already today"
                                 : "Download"}
                           </button>
                         </>
@@ -817,7 +817,7 @@ export function ReportsClient({
                           {actionLoadingKey === getActionButtonKey("member", m.id, "download")
                             ? "Downloading..."
                             : isActionLocked(m.reportActions, "download")
-                              ? "Used this week"
+                              ? "Downloaded already this week"
                               : "Download"}
                         </button>
                       </>
@@ -920,9 +920,9 @@ export function ReportsClient({
                     {actionLoadingKey === getActionButtonKey(previewType, previewEntityId, "download")
                       ? "Downloading..."
                       : isActionLocked(previewActions, "download")
-                        ? previewType === "group"
-                          ? "Used today"
-                          : "Used this week"
+                        ? previewType === "officer"
+                          ? "Downloaded already today"
+                          : "Downloaded already this week"
                         : "Download PDF"}
                   </button>
                 </>
