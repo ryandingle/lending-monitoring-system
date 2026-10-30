@@ -270,7 +270,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
       if (error instanceof ReportActionLockedError) {
         return NextResponse.json(
           {
-            error: "Download already used for this area today.",
+            error: "Download already used for this area this week.",
             code: error.message,
             lock: {
               reportAreaName: error.lock.reportAreaName,

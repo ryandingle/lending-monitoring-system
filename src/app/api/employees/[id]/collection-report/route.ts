@@ -359,7 +359,7 @@ export async function GET(
       if (error instanceof ReportActionLockedError) {
         return NextResponse.json(
           {
-            error: "Download already used for this officer report this week.",
+            error: "Download already used for this officer report today.",
             code: error.message,
             lock: {
               reportAreaName: error.lock.reportAreaName,

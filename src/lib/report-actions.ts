@@ -44,7 +44,7 @@ function getCurrentReportDayStart() {
 }
 
 /**
- * Group reports remain daily, while the other reports stay weekly.
+ * Officer reports are limited daily, while group and member reports are weekly.
  * Locks are still per user via the unique key that includes actedByUserId.
  */
 function getCurrentReportWeekStart() {
@@ -53,7 +53,7 @@ function getCurrentReportWeekStart() {
 }
 
 function getReportLockScope(reportType: ReportAreaType): ReportLockScope {
-  return reportType === "GROUP" ? "day" : "week";
+  return reportType === "OFFICER" ? "day" : "week";
 }
 
 function getReportLockDate(reportType: ReportAreaType) {
