@@ -575,41 +575,38 @@ export function ReportsClient({
                     {g.activeMemberCount || 0}
                   </td>
                   <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                    {canAccessGroupReport ? (
-                      <>
-                        <button
-                          onClick={() => handleView("group", g.id)}
-                          disabled={actionLoadingKey !== null}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          <IconEye className="h-4 w-4" />
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReportAction("group", g.id, "download")}
-                          disabled={
-                            actionLoadingKey === getActionButtonKey("group", g.id, "download") ||
-                            isActionLocked(g.reportActions, "download")
-                          }
-                          title={
-                            isSuperAdmin
-                              ? "Download group report"
-                              : getLockedTitle(g.reportActions.download, "Download group report", "group")
-                          }
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        >
-                          <IconDownload className="h-4 w-4" />
-                          {actionLoadingKey === getActionButtonKey("group", g.id, "download")
-                            ? "Downloading..."
-                            : isActionLocked(g.reportActions, "download")
-                              ? "Downloaded already this week"
-                              : "Download"}
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Disabled</span>
-                    )}
+                    <>
+                      <button
+                        onClick={() => handleView("group", g.id)}
+                        disabled={actionLoadingKey !== null || !canAccessGroupReport}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <IconEye className="h-4 w-4" />
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReportAction("group", g.id, "download")}
+                        disabled={
+                          !canAccessGroupReport ||
+                          actionLoadingKey === getActionButtonKey("group", g.id, "download") ||
+                          isActionLocked(g.reportActions, "download")
+                        }
+                        title={
+                          isSuperAdmin
+                            ? "Download group report"
+                            : getLockedTitle(g.reportActions.download, "Download group report", "group")
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      >
+                        <IconDownload className="h-4 w-4" />
+                        {actionLoadingKey === getActionButtonKey("group", g.id, "download")
+                          ? "Downloading..."
+                          : isActionLocked(g.reportActions, "download")
+                            ? "Downloaded already this week"
+                            : "Download"}
+                      </button>
+                    </>
                   </td>
                 </tr>
               ))}
@@ -680,41 +677,38 @@ export function ReportsClient({
                       </div>
                     </td>
                     <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                      {canAccessOfficerReport ? (
-                        <>
-                          <button
-                            onClick={() => handleView("officer", o.id)}
-                            disabled={actionLoadingKey !== null}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            <IconEye className="h-4 w-4" />
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReportAction("officer", o.id, "download")}
-                            disabled={
-                              actionLoadingKey === getActionButtonKey("officer", o.id, "download") ||
-                              isActionLocked(o.reportActions, "download")
-                            }
-                            title={
-                              isSuperAdmin
-                                ? "Download officer report"
-                                : getLockedTitle(o.reportActions.download, "Download officer report", "officer")
-                            }
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                          >
-                            <IconDownload className="h-4 w-4" />
-                            {actionLoadingKey === getActionButtonKey("officer", o.id, "download")
-                              ? "Downloading..."
-                              : isActionLocked(o.reportActions, "download")
-                                ? "Downloaded already today"
-                                : "Download"}
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Disabled</span>
-                      )}
+                      <>
+                        <button
+                          onClick={() => handleView("officer", o.id)}
+                          disabled={actionLoadingKey !== null || !canAccessOfficerReport}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <IconEye className="h-4 w-4" />
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReportAction("officer", o.id, "download")}
+                          disabled={
+                            !canAccessOfficerReport ||
+                            actionLoadingKey === getActionButtonKey("officer", o.id, "download") ||
+                            isActionLocked(o.reportActions, "download")
+                          }
+                          title={
+                            isSuperAdmin
+                              ? "Download officer report"
+                              : getLockedTitle(o.reportActions.download, "Download officer report", "officer")
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        >
+                          <IconDownload className="h-4 w-4" />
+                          {actionLoadingKey === getActionButtonKey("officer", o.id, "download")
+                            ? "Downloading..."
+                            : isActionLocked(o.reportActions, "download")
+                              ? "Downloaded already today"
+                              : "Download"}
+                        </button>
+                      </>
                     </td>
                   </tr>
                 ))}
@@ -789,41 +783,38 @@ export function ReportsClient({
                     </Link>
                   </td>
                   <td className="py-2 pr-0 text-right flex justify-end gap-2">
-                    {canAccessMemberReport ? (
-                      <>
-                        <button
-                          onClick={() => handleView("member", m.id)}
-                          disabled={actionLoadingKey !== null}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          <IconEye className="h-4 w-4" />
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReportAction("member", m.id, "download")}
-                          disabled={
-                            actionLoadingKey === getActionButtonKey("member", m.id, "download") ||
-                            isActionLocked(m.reportActions, "download")
-                          }
-                          title={
-                            isSuperAdmin
-                              ? "Download member report"
-                              : getLockedTitle(m.reportActions.download, "Download member report", "member")
-                          }
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        >
-                          <IconDownload className="h-4 w-4" />
-                          {actionLoadingKey === getActionButtonKey("member", m.id, "download")
-                            ? "Downloading..."
-                            : isActionLocked(m.reportActions, "download")
-                              ? "Downloaded already this week"
-                              : "Download"}
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Disabled</span>
-                    )}
+                    <>
+                      <button
+                        onClick={() => handleView("member", m.id)}
+                        disabled={actionLoadingKey !== null || !canAccessMemberReport}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <IconEye className="h-4 w-4" />
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReportAction("member", m.id, "download")}
+                        disabled={
+                          !canAccessMemberReport ||
+                          actionLoadingKey === getActionButtonKey("member", m.id, "download") ||
+                          isActionLocked(m.reportActions, "download")
+                        }
+                        title={
+                          isSuperAdmin
+                            ? "Download member report"
+                            : getLockedTitle(m.reportActions.download, "Download member report", "member")
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      >
+                        <IconDownload className="h-4 w-4" />
+                        {actionLoadingKey === getActionButtonKey("member", m.id, "download")
+                          ? "Downloading..."
+                          : isActionLocked(m.reportActions, "download")
+                            ? "Downloaded already this week"
+                            : "Download"}
+                      </button>
+                    </>
                   </td>
                 </tr>
               ))}
