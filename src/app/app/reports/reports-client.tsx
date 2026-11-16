@@ -258,16 +258,8 @@ export function ReportsClient({
         actedByName,
       };
 
-      if (type === "group") {
-        setGroups((prev) =>
-          prev.map((item) =>
-            item.id === id
-              ? { ...item, reportActions: { ...item.reportActions, [action]: nextInfo } }
-              : item,
-          ),
-        );
-        return;
-      }
+      // Group reports are not frequency limited, so there is no lock to track.
+      if (type === "group") return;
 
       if (type === "officer") {
         setOfficers((prev) =>
@@ -589,22 +581,15 @@ export function ReportsClient({
                         onClick={() => handleReportAction("group", g.id, "download")}
                         disabled={
                           !canAccessGroupReport ||
-                          actionLoadingKey === getActionButtonKey("group", g.id, "download") ||
-                          isActionLocked(g.reportActions, "download")
+                          actionLoadingKey === getActionButtonKey("group", g.id, "download")
                         }
-                        title={
-                          isSuperAdmin
-                            ? "Download group report"
-                            : getLockedTitle(g.reportActions.download, "Download group report", "group")
-                        }
+                        title="Download group report"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                       >
                         <IconDownload className="h-4 w-4" />
                         {actionLoadingKey === getActionButtonKey("group", g.id, "download")
                           ? "Downloading..."
-                          : isActionLocked(g.reportActions, "download")
-                            ? "Downloaded already this week"
-                            : "Download"}
+                          : "Download"}
                       </button>
                     </>
                   </td>
