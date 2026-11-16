@@ -1,4 +1,4 @@
-import { createAuditLog, type AuditRequestContext } from "@/lib/audit";
+import { createAuditLog, createAuditLogStandalone, type AuditRequestContext } from "@/lib/audit";
 import { formatDateYMD, getManilaToday, getMonday } from "@/lib/date";
 import { prisma } from "@/lib/db";
 import { Prisma, ReportActionType } from "@prisma/client";
@@ -10,7 +10,7 @@ const REPORT_ACTION_ENTITY = {
 } as const;
 
 export type ReportAreaType = keyof typeof REPORT_ACTION_ENTITY;
-type ReportLockScope = "day" | "week";
+type ReportLockScope = "day" | "week" | "none";
 
 export type ReportActionStatus = {
   download: {
@@ -44,7 +44,9 @@ function getCurrentReportDayStart() {
 }
 
 /**
- * Officer reports are limited daily, while group and member reports are weekly.
+ * Officer reports are limited daily and member reports weekly, while group
+ * reports have no frequency limit — their access is governed solely by the
+ * REPORT_VIEW_DOWNLOAD_ENABLED app control.
  * Locks are still per user via the unique key that includes actedByUserId.
  */
 function getCurrentReportWeekStart() {
@@ -53,7 +55,9 @@ function getCurrentReportWeekStart() {
 }
 
 function getReportLockScope(reportType: ReportAreaType): ReportLockScope {
-  return reportType === "OFFICER" ? "day" : "week";
+  if (reportType === "OFFICER") return "day";
+  if (reportType === "MEMBER") return "week";
+  return "none";
 }
 
 function getReportLockDate(reportType: ReportAreaType) {
@@ -89,22 +93,26 @@ export async function getReportActionStatusMap(
   }
 
   const initial = createEmptyStatusMap(items);
-  const rows = await prisma.reportActionLock.findMany({
-    where: {
-      actedByUserId: actorUserId,
-      actionType: ReportActionType.DOWNLOAD,
-      OR: items.map((item) => ({
-        reportDate: getReportLockDate(item.reportType),
-        reportType: item.reportType,
-        reportAreaId: item.reportAreaId,
-      })),
-    },
-    include: {
-      actedBy: {
-        select: { name: true },
-      },
-    },
-  });
+  const lockableItems = items.filter((item) => getReportLockScope(item.reportType) !== "none");
+  const rows =
+    lockableItems.length === 0
+      ? []
+      : await prisma.reportActionLock.findMany({
+          where: {
+            actedByUserId: actorUserId,
+            actionType: ReportActionType.DOWNLOAD,
+            OR: lockableItems.map((item) => ({
+              reportDate: getReportLockDate(item.reportType),
+              reportType: item.reportType,
+              reportAreaId: item.reportAreaId,
+            })),
+          },
+          include: {
+            actedBy: {
+              select: { name: true },
+            },
+          },
+        });
 
   for (const row of rows) {
     const key = getStatusKey(row.reportType as ReportAreaType, row.reportAreaId);
@@ -134,9 +142,33 @@ export async function consumeReportAction(input: {
   request?: AuditRequestContext;
 }) {
   const reportLockScope = getReportLockScope(input.reportType);
-  const reportLockDate = getReportLockDate(input.reportType);
   // Reports are only distributable via the app-owned Download action.
   const actionType = ReportActionType.DOWNLOAD;
+
+  // Group reports have no frequency limit: access is controlled by the
+  // REPORT_VIEW_DOWNLOAD_ENABLED app control, so record the download for audit only.
+  if (reportLockScope === "none") {
+    return createAuditLogStandalone({
+      actorUserId: input.actorUserId,
+      action: "REPORT_DOWNLOAD",
+      entityType: REPORT_ACTION_ENTITY[input.reportType],
+      entityId: input.reportAreaId,
+      entityValue: input.reportAreaName,
+      metadata: {
+        actionType,
+        reportType: input.reportType,
+        reportLockScope,
+        reportLabel: input.reportLabel,
+        reportAreaName: input.reportAreaName,
+        reportLockDate: null,
+        from: input.from ?? null,
+        to: input.to ?? null,
+      },
+      request: input.request,
+    });
+  }
+
+  const reportLockDate = getReportLockDate(input.reportType);
 
   try {
     return await prisma.$transaction(async (tx) => {

@@ -8,7 +8,7 @@ import { getMonday, formatDateYMD, getManilaDateRange, getWeekdaysInRange } from
 import { renderToStream } from "@react-pdf/renderer";
 import { CollectionReportPdf } from "@/lib/pdf/CollectionReportPdf";
 import { APP_CONTROL_KEYS, resolveAppControl } from "@/lib/app-controls";
-import { consumeReportAction, ReportActionLockedError } from "@/lib/report-actions";
+import { consumeReportAction } from "@/lib/report-actions";
 import fs from "fs";
 import path from "path";
 
@@ -254,36 +254,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ groupId: string
   }
 
   if (shouldConsumeDownload && actor.role !== Role.SUPER_ADMIN) {
-    try {
-      const request = await tryGetAuditRequestContext();
-      await consumeReportAction({
-        actorUserId: actor.id,
-        reportType: "GROUP",
-        reportAreaId: groupId,
-        reportAreaName: group.name,
-        reportLabel: "Group Report",
-        from: dateFrom,
-        to: dateTo,
-        request,
-      });
-    } catch (error) {
-      if (error instanceof ReportActionLockedError) {
-        return NextResponse.json(
-          {
-            error: "Download already used for this area this week.",
-            code: error.message,
-            lock: {
-              reportAreaName: error.lock.reportAreaName,
-              createdAt: error.lock.createdAt.toISOString(),
-              actedByName: error.lock.actedByName,
-            },
-          },
-          { status: 409 },
-        );
-      }
-
-      throw error;
-    }
+    const request = await tryGetAuditRequestContext();
+    await consumeReportAction({
+      actorUserId: actor.id,
+      reportType: "GROUP",
+      reportAreaId: groupId,
+      reportAreaName: group.name,
+      reportLabel: "Group Report",
+      from: dateFrom,
+      to: dateTo,
+      request,
+    });
   }
 
   // --- RENDER PDF ---
